@@ -1,0 +1,53 @@
+// src/services/api/ApiClient.ts
+import axios from 'axios';
+import { store } from '../../redux/store';
+import { logout } from '../../redux/reducers/userSlice';
+// Singleton para manejar la instancia de axios
+export class ApiClient {
+    constructor() {
+        Object.defineProperty(this, "axiosInstance", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: void 0
+        });
+        this.axiosInstance = axios.create({
+            baseURL: `${import.meta.env.VITE_API_URL}/api/v1`,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+        // Interceptor para agregar el token a las peticiones
+        this.axiosInstance.interceptors.request.use((config) => {
+            const token = localStorage.getItem('auth_dashboard_token');
+            if (token) {
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+            return config;
+        }, (error) => Promise.reject(error));
+        // Interceptor para manejar errores
+        this.axiosInstance.interceptors.response.use((response) => response, (error) => {
+            if (error.response?.status === 401 || error.response?.status === 403) {
+                store.dispatch(logout());
+                window.location.href = '/login';
+            }
+            return Promise.reject(this.handleError(error));
+        });
+    }
+    // Método para obtener la instancia singleton
+    static getInstance() {
+        if (!ApiClient.instance) {
+            ApiClient.instance = new ApiClient();
+        }
+        return ApiClient.instance;
+    }
+    // Método para obtener la instancia de axios
+    getAxiosInstance() {
+        return this.axiosInstance;
+    }
+    // Manejo de errores centralizado
+    handleError(error) {
+        const errorMessage = error.response?.data?.message || 'Ha ocurrido un error';
+        return new Error(errorMessage);
+    }
+}

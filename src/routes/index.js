@@ -1,0 +1,18 @@
+import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
+import { createBrowserRouter, createRoutesFromElements, Navigate, Route, } from "react-router-dom";
+import Login from "../pages/auth/Login.component";
+import ProtectedRoutes from "../utils/ProtectedRoutes";
+import PublicRoutes from "../utils/PublicRoutes";
+import Dashboard from "../pages/dashboard/Dashboard.page";
+import Products from "../pages/products/Products.page";
+import AddProduct from "../pages/products/components/AddProduct.component";
+import Images from "../pages/images/Images.page";
+import AddImages from "../pages/images/components/AddImages.component";
+import Filters from "../pages/filters/filters.page";
+import AddFilters from "../pages/filters/components/AddFilters.component";
+import Users from "../pages/users/Users.page";
+import Orders from "../pages/orders/Orders.page";
+import Blog from "../pages/blog/Blog.page";
+import Reviews from "../pages/Reviews/Reviews.page";
+const router = createBrowserRouter(createRoutesFromElements(_jsxs(_Fragment, { children: [_jsx(Route, { element: _jsx(PublicRoutes, {}), children: _jsx(Route, { path: "/login", element: _jsx(Login, {}) }) }), _jsxs(Route, { element: _jsx(ProtectedRoutes, {}), children: [_jsx(Route, { path: "/dashboard", element: _jsx(Dashboard, {}) }), _jsx(Route, { path: "/products", element: _jsx(Products, {}) }), _jsx(Route, { path: "/products/add", element: _jsx(AddProduct, {}) }), _jsx(Route, { path: "/images", element: _jsx(Images, {}) }), _jsx(Route, { path: "/images/add", element: _jsx(AddImages, {}) }), _jsx(Route, { path: "/filters", element: _jsx(Filters, {}) }), _jsx(Route, { path: "/filters/add", element: _jsx(AddFilters, {}) }), _jsx(Route, { path: "/orders", element: _jsx(Orders, {}) }), _jsx(Route, { path: "/blogs", element: _jsx(Blog, {}) }), _jsx(Route, { path: "/users", element: _jsx(Users, {}) }), _jsx(Route, { path: "/reviews", element: _jsx(Reviews, {}) })] }), _jsx(Route, { path: "*", element: _jsx(Navigate, { to: "/login" }) })] })));
+export default router;

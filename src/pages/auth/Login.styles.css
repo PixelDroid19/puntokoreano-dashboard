@@ -1,0 +1,31 @@
+.container {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    margin-top: 5rem;
+}
+
+.form {
+    width: 80%;
+}
+
+.logo {
+    width: 150px;
+    margin-bottom: 1.5rem;
+}
+
+.login-form-button {
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    .container {
+        max-width: 500px;
+        margin: 10rem auto 0 auto;
+        border-radius: 7px;
+        border: 1px solid #e9e9eb;
+        padding-top: 2rem;
+        padding-bottom: 5rem;
+        background-color: white;
+    }
+}

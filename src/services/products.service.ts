@@ -1,0 +1,224 @@
+// src/services/products.service.ts
+import axios from "axios";
+import { Product } from "../api/types";
+import ENDPOINTS from "../api";
+
+interface PaginationParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+interface PaginatedResponse {
+  products: Product[];
+  pagination: {
+    total: number;
+    page: number;
+    pages: number;
+    perPage: number;
+  };
+}
+
+class ProductsService {
+  private static getToken(): string {
+    return localStorage.getItem("auth_dashboard_token") || "";
+  }
+
+  private static getHeaders() {
+    return {
+      Authorization: `Bearer ${this.getToken()}`,
+      "Content-Type": "application/json",
+    };
+  }
+
+  static async getProducts(
+    params?: PaginationParams
+  ): Promise<PaginatedResponse> {
+    try {
+      const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.GET_ALL;
+      const response = await axios({
+        url,
+        method,
+        headers: this.getHeaders(),
+        params,
+      });
+
+      return response.data.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || "Error al obtener los productos"
+        );
+      }
+      throw error;
+    }
+  }
+
+  static async getProductById(id: string): Promise<Product> {
+    try {
+      const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.GET_BY_ID;
+      const response = await axios({
+        url: `${url}/${id}`,
+        method,
+        headers: this.getHeaders(),
+      });
+
+      return response.data.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || "Error al obtener el producto"
+        );
+      }
+      throw error;
+    }
+  }
+
+  static async deleteProduct(id: string): Promise<void> {
+    try {
+      const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.DELETE;
+      await axios({
+        url: `${url}/${id}`,
+        method,
+        headers: this.getHeaders(),
+      });
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || "Error al eliminar el producto"
+        );
+      }
+      throw error;
+    }
+  }
+
+  static async updateProduct(
+    id: string,
+    data: Partial<Product>
+  ): Promise<Product> {
+    try {
+      const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.UPDATE;
+      const response = await axios({
+        url: `${url}/${id}`,
+        method,
+        headers: this.getHeaders(),
+        data,
+      });
+
+      return response.data.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || "Error al actualizar el producto"
+        );
+      }
+      throw error;
+    }
+  }
+
+  static async toggleProductStatus(
+    id: string,
+    active: boolean
+  ): Promise<Product> {
+    return this.updateProduct(id, { active });
+  }
+
+  static async searchProducts(searchTerm: string): Promise<Product[]> {
+    try {
+      const { url, method } = ENDPOINTS.PRODUCTS.SEARCH;
+      const response = await axios({
+        url,
+        method,
+        headers: this.getHeaders(),
+        params: { query: searchTerm },
+      });
+
+      return response.data.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || "Error en la búsqueda de productos"
+        );
+      }
+      throw error;
+    }
+  }
+
+  static async exportToExcel(limit?: number): Promise<Blob> {
+    try {
+      const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.EXPORT_EXCEL;
+      const response = await axios({
+        url,
+        method,
+        headers: this.getHeaders(),
+        responseType: "blob",
+        params: { limit },
+      });
+
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || "Error al exportar productos"
+        );
+      }
+      throw error;
+    }
+  }
+
+  static async importFromExcel(file: File): Promise<{
+    total: number;
+    created: number;
+    updated: number;
+    failed: number;
+    errors: string[];
+  }> {
+    try {
+      const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.IMPORT_EXCEL;
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await axios({
+        url,
+        method,
+        headers: {
+          ...this.getHeaders(),
+          "Content-Type": "multipart/form-data",
+        },
+        data: formData,
+      });
+
+      return response.data.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || "Error al importar productos"
+        );
+      }
+      throw error;
+    }
+  }
+
+  static async downloadTemplate(): Promise<Blob> {
+    try {
+      const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.DOWNLOAD_TEMPLATE;
+      const response = await axios({
+        url,
+        method,
+        headers: this.getHeaders(),
+        responseType: "blob",
+      });
+
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || "Error al descargar plantilla"
+        );
+      }
+      throw error;
+    }
+  }
+}
+
+export default ProductsService;
