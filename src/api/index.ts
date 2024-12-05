@@ -1,17 +1,50 @@
 import { Endpoints } from "./types";
 
 const getBaseUrl = (): string => {
-  const env = import.meta.env.MODE;
+  // Usar una variable más explícita para el entorno
+  const isProduction = import.meta.env.PROD;
+  const envApiUrl = import.meta.env.VITE_API_REST_URL;
 
-  const urls: Record<string, string> = {
-    development: "http://localhost:5000/api/v1",
-    production: import.meta.env.VITE_API_URL,
+  // Log para debugging (se eliminará en producción)
+  if (import.meta.env.DEV) {
+    console.log("Environment:", isProduction ? "Production" : "Development");
+    console.log("API URL:", envApiUrl);
+  }
+
+  // Usar un objeto de configuración más robusto
+  const config = {
+    development: {
+      apiUrl: "http://localhost:5000/api/v1",
+      timeout: 10000,
+      retries: 3,
+    },
+    production: {
+      apiUrl: envApiUrl,
+      timeout: 15000,
+      retries: 5,
+    },
   };
 
-  return urls[env] || urls.development;
+  const currentConfig = isProduction ? config.production : config.development;
+
+  if (!currentConfig.apiUrl) {
+    throw new Error(
+      `API URL not configured for ${
+        isProduction ? "production" : "development"
+      } environment`
+    );
+  }
+
+  return currentConfig.apiUrl;
 };
 
-export const BASE_URL = getBaseUrl();
+export const API_CONFIG = {
+  baseUrl: getBaseUrl(),
+  isProduction: import.meta.env.PROD,
+  version: "1.0.0",
+};
+
+export const BASE_URL = API_CONFIG.baseUrl;
 
 const ENDPOINTS: Endpoints = {
   AUTH: {

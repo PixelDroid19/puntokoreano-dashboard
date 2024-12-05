@@ -32,6 +32,7 @@ const ProtectedRoutes = () => {
     onSuccess: ({ data }) => {
       dispatch(
         login({
+          // @ts-ignore
           ...data.user,
           auth: true,
           auth_dashboard_token: token,

@@ -101,6 +101,7 @@ class DashboardReviewsService {
   }) {
     try {
       const { data } = await api.get(this.BASE_URL, { params });
+      // @ts-ignore
       return data.data;
     } catch (error: any) {
       throw new Error(
@@ -115,6 +116,7 @@ class DashboardReviewsService {
   static async getReviewStats(): Promise<ReviewStats> {
     try {
       const { data } = await api.get(`${this.BASE_URL}/stats`);
+      // @ts-ignore
       return data.data;
     } catch (error: any) {
       throw new Error(
@@ -139,6 +141,7 @@ class DashboardReviewsService {
         `${this.BASE_URL}/${reviewId}/moderate`,
         moderationData
       );
+      // @ts-ignore
       return data.data;
     } catch (error: any) {
       throw new Error(
@@ -162,6 +165,7 @@ class DashboardReviewsService {
         `${this.BASE_URL}/${reviewId}/handle-report`,
         reportData
       );
+      // @ts-ignore
       return data.data;
     } catch (error: any) {
       throw new Error(

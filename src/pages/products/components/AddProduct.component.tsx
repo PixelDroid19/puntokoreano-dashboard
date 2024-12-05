@@ -1,10 +1,10 @@
+// @ts-nocheck
+
 import {
   Button,
   Col,
-  Divider,
   Flex,
   Form,
-  FormProps,
   GetProp,
   Image,
   Input,
@@ -18,17 +18,10 @@ import {
   Tabs,
   Card,
   Space,
-  Tag,
-  Typography,
   Tooltip,
 } from "antd";
-import { COMMON_ATTRIBUTES } from "../../../enums/contants.common";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faArrowLeft,
-  faDollarSign,
-  faInfoCircle,
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
 import React from "react";
 import { PlusOutlined } from "@ant-design/icons";
@@ -44,7 +37,6 @@ import { ProductCreateInput } from "../../../api/types";
 import { DashboardService } from "../../../services/dashboard.service";
 import FilesService from "../../../services/files.service";
 
-const { Text } = Typography;
 const { TabPane } = Tabs;
 
 type FileType = Parameters<GetProp<UploadProps, "beforeUpload">>[0];

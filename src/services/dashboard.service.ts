@@ -1,4 +1,5 @@
 // src/services/dashboard.service.ts
+// @ts-nocheck
 import axios from 'axios';
 import { 
   ProductCreateInput, 

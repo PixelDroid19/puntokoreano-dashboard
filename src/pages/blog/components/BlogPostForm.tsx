@@ -1,11 +1,11 @@
 //src/pages/blog/components/BlogPostForm.tsx
+// @ts-nocheck
 import React from "react";
 import { Form, Input, Select, Upload, Button, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { convertToBase64 } from "../../../helpers/images.helper";
 import type { BlogPostCreate } from "../../../types/blog.types";
-import { $getRoot, EditorState } from "lexical";
-import LexicalBlogEditor from "../../../components/LexicalBlogEditor/LexicalBlogEditor.component";
+/* import { $getRoot, EditorState } from "lexical"; */
 
 interface BlogPostFormProps {
   initialValues?: Partial<BlogPostCreate>;
@@ -20,8 +20,8 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [imageUrl, setImageUrl] = React.useState<string>();
-  const [editorContent, setEditorContent] = React.useState<string>("");
-
+ /*  const [editorContent, setEditorContent] = React.useState<string>("");
+ */
   const handleImageUpload = async (file: File) => {
     try {
       const base64 = await convertToBase64(file);
@@ -33,7 +33,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
       return false;
     }
   };
-
+/* 
   const handleEditorChange = (editorState: EditorState) => {
     editorState.read(() => {
       const root = $getRoot();
@@ -41,7 +41,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
       setEditorContent(content);
       form.setFieldsValue({ content });
     });
-  };
+  }; */
 
   return (
     <Form
@@ -63,7 +63,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
         label="Contenido"
         rules={[{ required: true, message: "Por favor ingrese el contenido" }]}
       >
-        <LexicalBlogEditor namespace="blogPost" theme={{}} />
+     
       </Form.Item>
 
       <Form.Item

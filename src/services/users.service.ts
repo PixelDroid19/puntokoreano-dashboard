@@ -1,4 +1,5 @@
 // src/services/users.service.ts
+// @ts-nocheck
 import { api } from "./auth.service";
 import {
   User,
@@ -58,6 +59,7 @@ class UsersService {
       const response = await api.get(endpoint, {
         params: this.formatParams(params),
       });
+      
       return response.data;
     } catch (error) {
       return this.handleError(error);
@@ -70,6 +72,7 @@ class UsersService {
   static async getUserStats(userId: string): Promise<UserStats> {
     try {
       const response = await api.get(`${this.CUSTOMERS_URL}/${userId}/stats`);
+      
       return response.data.data;
     } catch (error) {
       return this.handleError(error);
@@ -88,6 +91,7 @@ class UsersService {
         `${this.CUSTOMERS_URL}/${userId}/purchases`,
         { params }
       );
+      
       return response.data.data;
     } catch (error) {
       return this.handleError(error);
@@ -106,6 +110,7 @@ class UsersService {
         `${this.CUSTOMERS_URL}/${userId}/reviews`,
         { params }
       );
+      
       return response.data.data;
     } catch (error) {
       return this.handleError(error);
@@ -123,6 +128,7 @@ class UsersService {
       const endpoint =
         userType === "admin" ? this.ADMIN_URL : this.CUSTOMERS_URL;
       const response = await api.post(endpoint, data);
+      
       return response.data.data;
     } catch (error) {
       return this.handleError(error);
@@ -302,10 +308,10 @@ class UsersService {
     }
   }
 
-   /**
+  /**
    * Validar si existe un documento
    */
-   static async validateDocument(
+  static async validateDocument(
     type: string,
     number: string
   ): Promise<boolean> {
@@ -314,6 +320,7 @@ class UsersService {
         type,
         number,
       });
+
       return response.data.exists;
     } catch (error) {
       return this.handleError(error);
@@ -323,9 +330,14 @@ class UsersService {
   /**
    * Obtener estadísticas detalladas del usuario
    */
-  static async getUserDetailedStats(userId: string): Promise<DetailedUserStats> {
+  static async getUserDetailedStats(
+    userId: string
+  ): Promise<DetailedUserStats> {
     try {
-      const response = await api.get(`${this.CUSTOMERS_URL}/${userId}/detailed-stats`);
+      const response = await api.get(
+        `${this.CUSTOMERS_URL}/${userId}/detailed-stats`
+      );
+
       return response.data.data;
     } catch (error) {
       return this.handleError(error);

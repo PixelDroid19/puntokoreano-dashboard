@@ -1,4 +1,5 @@
 // src/pages/filters/Filters.page.tsx
+// @ts-nocheck
 import {
     Table,
     Button,

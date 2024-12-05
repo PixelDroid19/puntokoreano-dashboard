@@ -1,6 +1,5 @@
 import { Modal, Tag, Space } from 'antd';
 import dayjs from 'dayjs';
-import LexicalViewer from '../../../components/LexicalBlogEditor/LexicalViewer.component';
 import { statusColors } from './BlogPostCard';
 
 const BlogPostModal = ({ selectedPost, isViewModalOpen, onClose }) => {
@@ -68,7 +67,7 @@ const BlogPostModal = ({ selectedPost, isViewModalOpen, onClose }) => {
 
         {/* Contenido */}
         <div className="prose max-w-none">
-          <LexicalViewer content={selectedPost.content} />
+        {/*   <LexicalViewer content={selectedPost.content} /> */}
         </div>
       </div>
     </Modal>

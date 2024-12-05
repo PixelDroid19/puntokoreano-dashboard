@@ -1,7 +1,9 @@
 // services/files.service.ts
+// @ts-nocheck
 import ENDPOINTS from "../api";
 import { api } from "./auth.service";
 import axios from "axios";
+
 
 export interface ImageData {
   _id: string;

@@ -8,9 +8,6 @@ import {
   Popconfirm,
   message,
   Space,
-  Modal,
-  Descriptions,
-  Image,
 } from "antd";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -52,7 +49,6 @@ const Products = () => {
         limit: pagination.pageSize,
         search: searchText || undefined,
       }),
-    keepPreviousData: true,
   });
 
   // Mutación para eliminar producto

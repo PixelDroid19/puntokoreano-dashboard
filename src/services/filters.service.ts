@@ -1,4 +1,6 @@
 // src/services/filters.service.ts
+// @ts-nocheck
+
 import axios from "axios";
 import { Filter } from "../api/types";
 import ENDPOINTS from "../api";

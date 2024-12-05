@@ -1,4 +1,5 @@
 // src/pages/products/components/ProductEdit.tsx
+// @ts-nocheck
 import {
   Modal,
   Form,

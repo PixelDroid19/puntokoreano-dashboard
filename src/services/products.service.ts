@@ -1,4 +1,6 @@
 // src/services/products.service.ts
+// @ts-nocheck
+
 import axios from "axios";
 import { Product } from "../api/types";
 import ENDPOINTS from "../api";

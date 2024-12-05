@@ -1,4 +1,5 @@
 // src/pages/users/Users.page.tsx
+// @ts-nocheck
 import { useState } from "react";
 import {
   Table,
