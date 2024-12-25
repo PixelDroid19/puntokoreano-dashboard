@@ -30,6 +30,64 @@ export interface Product {
   updated_at: string;
 }
 
+export interface Brand {
+  id: string;
+  name: string;
+  display_name: string;
+  image: {
+    url: string;
+    alt?: string;
+  };
+  logo: {
+    url: string;
+    alt?: string;
+  };
+  styles: {
+    background: string;
+    text_color: string;
+    border_color: string;
+  };
+  description?: string;
+  active: boolean;
+  associated_blogs: string[];
+  metadata?: {
+    year_start?: number;
+    year_end?: number;
+    popular_models?: string[];
+  };
+}
+
+export interface ShippingSettings {
+  base_costs: {
+    standard: number;
+    express: number;
+  };
+  weight_rules: {
+    base_weight: number;
+    extra_cost_per_kg: number;
+  };
+  location_multipliers: {
+    [key: string]: number;
+  };
+  delivery_times: {
+    standard: {
+      min: number;
+      max: number;
+    };
+    express: {
+      min: number;
+      max: number;
+    };
+  };
+  free_shipping_rules: {
+    threshold: number;
+    eligible_locations: string[];
+    eligible_methods: string[];
+    min_purchase: number;
+  };
+}
+
+
 export interface Endpoints {
   AUTH: {
     LOGIN: ApiEndpoint;
@@ -46,6 +104,30 @@ export interface Endpoints {
     GET_ALL: ApiEndpoint;
   };
   DASHBOARD: {
+    SHIPPING_SETTINGS: {
+      GET_ALL: ApiEndpoint;
+      UPDATE_BASE_COSTS: ApiEndpoint;
+      UPDATE_WEIGHT_RULES: ApiEndpoint;
+      UPDATE_LOCATION_MULTIPLIERS: ApiEndpoint;
+      UPDATE_DELIVERY_TIMES: ApiEndpoint;
+      UPDATE_FREE_SHIPPING: ApiEndpoint;
+    };
+    BRAND: {
+      CREATE: ApiEndpoint;
+      GET_ALL: ApiEndpoint;
+      UPDATE: ApiEndpoint;
+      DELETE: ApiEndpoint;
+      ASSOCIATE_BLOG: ApiEndpoint;
+      DISSOCIATE_BLOG: ApiEndpoint;
+    };
+    BLOG: {
+      GET_ALL: ApiEndpoint;
+      CREATE: ApiEndpoint;
+      UPDATE: ApiEndpoint;
+      DELETE: ApiEndpoint;
+      GET_STATS: ApiEndpoint;
+      UPLOAD_IMAGE: ApiEndpoint;
+    };
     PRODUCTS: {
       CREATE: ApiEndpoint;
       UPDATE: ApiEndpoint;

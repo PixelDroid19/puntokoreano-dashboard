@@ -1,125 +1,211 @@
 // src/services/blog.service.ts
-import { 
-  BlogPost, 
-  BlogPostCreate, 
-  BlogPostUpdate, 
-  BlogPostFilters, 
-  BlogPostsResponse 
-} from  "../types/blog.types";
-import { ApiResponse } from "../types/orders";
+
+import axios from "axios";
+import ENDPOINTS from "../api";
+import { BlogFilters, BlogPost, BlogResponse } from "../types/blog.types";
 import { api } from "./auth.service";
 
 class BlogService {
-  private static readonly BASE_URL = '/dashboard/blog';
+  private static readonly IMGBB_API_KEY = process.env.REACT_APP_IMGBB_API_KEY;
+  private static readonly IMGBB_API_URL = "https://api.imgbb.com/1/upload";
 
-  /**
-   * Obtiene los posts del blog con paginación y filtros
-   */
-  static async getPosts(filters: BlogPostFilters = {}): Promise<ApiResponse<BlogPostsResponse>> {
+  static async getPosts(filters: BlogFilters = {}): Promise<BlogResponse> {
     try {
-      const { data } = await api.get<ApiResponse<BlogPostsResponse>>(this.BASE_URL, { 
-        params: filters,
-        headers: {
-          'Cache-Control': 'no-cache'
-        }
-      });
+      const { data } = await api.get<BlogResponse>(
+        ENDPOINTS.DASHBOARD.BLOG.GET_ALL.url,
+        { params: filters }
+      );
       return data;
     } catch (error) {
-      this.handleError(error, 'Error fetching blog posts');
+      console.error("Error fetching blog posts:", error);
       throw error;
     }
   }
 
-  /**
-   * Obtiene un post específico por ID o slug
-   */
-  static async getPost(identifier: string): Promise<ApiResponse<BlogPost>> {
+  private static async uploadToImgBB(file: File): Promise<string> {
     try {
-      const { data } = await api.get<ApiResponse<BlogPost>>(`${this.BASE_URL}/${identifier}`);
-      return data;
-    } catch (error) {
-      this.handleError(error, 'Error fetching blog post');
-      throw error;
-    }
-  }
+      const formData = new FormData();
+      formData.append("image", file);
 
-  /**
-   * Crea un nuevo post
-   */
-  static async createPost(post: BlogPostCreate): Promise<ApiResponse<BlogPost>> {
-    try {
-      const { data } = await api.post<ApiResponse<BlogPost>>(this.BASE_URL, post);
-      return data;
-    } catch (error) {
-      this.handleError(error, 'Error creating blog post');
-      throw error;
-    }
-  }
+      const response = await axios.post(
+        `${this.IMGBB_API_URL}?key=${this.IMGBB_API_KEY}`,
+        formData
+      );
 
-  /**
-   * Actualiza un post existente
-   */
-  static async updatePost(postId: string, post: BlogPostUpdate): Promise<ApiResponse<BlogPost>> {
-    try {
-      const { data } = await api.patch<ApiResponse<BlogPost>>(`${this.BASE_URL}/${postId}`, post);
-      return data;
-    } catch (error) {
-      this.handleError(error, 'Error updating blog post');
-      throw error;
-    }
-  }
-
-  /**
-   * Elimina un post
-   */
-  static async deletePost(postId: string): Promise<ApiResponse<void>> {
-    try {
-      const { data } = await api.delete<ApiResponse<void>>(`${this.BASE_URL}/${postId}`);
-      return data;
-    } catch (error) {
-      this.handleError(error, 'Error deleting blog post');
-      throw error;
-    }
-  }
-
-  /**
-   * Obtiene metadatos del blog (categorías, tags, etc)
-   */
-  static async getMetadata(): Promise<ApiResponse<{
-    categories: { _id: string; count: number; }[];
-    tags: { _id: string; count: number; }[];
-  }>> {
-    try {
-      const { data } = await api.get<ApiResponse<any>>(`${this.BASE_URL}/metadata`);
-      return data;
-    } catch (error) {
-      this.handleError(error, 'Error fetching blog metadata');
-      throw error;
-    }
-  }
-
-  /**
-   * Manejador centralizado de errores
-   */
-  private static handleError(error: any, message: string): never {
-    console.error(message, error);
-    
-    if (error.response) {
-      const status = error.response.status;
-      switch (status) {
-        case 401:
-        case 403:
-          throw new Error('Authentication error. Please login again.');
-        case 404:
-          throw new Error('Resource not found');
-        case 422:
-          throw new Error('Validation error: ' + JSON.stringify(error.response.data.errors));
-        default:
-          throw new Error(`Server error: ${error.response.data.message || 'Unknown error'}`);
+      if (response.data.success) {
+        return response.data.data.url;
       }
+      throw new Error("Error uploading image to ImgBB");
+    } catch (error) {
+      console.error("Error uploading to ImgBB:", error);
+      throw error;
     }
-    
-    throw new Error('Network error: Unable to connect to server');
+  }
+
+  static async uploadImages(files: File[]): Promise<string[]> {
+    try {
+      const uploadPromises = files.map((file) => this.uploadToImgBB(file));
+      return await Promise.all(uploadPromises);
+    } catch (error) {
+      console.error("Error uploading multiple images:", error);
+      throw error;
+    }
+  }
+
+  private static async preparePostDataWithImages(postData: Partial<BlogPost>) {
+    try {
+      let featuredImageUrl = postData.featured_image?.url;
+
+      // Si hay un archivo de imagen destacada nuevo, súbelo a ImgBB
+      if (postData.featured_image?.file) {
+        featuredImageUrl = await this.uploadToImgBB(
+          postData.featured_image.file
+        );
+      }
+
+      // Manejar imágenes de la galería si existen
+      let galleryUrls = [];
+      if (postData.gallery?.length) {
+        const newImages = postData.gallery.filter((img) => img.file);
+        const existingImages = postData.gallery.filter(
+          (img) => img.url && !img.file
+        );
+
+        const uploadedImages = await this.uploadImages(
+          newImages.map((img) => img.file)
+        );
+
+        galleryUrls = [
+          ...existingImages.map((img) => img.url),
+          ...uploadedImages,
+        ];
+      }
+
+      return {
+        ...postData,
+        content: postData.content,
+        vehicle: {
+          brand: postData.vehicle?.brand,
+          model: postData.vehicle?.model,
+          year_range: postData.vehicle?.year_range || {
+            start: new Date().getFullYear(),
+            end: new Date().getFullYear(),
+          },
+        },
+        featured_image: featuredImageUrl
+          ? {
+              url: featuredImageUrl,
+              alt: postData.title || "",
+            }
+          : undefined,
+        gallery: galleryUrls.map((url) => ({
+          url,
+          alt: postData.title || "",
+          caption: "",
+        })),
+        status: postData.status || "draft",
+      };
+    } catch (error) {
+      console.error("Error preparing post data with images:", error);
+      throw error;
+    }
+  }
+
+  static async createPost(
+    postData: Partial<BlogPost>
+  ): Promise<{ success: boolean; data: BlogPost }> {
+    try {
+      // Manejar la carga de imágenes antes de crear el post
+      const formData = await this.preparePostDataWithImages(postData);
+      const { data } = await api.post(
+        ENDPOINTS.DASHBOARD.BLOG.CREATE.url,
+        formData
+      );
+      return data;
+    } catch (error) {
+      console.error("Error creating blog post:", error);
+      throw error;
+    }
+  }
+
+  static async updatePost(
+    id: string,
+    postData: Partial<BlogPost>
+  ): Promise<{ success: boolean; data: BlogPost }> {
+    try {
+      const formData = await this.preparePostDataWithImages(postData);
+      const url = ENDPOINTS.DASHBOARD.BLOG.UPDATE.url.replace(":id", id);
+      const { data } = await api.patch(url, formData);
+      return data;
+    } catch (error) {
+      console.error("Error updating blog post:", error);
+      throw error;
+    }
+  }
+
+  static async deletePost(
+    id: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const url = ENDPOINTS.DASHBOARD.BLOG.DELETE.url.replace(":id", id);
+      const { data } = await api.delete(url);
+      return data;
+    } catch (error) {
+      console.error("Error deleting blog post:", error);
+      throw error;
+    }
+  }
+
+  static async getStats() {
+    try {
+      const { data } = await api.get(ENDPOINTS.DASHBOARD.BLOG.GET_STATS.url);
+      return data;
+    } catch (error) {
+      console.error("Error fetching blog stats:", error);
+      throw error;
+    }
+  }
+
+  static async uploadImage(file) {
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const { data } = await api.post(
+        ENDPOINTS.DASHBOARD.BLOG.UPLOAD_IMAGE.url,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      return data;
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      throw error;
+    }
+  }
+
+  private static preparePostData(postData: Partial<BlogPost>) {
+    return {
+      ...postData,
+      content: postData.content,
+      vehicle: {
+        brand: postData.vehicle?.brand,
+        model: postData.vehicle?.model,
+        year_range: postData.vehicle?.year_range || {
+          start: new Date().getFullYear(),
+          end: new Date().getFullYear(),
+        },
+      },
+      featured_image: postData.featured_image?.url
+        ? {
+            url: postData.featured_image.url,
+            alt: postData.featured_image.alt || postData.title,
+          }
+        : undefined,
+      status: postData.status || "draft",
+    };
   }
 }
 

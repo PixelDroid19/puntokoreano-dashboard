@@ -32,11 +32,11 @@ const Images: React.FC = () => {
   );
 
   // Queries
-  const { data: groups, isLoading } = useQuery({
-    queryKey: ["imageGroups"],
+  const { data: groups, isFetching: isLoading } = useQuery({
+    queryKey: ["imageGroupsModule"],
     queryFn: async () => {
       const response = await FilesService.getGroups();
-      return response.data.groups;
+      return response.data.groups || [];
     },
   });
 
@@ -115,7 +115,7 @@ const Images: React.FC = () => {
     },
     onSuccess: () => {
       notification.success({ message: "Imagen eliminada correctamente" });
-      queryClient.invalidateQueries({ queryKey: ["imageGroups"] });
+      queryClient.invalidateQueries({ queryKey: ["imageGroupsModule"] });
     },
   });
 
@@ -125,7 +125,7 @@ const Images: React.FC = () => {
     },
     onSuccess: () => {
       notification.success({ message: "Grupo eliminado correctamente" });
-      queryClient.invalidateQueries({ queryKey: ["imageGroups"] });
+      queryClient.invalidateQueries({ queryKey: ["imageGroupsModule"] });
     },
   });
 
@@ -150,11 +150,11 @@ const Images: React.FC = () => {
     try {
       await addImages.mutateAsync({
         identifier: editingGroup.identifier,
-        files
+        files,
       });
     } catch (error) {
       // El error ya se maneja en onError de la mutation
-      console.error('Error in handleAddImages:', error);
+      console.error("Error in handleAddImages:", error);
     }
   };
 
@@ -202,11 +202,12 @@ const Images: React.FC = () => {
       key: "tags",
       render: (_: any, record: ImageGroup) => (
         <Space>
-          {record.tags?.map((tag) => (
-            <Tag key={tag} icon={<TagsOutlined />}>
-              {tag}
-            </Tag>
-          ))}
+          {record.tags &&
+            record?.tags?.map((tag) => (
+              <Tag key={tag} icon={<TagsOutlined />}>
+                {tag}
+              </Tag>
+            ))}
         </Space>
       ),
     },
@@ -215,7 +216,7 @@ const Images: React.FC = () => {
       key: "imageCount",
       render: (_: any, record: ImageGroup) => (
         <Tag icon={<FolderOpenOutlined />} color="blue">
-          {record.images.length}
+          {record?.images?.length}
         </Tag>
       ),
     },
@@ -255,7 +256,7 @@ const Images: React.FC = () => {
       <HeaderTable />
 
       <Table
-        columns={columns}
+        columns={columns ?? []}
         dataSource={groups}
         rowKey="identifier"
         loading={isLoading}

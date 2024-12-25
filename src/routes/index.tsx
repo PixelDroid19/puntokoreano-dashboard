@@ -4,9 +4,9 @@ import {
   Navigate,
   Route,
 } from "react-router-dom";
+
+// Page Components
 import Login from "../pages/auth/Login.component";
-import ProtectedRoutes from "../utils/ProtectedRoutes";
-import PublicRoutes from "../utils/PublicRoutes";
 import Dashboard from "../pages/dashboard/Dashboard.page";
 import Products from "../pages/products/Products.page";
 import AddProduct from "../pages/products/components/AddProduct.component";
@@ -18,35 +18,115 @@ import Users from "../pages/users/Users.page";
 import Orders from "../pages/orders/Orders.page";
 import Blog from "../pages/blog/Blog.page";
 import Reviews from "../pages/Reviews/Reviews.page";
+import ShippingSettings from "../pages/shipping/ShippingSettings.page";
+
+// Route Components
+import ProtectedRoutes from "../utils/ProtectedRoutes";
+import PublicRoutes from "../utils/PublicRoutes";
+import RouteError from "./RouteError";
+import BrandManagement from "../pages/brands/BrandManagement";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
     <>
       {/* Public routes */}
-      <Route element={<PublicRoutes />}>
-        <Route path="/login" element={<Login />} />
+      <Route element={<PublicRoutes />} errorElement={<RouteError />}>
+        <Route
+          path="/login"
+          element={<Login />}
+          errorElement={<RouteError />}
+        />
       </Route>
 
-      {/* Private routes */}
-      <Route element={<ProtectedRoutes />}>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/products" element={<Products />} />
-        <Route path="/products/add" element={<AddProduct />} />
-        <Route path="/images" element={<Images />} />
-        <Route path="/images/add" element={<AddImages />} />
-        <Route path="/filters" element={<Filters />} />
-        <Route path="/filters/add" element={<AddFilters />} />
-        <Route path="/orders" element={<Orders />} />
-        <Route path="/blogs" element={<Blog />} />
+      {/* Brands */}
+      <Route element={<ProtectedRoutes />} errorElement={<RouteError />}>
+        <Route
+          path="/brands"
+          element={<BrandManagement />}
+          errorElement={<RouteError />}
+        />
+      </Route>
+
+      {/* Protected routes */}
+      <Route element={<ProtectedRoutes />} errorElement={<RouteError />}>
+        {/* Dashboard */}
+        <Route
+          path="/dashboard"
+          element={<Dashboard />}
+          errorElement={<RouteError />}
+        />
+
+        {/* Products */}
+        <Route path="/products">
+          <Route index element={<Products />} errorElement={<RouteError />} />
+          <Route
+            path="add"
+            element={<AddProduct />}
+            errorElement={<RouteError />}
+          />
+        </Route>
+
+        {/* Images */}
+        <Route path="/images">
+          <Route index element={<Images />} errorElement={<RouteError />} />
+          <Route
+            path="add"
+            element={<AddImages />}
+            errorElement={<RouteError />}
+          />
+        </Route>
+
+        {/* Filters */}
+        <Route path="/filters">
+          <Route index element={<Filters />} errorElement={<RouteError />} />
+          <Route
+            path="add"
+            element={<AddFilters />}
+            errorElement={<RouteError />}
+          />
+        </Route>
+
+        {/* Orders */}
+        <Route
+          path="/orders"
+          element={<Orders />}
+          errorElement={<RouteError />}
+        />
+
+        {/* Blog */}
+        <Route path="/blogs" element={<Blog />} errorElement={<RouteError />} />
+
+        {/* Users */}
+        <Route
+          path="/users"
+          element={<Users />}
+          errorElement={<RouteError />}
+        />
+
+        {/* Reviews */}
+        <Route
+          path="/reviews"
+          element={<Reviews />}
+          errorElement={<RouteError />}
+        />
         
-        {/* Rutas de usuarios */}
-        <Route path="/users" element={<Users />} />
-        <Route path="/reviews" element={<Reviews />} /> 
+        {/*shipping settings route */}
+        <Route
+          path="/shipping-settings"
+          element={<ShippingSettings />}
+          errorElement={<RouteError />}
+        />
       </Route>
 
-      {/* Redirect */}
-      <Route path="*" element={<Navigate to="/login" />} />
+      {/* Redirects */}
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route
+        path="*"
+        element={<Navigate to="/login" replace />}
+        errorElement={<RouteError />}
+      />
     </>
   )
 );
+
 export default router;

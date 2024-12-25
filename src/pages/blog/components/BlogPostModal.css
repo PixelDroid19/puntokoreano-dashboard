@@ -1,0 +1,117 @@
+/* BlogPostModal.css */
+.blog-post-modal .ant-modal-body {
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 32px;
+}
+
+.blog-post-modal .rich-content {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.blog-post-modal .ql-editor {
+  padding: 0;
+}
+
+/* Rich Text Content Styles */
+.blog-post-modal .rich-content h1,
+.blog-post-modal .rich-content h2,
+.blog-post-modal .rich-content h3,
+.blog-post-modal .rich-content h4,
+.blog-post-modal .rich-content h5,
+.blog-post-modal .rich-content h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.75em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.blog-post-modal .rich-content h1 {
+  font-size: 2em;
+}
+
+.blog-post-modal .rich-content h2 {
+  font-size: 1.75em;
+}
+
+.blog-post-modal .rich-content h3 {
+  font-size: 1.5em;
+}
+
+.blog-post-modal .rich-content h4 {
+  font-size: 1.25em;
+}
+
+.blog-post-modal .rich-content p {
+  margin-bottom: 1em;
+  line-height: 1.6;
+}
+
+.blog-post-modal .rich-content ul,
+.blog-post-modal .rich-content ol {
+  margin-bottom: 1em;
+  padding-left: 2em;
+}
+
+.blog-post-modal .rich-content li {
+  margin-bottom: 0.5em;
+}
+
+.blog-post-modal .rich-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 1em 0;
+}
+
+.blog-post-modal .rich-content blockquote {
+  border-left: 4px solid #d9d9d9;
+  margin: 1em 0;
+  padding-left: 1em;
+  color: #595959;
+}
+
+.blog-post-modal .rich-content a {
+  color: #1890ff;
+  text-decoration: none;
+}
+
+.blog-post-modal .rich-content a:hover {
+  text-decoration: underline;
+}
+
+.blog-post-modal .rich-content code {
+  background: #f5f5f5;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: monospace;
+}
+
+.blog-post-modal .rich-content pre {
+  background: #f5f5f5;
+  padding: 1em;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .blog-post-modal .ant-modal-body {
+    padding: 16px;
+  }
+
+  .blog-post-modal .grid-cols-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .blog-post-modal .grid-cols-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .blog-post-modal .grid-cols-3 {
+    grid-template-columns: 1fr;
+  }
+}

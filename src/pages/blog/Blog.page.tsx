@@ -1,5 +1,3 @@
-//src/pages/blog/Blog.page.tsx
-// @ts-nocheck
 import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -12,63 +10,107 @@ import {
   message,
   Space,
   Empty,
+  Spin,
 } from "antd";
 import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import BlogService from "../../services/blog.service";
-
 import BlogPostCard from "./components/BlogPostCard";
 import BlogPostForm from "./components/BlogPostForm";
-import debounce from "lodash/debounce";
-import type { BlogPost, BlogPostCreate } from "../../types/blog.types";
 import BlogPostModal from "./components/BlogPostModal";
+import debounce from "lodash/debounce";
+import { BlogPost, BlogFilters, BlogResponse } from "../../types/blog.types";
 
-const Blog = () => {
+const Blog: React.FC = () => {
   const queryClient = useQueryClient();
   const [searchText, setSearchText] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState("");
-  const [categoryFilter, setCategoryFilter] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState<BlogPost["status"]>();
+  const [maintenanceTypeFilter, setMaintenanceTypeFilter] =
+    React.useState<BlogPost["maintenance_type"]>();
   const [selectedPost, setSelectedPost] = React.useState<BlogPost | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = React.useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = React.useState(false);
 
-  // Queries y Mutations
-  const { data: postsData } = useQuery({
-    queryKey: ["blog-posts", searchText, statusFilter, categoryFilter],
+  // Query para obtener los posts con manejo mejorado de filtros
+  const { data: postsData, isLoading } = useQuery<BlogResponse>({
+    queryKey: [
+      "blog-posts",
+      { searchText, statusFilter, maintenanceTypeFilter },
+    ],
     queryFn: () =>
       BlogService.getPosts({
         search: searchText,
-        status: statusFilter || undefined,
-        category: categoryFilter || undefined,
+        status: statusFilter,
+        maintenance_type: maintenanceTypeFilter,
       }),
+    staleTime: 30000, // Datos considerados frescos por 30 segundos
   });
 
+  // Mutación mejorada para crear posts
   const createPost = useMutation({
-    mutationFn: (post: BlogPostCreate) => BlogService.createPost(post),
+    mutationFn: async (post: Partial<BlogPost>) => {
+      try {
+        const result = await BlogService.createPost(post);
+        return result;
+      } catch (error) {
+        throw new Error(
+          error instanceof Error ? error.message : "Error al crear el artículo"
+        );
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["blog-posts"] });
       message.success("Artículo creado correctamente");
-      setIsFormModalOpen(false);
+      handleCloseModal();
     },
     onError: (error: Error) => {
       message.error(error.message);
     },
   });
 
+  // Mutación mejorada para actualizar posts
   const updatePost = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<BlogPostCreate> }) =>
-      BlogService.updatePost(id, data),
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<BlogPost>;
+    }) => {
+      try {
+        const result = await BlogService.updatePost(id, data);
+        return result;
+      } catch (error) {
+        throw new Error(
+          error instanceof Error
+            ? error.message
+            : "Error al actualizar el artículo"
+        );
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["blog-posts"] });
       message.success("Artículo actualizado correctamente");
-      setIsFormModalOpen(false);
+      handleCloseModal();
     },
     onError: (error: Error) => {
       message.error(error.message);
     },
   });
 
+  // Mutación mejorada para eliminar posts
   const deletePost = useMutation({
-    mutationFn: (id: string) => BlogService.deletePost(id),
+    mutationFn: async (id: string) => {
+      try {
+        const result = await BlogService.deletePost(id);
+        return result;
+      } catch (error) {
+        throw new Error(
+          error instanceof Error
+            ? error.message
+            : "Error al eliminar el artículo"
+        );
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["blog-posts"] });
       message.success("Artículo eliminado correctamente");
@@ -78,25 +120,65 @@ const Blog = () => {
     },
   });
 
-  // Handlers
   const handleSearch = debounce((value: string) => {
     setSearchText(value);
   }, 500);
 
-  const handleSubmit = (values: BlogPostCreate) => {
-    console.log('selectedPost', selectedPost)
-    if (selectedPost) {
-      updatePost.mutate({ id: selectedPost._id, data: values });
-    } else {
-      createPost.mutate(values);
+  const handleCloseModal = () => {
+    setIsFormModalOpen(false);
+    setIsViewModalOpen(false);
+    setSelectedPost(null);
+  };
+
+  const handleSubmit = async (values: Partial<BlogPost>) => {
+    try {
+      if (selectedPost) {
+        await updatePost.mutateAsync({ id: selectedPost._id, data: values });
+      } else {
+        await createPost.mutateAsync(values);
+      }
+    } catch (error) {
+      // Los errores ya son manejados por las mutaciones
+      console.error("Error en el envío del formulario:", error);
     }
   };
+
+  const handleDeletePost = (post: BlogPost) => {
+    Modal.confirm({
+      title: "¿Eliminar artículo?",
+      content: "Esta acción no se puede deshacer",
+      okText: "Eliminar",
+      okType: "danger",
+      cancelText: "Cancelar",
+      onOk: async () => {
+        try {
+          await deletePost.mutateAsync(post._id);
+        } catch (error) {
+          // Error ya manejado por la mutación
+        }
+      },
+    });
+  };
+
+  // Renderizado condicional para estados de carga
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Spin size="large" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
       {/* Header */}
       <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Blog</h1>
+        <div>
+          <h1 className="text-2xl font-bold mb-2">Gestión del Blog</h1>
+          <p className="text-gray-600">
+            {postsData?.data.pagination.total || 0} artículos en total
+          </p>
+        </div>
         <Button
           type="primary"
           icon={<PlusOutlined />}
@@ -119,7 +201,7 @@ const Blog = () => {
             style={{ width: 200 }}
           />
           <Select
-            placeholder="Filtrar por estado"
+            placeholder="Estado"
             allowClear
             style={{ width: 150 }}
             onChange={(value) => setStatusFilter(value)}
@@ -130,22 +212,28 @@ const Blog = () => {
             ]}
           />
           <Select
-            placeholder="Filtrar por categoría"
+            placeholder="Tipo de mantenimiento"
             allowClear
-            style={{ width: 150 }}
-            onChange={(value) => setCategoryFilter(value)}
+            style={{ width: 200 }}
+            onChange={(value) => setMaintenanceTypeFilter(value)}
             options={[
-              { label: "Noticias", value: "news" },
-              { label: "Tutoriales", value: "tutorials" },
-              { label: "Productos", value: "products" },
+              { label: "Preventivo", value: "preventive" },
+              { label: "Correctivo", value: "corrective" },
+              { label: "Tips", value: "tips" },
+              { label: "General", value: "general" },
+              { label: "Actualización", value: "upgrade" },
             ]}
           />
         </Space>
       </div>
 
-      {/* Post Grid */}
+      {/* Posts Grid */}
       <Row gutter={[16, 16]}>
-        {postsData?.data.posts.length === 0 ? (
+        {isLoading ? (
+          <Col span={24} className="text-center">
+            <div className="py-8">Cargando...</div>
+          </Col>
+        ) : !postsData?.data.posts.length ? (
           <Col span={24}>
             <Empty description="No hay artículos disponibles" />
           </Col>
@@ -158,7 +246,7 @@ const Blog = () => {
                   setSelectedPost(post);
                   setIsFormModalOpen(true);
                 }}
-                onDelete={(post) => deletePost.mutate(post._id)}
+                onDelete={handleDeletePost}
                 onView={(post) => {
                   setSelectedPost(post);
                   setIsViewModalOpen(true);
@@ -173,28 +261,23 @@ const Blog = () => {
       <Modal
         title={selectedPost ? "Editar Artículo" : "Nuevo Artículo"}
         open={isFormModalOpen}
-        onCancel={() => {
-          setIsFormModalOpen(false);
-          setSelectedPost(null);
-        }}
+        onCancel={handleCloseModal}
         footer={null}
-        width={800}
+        width={"50%"}
+        destroyOnClose
       >
         <BlogPostForm
-          initialValues={selectedPost || undefined}
+          initialValues={selectedPost}
           onSubmit={handleSubmit}
           loading={createPost.isPending || updatePost.isPending}
         />
       </Modal>
 
-      {/* View Modal */}
+      {/* Preview Modal */}
       <BlogPostModal
         selectedPost={selectedPost}
         isViewModalOpen={isViewModalOpen}
-        onClose={() => {
-          setIsViewModalOpen(false);
-          setSelectedPost(null);
-        }}
+        onClose={handleCloseModal}
       />
     </div>
   );

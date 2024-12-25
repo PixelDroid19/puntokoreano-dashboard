@@ -1,5 +1,4 @@
 // src/pages/orders/Orders.page.tsx
-// @ts-nocheck
 import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -17,12 +16,31 @@ import {
 } from "antd";
 import { EditOutlined, EyeOutlined } from "@ant-design/icons";
 import type { RangePickerProps } from "antd/es/date-picker";
-
 import { Order, OrderStatus } from "../../types/orders";
 import dayjs from "dayjs";
 import OrdersService from "../../services/orders.service";
 
 const { RangePicker } = DatePicker;
+
+// Mapa de colores para estados
+const STATUS_COLORS: Record<OrderStatus, string> = {
+  pending: "gold",
+  processing: "blue",
+  shipped: "cyan",
+  delivered: "green",
+  cancelled: "red",
+  refunded: "purple",
+};
+
+// Opciones de estado
+const STATUS_OPTIONS = [
+  { label: "Pendiente", value: "pending" },
+  { label: "En Proceso", value: "processing" },
+  { label: "Enviado", value: "shipped" },
+  { label: "Entregado", value: "delivered" },
+  { label: "Cancelado", value: "cancelled" },
+  { label: "Reembolsado", value: "refunded" },
+];
 
 const Orders = () => {
   const queryClient = useQueryClient();
@@ -35,13 +53,13 @@ const Orders = () => {
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
   const [form] = Form.useForm();
 
-  // Query para obtener órdenes
+  // Query para obtener pedidos
   const { data: ordersData, isLoading } = useQuery({
     queryKey: ["orders", dateRange, statusFilter],
     queryFn: () =>
       OrdersService.getOrders({
-        fromDate: dateRange?.[0].format("YYYY-MM-DD"),
-        toDate: dateRange?.[1].format("YYYY-MM-DD"),
+        fromDate: dateRange?.[0]?.format("YYYY-MM-DD"),
+        toDate: dateRange?.[1]?.format("YYYY-MM-DD"),
         status: statusFilter || undefined,
       }),
   });
@@ -54,51 +72,64 @@ const Orders = () => {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       message.success("Estado actualizado correctamente");
       setIsEditModalOpen(false);
+      form.resetFields();
     },
-    onError: (error: Error) => {
-      message.error(error.message);
+    onError: (error: any) => {
+      message.error(
+        error.response?.data?.message || "Error al actualizar el estado"
+      );
     },
   });
 
-  // Columnas de la tabla
   const columns = [
     {
       title: "Número de Orden",
-      dataIndex: "order_number",
-      key: "order_number",
+      dataIndex: "orderNumber",
+      key: "orderNumber",
     },
     {
       title: "Cliente",
-      dataIndex: "user",
-      key: "user",
-      render: (user: Order["user"]) => `${user.name} (${user.email})`,
+      dataIndex: "customer",
+      key: "customer",
+      render: (customer: { name: string; email: string }) => (
+        <div>
+          <div>{customer.name}</div>
+          <div className="text-gray-500 text-sm">{customer.email}</div>
+        </div>
+      ),
     },
     {
       title: "Total",
-      dataIndex: "total",
+      dataIndex: ["payment", "total"],
       key: "total",
       render: (total: number) =>
-        total.toLocaleString("es-CO", { style: "currency", currency: "COP" }),
+        total?.toLocaleString("es-CO", {
+          style: "currency",
+          currency: "COP",
+        }) || "N/A",
     },
     {
       title: "Estado",
       dataIndex: "status",
       key: "status",
-      render: (status: OrderStatus) => {
-        const statusColors = {
-          pending: "gold",
-          processing: "blue",
-          completed: "green",
-          cancelled: "red",
-          refunded: "purple",
-        };
-        return <Tag color={statusColors[status]}>{status.toUpperCase()}</Tag>;
-      },
+      render: (status: OrderStatus) => (
+        <Tag color={STATUS_COLORS[status]}>{status.toUpperCase()}</Tag>
+      ),
+    },
+    {
+      title: "Estado de Pago",
+      dataIndex: ["payment", "status"],
+      key: "paymentStatus",
+      render: (status: string) => (
+        <Tag color={status === "completed" ? "green" : "gold"}>
+          {status.toUpperCase()}
+        </Tag>
+      ),
     },
     {
       title: "Fecha",
-      dataIndex: "created_at",
-      key: "created_at",
+      dataIndex: ["dates", "created"],
+      key: "created",
       render: (date: string) => dayjs(date).format("DD/MM/YYYY HH:mm"),
     },
     {
@@ -119,8 +150,8 @@ const Orders = () => {
               setSelectedOrder(record);
               form.setFieldsValue({
                 status: record.status,
+                tracking_number: record.shipping?.tracking_number || "",
                 comment: "",
-                tracking_number: "",
               });
               setIsEditModalOpen(true);
             }}
@@ -130,7 +161,6 @@ const Orders = () => {
     },
   ];
 
-  // Manejadores
   const handleDateRangeChange: RangePickerProps["onChange"] = (dates) => {
     setDateRange(dates as [dayjs.Dayjs, dayjs.Dayjs]);
   };
@@ -160,24 +190,18 @@ const Orders = () => {
             allowClear
             style={{ width: 200 }}
             onChange={(value) => setStatusFilter(value as OrderStatus)}
-            options={[
-              { label: "Pendiente", value: "pending" },
-              { label: "En Proceso", value: "processing" },
-              { label: "Completado", value: "completed" },
-              { label: "Cancelado", value: "cancelled" },
-              { label: "Reembolsado", value: "refunded" },
-            ]}
+            options={STATUS_OPTIONS}
           />
         </Space>
       </div>
 
       <Table
         columns={columns}
-        dataSource={ordersData?.data.orders}
+        dataSource={ordersData?.data?.orders}
         loading={isLoading}
         rowKey="id"
         pagination={{
-          total: ordersData?.pagination?.total || 0,
+          total: ordersData?.data?.pagination?.total,
           pageSize: 10,
           showSizeChanger: true,
           showTotal: (total) => `Total ${total} pedidos`,
@@ -186,7 +210,7 @@ const Orders = () => {
 
       {/* Modal de Vista */}
       <Modal
-        title={`Detalles del Pedido #${selectedOrder?.order_number}`}
+        title={`Detalles del Pedido #${selectedOrder?.orderNumber}`}
         open={isViewModalOpen}
         onCancel={() => {
           setIsViewModalOpen(false);
@@ -200,34 +224,45 @@ const Orders = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <h3 className="font-bold mb-2">Información del Cliente</h3>
-                <p>Nombre: {selectedOrder.user.name}</p>
-                <p>Email: {selectedOrder.user.email}</p>
+                <p>Nombre: {selectedOrder.customer.name}</p>
+                <p>Email: {selectedOrder.customer.email}</p>
               </div>
               <div>
                 <h3 className="font-bold mb-2">Información del Pedido</h3>
                 <p>
                   Estado:
                   <Tag
-                    color={
-                      selectedOrder.status === "completed"
-                        ? "green"
-                        : selectedOrder.status === "processing"
-                        ? "blue"
-                        : selectedOrder.status === "cancelled"
-                        ? "red"
-                        : selectedOrder.status === "refunded"
-                        ? "purple"
-                        : "gold"
-                    }
+                    color={STATUS_COLORS[selectedOrder.status]}
                     className="ml-2"
                   >
                     {selectedOrder.status.toUpperCase()}
                   </Tag>
                 </p>
                 <p>
-                  Fecha:{" "}
-                  {dayjs(selectedOrder.created_at).format("DD/MM/YYYY HH:mm")}
+                  Estado de Pago:
+                  <Tag
+                    color={
+                      selectedOrder.payment.status === "completed"
+                        ? "green"
+                        : "gold"
+                    }
+                    className="ml-2"
+                  >
+                    {selectedOrder.payment.status.toUpperCase()}
+                  </Tag>
                 </p>
+                <p>
+                  Fecha:{" "}
+                  {dayjs(selectedOrder.dates.created).format(
+                    "DD/MM/YYYY HH:mm"
+                  )}
+                </p>
+                {selectedOrder.shipping?.tracking_number && (
+                  <p>
+                    Número de Seguimiento:{" "}
+                    {selectedOrder.shipping.tracking_number}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -254,43 +289,38 @@ const Orders = () => {
                   },
                   {
                     title: "Precio",
-                    dataIndex: "price",
+                    dataIndex: ["product", "price"],
                     key: "price",
                     render: (price: number) =>
-                      price.toLocaleString("es-CO", {
+                      price?.toLocaleString("es-CO", {
                         style: "currency",
                         currency: "COP",
                       }),
                   },
                   {
-                    title: "Subtotal",
-                    key: "subtotal",
-                    render: (_, record) =>
-                      (record.price * record.quantity).toLocaleString("es-CO", {
+                    title: "Total",
+                    key: "total",
+                    dataIndex: "total",
+                    render: (total: number) =>
+                      total?.toLocaleString("es-CO", {
                         style: "currency",
                         currency: "COP",
                       }),
                   },
                 ]}
-                summary={(pageData) => {
-                  const total = pageData.reduce(
-                    (acc, current) => acc + current.price * current.quantity,
-                    0
-                  );
-                  return (
-                    <Table.Summary.Row>
-                      <Table.Summary.Cell index={0} colSpan={4}>
-                        Total
-                      </Table.Summary.Cell>
-                      <Table.Summary.Cell index={1}>
-                        {total.toLocaleString("es-CO", {
-                          style: "currency",
-                          currency: "COP",
-                        })}
-                      </Table.Summary.Cell>
-                    </Table.Summary.Row>
-                  );
-                }}
+                summary={() => (
+                  <Table.Summary.Row>
+                    <Table.Summary.Cell index={0} colSpan={4}>
+                      Total
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={1}>
+                      {selectedOrder.payment.total.toLocaleString("es-CO", {
+                        style: "currency",
+                        currency: "COP",
+                      })}
+                    </Table.Summary.Cell>
+                  </Table.Summary.Row>
+                )}
               />
             </div>
 
@@ -319,7 +349,7 @@ const Orders = () => {
 
       {/* Modal de Edición */}
       <Modal
-        title={`Actualizar Estado - Pedido #${selectedOrder?.order_number}`}
+        title={`Actualizar Estado - Pedido #${selectedOrder?.orderNumber}`}
         open={isEditModalOpen}
         onOk={handleStatusUpdate}
         onCancel={() => {
@@ -337,15 +367,7 @@ const Orders = () => {
               { required: true, message: "Por favor seleccione un estado" },
             ]}
           >
-            <Select
-              options={[
-                { label: "Pendiente", value: "pending" },
-                { label: "En Proceso", value: "processing" },
-                { label: "Completado", value: "completed" },
-                { label: "Cancelado", value: "cancelled" },
-                { label: "Reembolsado", value: "refunded" },
-              ]}
-            />
+            <Select options={STATUS_OPTIONS} />
           </Form.Item>
 
           <Form.Item name="tracking_number" label="Número de Seguimiento">

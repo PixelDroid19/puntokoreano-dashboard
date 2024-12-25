@@ -84,6 +84,58 @@ const ENDPOINTS: Endpoints = {
   },
 
   DASHBOARD: {
+    SHIPPING_SETTINGS: {
+      GET_ALL: {
+        url: `${BASE_URL}/dashboard/shipping-settings`,
+        method: "GET",
+      },
+      UPDATE_BASE_COSTS: {
+        url: `${BASE_URL}/dashboard/shipping-settings/base-costs`,
+        method: "PATCH",
+      },
+      UPDATE_WEIGHT_RULES: {
+        url: `${BASE_URL}/dashboard/shipping-settings/weight-rules`,
+        method: "PATCH",
+      },
+      UPDATE_LOCATION_MULTIPLIERS: {
+        url: `${BASE_URL}/dashboard/shipping-settings/location-multipliers`,
+        method: "PATCH",
+      },
+      UPDATE_DELIVERY_TIMES: {
+        url: `${BASE_URL}/dashboard/shipping-settings/delivery-times`,
+        method: "PATCH",
+      },
+      UPDATE_FREE_SHIPPING: {
+        url: `${BASE_URL}/dashboard/shipping-settings/free-shipping`,
+        method: "PATCH",
+      },
+    },
+    BRAND: {
+      CREATE: {
+        url: `${BASE_URL}/dashboard/brands`,
+        method: "POST",
+      },
+      GET_ALL: {
+        url: `${BASE_URL}/dashboard/brands`,
+        method: "GET",
+      },
+      UPDATE: {
+        url: `${BASE_URL}/dashboard/brands/:id`,
+        method: "PUT",
+      },
+      DELETE: {
+        url: `${BASE_URL}/dashboard/brands/:id`,
+        method: "DELETE",
+      },
+      ASSOCIATE_BLOG: {
+        url: `${BASE_URL}/dashboard/brands/:brandId/blogs/:blogId`,
+        method: "POST",
+      },
+      DISSOCIATE_BLOG: {
+        url: `${BASE_URL}/dashboard/brands/:brandId/blogs/:blogId`,
+        method: "DELETE",
+      },
+    },
     PRODUCTS: {
       CREATE: {
         url: `${BASE_URL}/dashboard/products`,
@@ -116,6 +168,32 @@ const ENDPOINTS: Endpoints = {
       DOWNLOAD_TEMPLATE: {
         url: `${BASE_URL}/dashboard/products/excel/template`,
         method: "GET",
+      },
+    },
+    BLOG: {
+      GET_ALL: {
+        url: `${BASE_URL}/dashboard/blog`,
+        method: "GET",
+      },
+      CREATE: {
+        url: `${BASE_URL}/dashboard/blog`,
+        method: "POST",
+      },
+      UPDATE: {
+        url: `${BASE_URL}/dashboard/blog/:id`,
+        method: "PATCH",
+      },
+      DELETE: {
+        url: `${BASE_URL}/dashboard/blog/:id`,
+        method: "DELETE",
+      },
+      GET_STATS: {
+        url: `${BASE_URL}/dashboard/blog/stats`,
+        method: "GET",
+      },
+      UPLOAD_IMAGE: {
+        url: `${BASE_URL}/dashboard/blog/upload-image`,
+        method: "POST",
       },
     },
     FILTERS: {

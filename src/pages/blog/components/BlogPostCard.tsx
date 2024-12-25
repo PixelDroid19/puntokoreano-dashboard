@@ -1,10 +1,23 @@
 // src/pages/blog/components/BlogPostCard.tsx
-import React from 'react';
-import { Card, Tag, Space, Button, Popconfirm, Typography, Tooltip } from 'antd';
-import { EditOutlined, DeleteOutlined, EyeOutlined, ClockCircleOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
-import { BlogPost } from '../../../types/blog.types';
-import styled from 'styled-components';
+import React, { useEffect } from "react";
+import {
+  Card,
+  Tag,
+  Space,
+  Button,
+  Popconfirm,
+  Typography,
+  Tooltip,
+} from "antd";
+import {
+  EditOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+  ClockCircleOutlined,
+} from "@ant-design/icons";
+import dayjs from "dayjs";
+import { BlogPost } from "../../../types/blog.types";
+import styled from "styled-components";
 
 const { Text, Title } = Typography;
 
@@ -12,7 +25,7 @@ const { Text, Title } = Typography;
 const StyledCard = styled(Card)`
   transition: all 0.3s ease;
   height: 100%;
-  
+
   &:hover {
     transform: translateY(-5px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -21,12 +34,12 @@ const StyledCard = styled(Card)`
   .ant-card-cover {
     overflow: hidden;
     border-radius: 8px 8px 0 0;
-    
+
     img {
       height: 200px;
       object-fit: cover;
       transition: transform 0.3s ease;
-      
+
       &:hover {
         transform: scale(1.05);
       }
@@ -69,22 +82,22 @@ interface BlogPostCardProps {
 }
 
 export const statusColors = {
-  draft: '#faad14',
-  published: '#52c41a',
-  archived: '#ff4d4f'
+  draft: "#faad14",
+  published: "#52c41a",
+  archived: "#ff4d4f",
 };
 
 const statusLabels = {
-  draft: 'Borrador',
-  published: 'Publicado',
-  archived: 'Archivado'
+  draft: "Borrador",
+  published: "Publicado",
+  archived: "Archivado",
 };
 
 const BlogPostCard: React.FC<BlogPostCardProps> = ({
   post,
   onEdit,
   onDelete,
-  onView
+  onView,
 }) => {
   // Procesar el extracto para mostrarlo correctamente
   const processExcerpt = (excerpt: string) => {
@@ -92,9 +105,9 @@ const BlogPostCard: React.FC<BlogPostCardProps> = ({
       const parsed = JSON.parse(excerpt);
       if (parsed.root?.children) {
         return parsed.root.children
-          .map((node: any) => node.children?.[0]?.text || '')
+          .map((node: any) => node.children?.[0]?.text || "")
           .filter(Boolean)
-          .join(' ');
+          .join(" ");
       }
       return excerpt;
     } catch {
@@ -109,8 +122,8 @@ const BlogPostCard: React.FC<BlogPostCardProps> = ({
         post.featured_image && (
           <div className="relative">
             <img
-              alt={post.title}
-              src={post.featured_image}
+              alt={post.featured_image.alt}
+              src={post.featured_image.url}
               className="w-full"
             />
             <StatusBadge
@@ -124,7 +137,7 @@ const BlogPostCard: React.FC<BlogPostCardProps> = ({
       }
       actions={[
         <Tooltip title="Ver artículo">
-          <Button 
+          <Button
             type="text"
             icon={<EyeOutlined />}
             onClick={() => onView(post)}
@@ -148,52 +161,52 @@ const BlogPostCard: React.FC<BlogPostCardProps> = ({
             cancelText="No"
             placement="topRight"
           >
-            <Button 
-              type="text"
-              danger 
-              icon={<DeleteOutlined />}
-            />
+            <Button type="text" danger icon={<DeleteOutlined />} />
           </Popconfirm>
-        </Tooltip>
+        </Tooltip>,
       ]}
     >
       <Card.Meta
-        title={<Title level={4} ellipsis={{ rows: 2 }}>{post.title}</Title>}
+        title={
+          <Title level={4} ellipsis={{ rows: 2 }}>
+            {post.title}
+          </Title>
+        }
         description={
           <Space direction="vertical" size="middle" className="w-full">
             {/* Extracto */}
             <Text className="text-gray-600 line-clamp-2">
               {processExcerpt(post.excerpt)}
             </Text>
-            
+
             {/* Categorías */}
             <Space wrap>
-              {post.categories.map(category => (
+              {/*   {post.categories.map(category => (
                 <CategoryTag 
                   key={category}
                   color="processing"
                 >
                   {category}
                 </CategoryTag>
-              ))}
+              ))} */}
             </Space>
 
             {/* Tags */}
             {post.tags && post.tags.length > 0 && (
               <Space wrap>
-                {post.tags.map(tag => (
+                {post.tags.map((tag) => (
                   <Tag key={tag} className="text-gray-500">
                     #{tag}
                   </Tag>
                 ))}
               </Space>
             )}
-            
+
             {/* Fecha de actualización */}
             <div className="flex items-center text-gray-400 text-sm">
               <ClockCircleOutlined className="mr-2" />
               <Text type="secondary">
-                {dayjs(post.updated_at).format('DD/MM/YYYY HH:mm')}
+                {dayjs(post.updated_at).format("DD/MM/YYYY HH:mm")}
               </Text>
             </div>
           </Space>

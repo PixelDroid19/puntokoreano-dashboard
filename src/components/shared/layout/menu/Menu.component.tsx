@@ -5,9 +5,11 @@ import {
   CarOutlined,
   FileImageOutlined,
   PieChartOutlined,
+  SettingOutlined,
   ShopOutlined,
   ShoppingCartOutlined,
   StarOutlined,
+  TagsOutlined,
   UserOutlined,
 } from "@ant-design/icons";
 import { SelectEventHandler } from "rc-menu/lib/interface";
@@ -38,6 +40,12 @@ const menuItems = [
     key: "/images",
     label: <Link to={"/images"}>Imagenes</Link>,
     icon: <FileImageOutlined />,
+    title: "Imagenes",
+  },
+  {
+    key: "/brands",
+    label: <Link to={"/brands"}>Marcas</Link>,
+    icon: <TagsOutlined />,
     title: "Marcas",
   },
   {
@@ -63,6 +71,12 @@ const menuItems = [
     label: <Link to={"/reviews"}>Reseñas</Link>,
     icon: <StarOutlined />,
     title: "Reseñas",
+  },
+  {
+    key: "/shipping-settings",
+    label: <Link to={"/shipping-settings"}>Config. Envíos</Link>,
+    icon: <SettingOutlined />,
+    title: "Configuración de Envíos",
   },
 ];
 

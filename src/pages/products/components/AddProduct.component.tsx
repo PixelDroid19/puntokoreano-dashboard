@@ -127,7 +127,9 @@ const AddProduct = () => {
 
     try {
       const response = await axios.post(
-        "https://api.imgbb.com/1/upload?key=YOUR_IMGBB_KEY",
+        `https://api.imgbb.com/1/upload?key=${
+          import.meta.env.VITE_IMGBB_API_KEY
+        }`,
         formData
       );
       const newFile = {

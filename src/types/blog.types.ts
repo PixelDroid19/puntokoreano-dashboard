@@ -1,17 +1,61 @@
 // src/types/blog.ts
 export interface BlogPost {
-  id: string;
+  _id: string;
   title: string;
-  content: string;
-  excerpt?: string;
   slug: string;
-  categories: string[];
-  tags: string[];
-  status: BlogPostStatus;
-  featured_image?: string;
-  seo?: BlogPostSeo;
-  created_at: string;
-  updated_at: string;
+  content: string;
+  excerpt: string;
+  author: null | {
+    _id: string;
+    name: string;
+  };
+
+  vehicle: {
+    year_range: {
+      start: number;
+      end: number;
+    };
+    brand: string;
+    model: string;
+    engine: string;
+    image: string;
+  };
+  maintenance_type:
+    | "preventive"
+    | "corrective"
+    | "upgrade"
+    | "tips"
+    | "general";
+  difficulty_level: "beginner" | "intermediate" | "advanced";
+  estimated_time: {
+    value: number;
+    unit: "minutes" | "hours";
+  };
+  parts_required: Array<{
+    _id: string;
+    name: string;
+    part_number: string;
+    quantity: number;
+  }>;
+  tools_required: string[];
+  featured_image: {
+    url: string;
+    alt: string;
+    file?: File;
+  };
+  gallery: Array<{
+    _id?: string;
+    url: string;
+    alt: string;
+    caption: string;
+    file?: File;
+  }>;
+  status: "draft" | "published" | "archived";
+  views: number;
+  likes: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface BlogPostCreate {
@@ -60,4 +104,26 @@ export interface BlogPostsResponse {
       views: number;
     };
   };
+}
+
+export interface BlogResponse {
+  success: boolean;
+  data: {
+    posts: BlogPost[];
+    pagination: {
+      total: number;
+      pages: number;
+      page: number;
+      limit: number;
+    };
+  };
+  message?: string;
+}
+
+export interface BlogFilters {
+  search?: string;
+  status?: "draft" | "published" | "archived";
+  maintenance_type?: string;
+  page?: number;
+  limit?: number;
 }
