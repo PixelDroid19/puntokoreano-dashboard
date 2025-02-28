@@ -41,6 +41,24 @@ class UsersService {
   private static readonly ADMIN_URL = `${UsersService.BASE_URL}/admin`;
   private static readonly CUSTOMERS_URL = `${UsersService.BASE_URL}/customers`;
 
+  static async toggleDevelopmentMode(userId: string): Promise<void> {
+    try {
+      const response = await api.post(`${this.CUSTOMERS_URL}/${userId}/toggle`);
+      return response.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  static async getUserMode(userId: string): Promise<void> {
+    try {
+      const response = await api.get(`${this.CUSTOMERS_URL}/${userId}/mode`);
+      return response.data;
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
   /**
    * Generic error handler for service requests
    */
@@ -59,7 +77,7 @@ class UsersService {
       const response = await api.get(endpoint, {
         params: this.formatParams(params),
       });
-      
+
       return response.data;
     } catch (error) {
       return this.handleError(error);
@@ -72,7 +90,7 @@ class UsersService {
   static async getUserStats(userId: string): Promise<UserStats> {
     try {
       const response = await api.get(`${this.CUSTOMERS_URL}/${userId}/stats`);
-      
+
       return response.data.data;
     } catch (error) {
       return this.handleError(error);
@@ -91,7 +109,7 @@ class UsersService {
         `${this.CUSTOMERS_URL}/${userId}/purchases`,
         { params }
       );
-      
+
       return response.data.data;
     } catch (error) {
       return this.handleError(error);
@@ -110,7 +128,7 @@ class UsersService {
         `${this.CUSTOMERS_URL}/${userId}/reviews`,
         { params }
       );
-      
+
       return response.data.data;
     } catch (error) {
       return this.handleError(error);
@@ -128,7 +146,7 @@ class UsersService {
       const endpoint =
         userType === "admin" ? this.ADMIN_URL : this.CUSTOMERS_URL;
       const response = await api.post(endpoint, data);
-      
+
       return response.data.data;
     } catch (error) {
       return this.handleError(error);

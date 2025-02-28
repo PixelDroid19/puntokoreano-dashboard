@@ -20,7 +20,13 @@ export interface Review {
   rating: number;
   title: string;
   content: string;
-  status: "pending" | "approved" | "rejected";
+  status:
+    | "pending"
+    | "approved"
+    | "rejected"
+    | "received"
+    | "cancelled"
+    | "lost";
   purchase_verified: boolean;
   likes: {
     count: number;
@@ -131,7 +137,13 @@ class DashboardReviewsService {
   static async moderateReview(
     reviewId: string,
     moderationData: {
-      status: "approved" | "rejected";
+      status:
+        | "pending"
+        | "approved"
+        | "rejected"
+        | "received"
+        | "cancelled"
+        | "lost";
       moderationNote: string;
       approvedImageIds?: string[];
     }
@@ -146,6 +158,26 @@ class DashboardReviewsService {
     } catch (error: any) {
       throw new Error(
         error.response?.data?.message || "Error al moderar review"
+      );
+    }
+  }
+
+  static async updateReviewStatus(
+    reviewId: string,
+    statusData: {
+      status: Review["status"];
+      comment: string;
+    }
+  ) {
+    try {
+      const { data } = await api.patch(
+        `${this.BASE_URL}/${reviewId}/status`,
+        statusData
+      );
+      return data.data;
+    } catch (error: any) {
+      throw new Error(
+        error.response?.data?.message || "Error updating review status"
       );
     }
   }

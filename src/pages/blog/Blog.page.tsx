@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Row,
@@ -18,7 +18,8 @@ import BlogPostCard from "./components/BlogPostCard";
 import BlogPostForm from "./components/BlogPostForm";
 import BlogPostModal from "./components/BlogPostModal";
 import debounce from "lodash/debounce";
-import { BlogPost, BlogFilters, BlogResponse } from "../../types/blog.types";
+import { BlogPost, BlogResponse } from "../../types/blog.types";
+import BrandService from "../../services/brand.service";
 
 const Blog: React.FC = () => {
   const queryClient = useQueryClient();
@@ -160,6 +161,11 @@ const Blog: React.FC = () => {
     });
   };
 
+  const { data: brands } = useQuery({
+    queryKey: ["brands"],
+    queryFn: () => BrandService.getBrands(),
+  });
+
   // Renderizado condicional para estados de carga
   if (isLoading) {
     return (
@@ -270,6 +276,7 @@ const Blog: React.FC = () => {
           initialValues={selectedPost}
           onSubmit={handleSubmit}
           loading={createPost.isPending || updatePost.isPending}
+          brands={brands?.data || []}
         />
       </Modal>
 

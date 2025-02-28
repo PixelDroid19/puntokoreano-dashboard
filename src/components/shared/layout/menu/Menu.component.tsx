@@ -10,6 +10,7 @@ import {
   ShoppingCartOutlined,
   StarOutlined,
   TagsOutlined,
+  UnorderedListOutlined,
   UserOutlined,
 } from "@ant-design/icons";
 import { SelectEventHandler } from "rc-menu/lib/interface";
@@ -37,16 +38,22 @@ const menuItems = [
     title: "FIltros",
   },
   {
-    key: "/images",
-    label: <Link to={"/images"}>Imagenes</Link>,
+    key: "/image-manager",
+    label: <Link to={"/image-manager"}>Gestor de Imágenes</Link>,
     icon: <FileImageOutlined />,
-    title: "Imagenes",
-  },
+    title: "Gestor de Imágenes",
+},
   {
     key: "/brands",
     label: <Link to={"/brands"}>Marcas</Link>,
     icon: <TagsOutlined />,
     title: "Marcas",
+  },
+  {
+    key: "/categoriesManagement",
+    label: <Link to={"/categoriesManagement"}>Gestión de categorías</Link>,
+    icon: <UnorderedListOutlined />,
+    title: "Gestión de categorías",
   },
   {
     key: "/orders",
@@ -73,10 +80,27 @@ const menuItems = [
     title: "Reseñas",
   },
   {
-    key: "/shipping-settings",
-    label: <Link to={"/shipping-settings"}>Config. Envíos</Link>,
+    key: "settings",
+    label: "Configuración",
     icon: <SettingOutlined />,
-    title: "Configuración de Envíos",
+    title: "Configuración",
+    children: [
+      {
+        key: "/shipping-settings",
+        label: <Link to="/shipping-settings">Envíos</Link>,
+        title: "Configuración de Envíos",
+      },
+      {
+        key: "/settings-billing",
+        label: <Link to="/settings-billing">Facturación</Link>,
+        title: "Configuración de Facturación",
+      },
+      {
+        key: "/settings-about",
+        label: <Link to="/settings-about">Sobre nosotros</Link>,
+        title: "Configuración Sobre nosotros",
+      },
+    ],
   },
 ];
 

@@ -48,6 +48,7 @@ const BrandManagement: React.FC = () => {
     },
   });
 
+
   const columns = [
     {
       title: "Logo",
@@ -78,11 +79,16 @@ const BrandManagement: React.FC = () => {
     },
     {
       title: "Artículos",
-      dataIndex: "associated_blogs",
-      key: "associated_blogs",
-      render: (blogs: string[]) => (
+      dataIndex: "stats",
+      key: "stats",
+      render: (blogs: {
+        articleCount: number;
+        totalViews: number;
+        latestArticle: number;
+      }) => (
         <Tag color="blue">
-          {blogs?.length || 0} artículo{blogs?.length !== 1 ? "s" : ""}
+          {blogs?.articleCount || 0} artículo
+          {blogs?.articleCount !== 1 ? "s" : ""}
         </Tag>
       ),
     },
@@ -154,7 +160,7 @@ const BrandManagement: React.FC = () => {
     };
 
     if (editingBrand) {
-        console.log('editingBrand', editingBrand)
+      console.log("editingBrand", editingBrand);
       updateBrand.mutate({
         id: editingBrand.id,
         data: formattedValues,

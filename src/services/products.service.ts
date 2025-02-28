@@ -201,26 +201,62 @@ class ProductsService {
     }
   }
 
-  static async downloadTemplate(): Promise<Blob> {
-    try {
-      const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.DOWNLOAD_TEMPLATE;
-      const response = await axios({
-        url,
-        method,
-        headers: this.getHeaders(),
-        responseType: "blob",
-      });
+  /**
+ * Downloads the Excel template for product imports
+ * @returns Promise<Blob> The Excel file as a Blob
+ * @throws Error if the download fails
+ */
+static async downloadTemplate(): Promise<Blob> {
+  try {
+    const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.DOWNLOAD_TEMPLATE;
+    
+    // Configure request with proper headers for Excel download
+    const response = await axios({
+      url,
+      method,
+      headers: {
+        ...this.getHeaders(),
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      },
+      responseType: 'blob', // Important for handling binary files
+    });
 
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        throw new Error(
-          error.response?.data?.message || "Error al descargar plantilla"
-        );
-      }
-      throw error;
+    // Validate response
+    if (!(response.data instanceof Blob)) {
+      throw new Error('Invalid response format');
     }
+
+    // Ensure proper MIME type
+    const excelBlob = new Blob([response.data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+
+    // Set suggested filename for download
+    const filename = response.headers['content-disposition']?.split('filename=')[1] || 'plantilla_productos.xlsx';
+    
+    // Trigger download
+    const url1 = window.URL.createObjectURL(excelBlob);
+    const link = document.createElement('a');
+    link.href = url1;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+
+    return excelBlob;
+  } catch (error) {
+    // Enhanced error handling
+    if (axios.isAxiosError(error)) {
+      const message = error.response?.data instanceof Blob 
+        ? await error.response.data.text() 
+        : error.response?.data?.message || 'Error al descargar plantilla';
+      
+      throw new Error(message);
+    }
+    throw error;
   }
+}
 }
 
 export default ProductsService;

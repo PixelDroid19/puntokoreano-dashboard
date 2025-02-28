@@ -1,6 +1,6 @@
 // src/pages/users/Users.page.tsx
 // @ts-nocheck
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Table,
   Tag,
@@ -30,6 +30,7 @@ import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
+  CalendarOutlined,
 } from "@ant-design/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
@@ -72,7 +73,7 @@ const Users = () => {
 
   // Queries
   const { data: usersData, isLoading } = useQuery({
-    queryKey: ["usersPage", searchText, statusFilter, userTypeFilter],
+    queryKey: ["usersManagerPage", searchText, statusFilter, userTypeFilter],
     queryFn: async () => {
       const response = await UsersService.getUsers({
         search: searchText,
@@ -109,12 +110,20 @@ const Users = () => {
     enabled: !!selectedUser && currentTab === "reviews",
   });
 
+  const toggleMode = useMutation({
+    mutationFn: (userId: string) => UsersService.toggleDevelopmentMode(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["usersManagerPage"] });
+      toast.success("Modo de usuario actualizado");
+    },
+  });
+
   // Mutations
   const toggleStatus = useMutation({
     mutationFn: (params: { userId: string; active: boolean }) =>
       UsersService.toggleStatus(params.userId, params.active, userTypeFilter),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["usersPage"] });
+      queryClient.invalidateQueries({ queryKey: ["usersManagerPage"] });
       toast.success("Estado actualizado correctamente");
     },
     onError: () => {
@@ -128,7 +137,7 @@ const Users = () => {
         ? UsersService.createAdminUser(data)
         : UsersService.createCustomerUser(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["usersPage"] });
+      queryClient.invalidateQueries({ queryKey: ["usersManagerPage"] });
       toast.success("Usuario creado correctamente");
       setCreateModalVisible(false);
       form.resetFields();
@@ -144,7 +153,7 @@ const Users = () => {
         ? UsersService.updateAdminUser(editingUser!._id, data)
         : UsersService.updateCustomerUser(editingUser!._id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["usersPage"] });
+      queryClient.invalidateQueries({ queryKey: ["usersManagerPage"] });
       toast.success("Usuario actualizado correctamente");
       setEditingUser(null);
       form.resetFields();
@@ -160,7 +169,7 @@ const Users = () => {
         ? UsersService.deleteAdminUser(id)
         : UsersService.deleteCustomer(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["usersPage"] });
+      queryClient.invalidateQueries({ queryKey: ["usersManagerPage"] });
       toast.success("Usuario eliminado correctamente");
     },
     onError: () => {
@@ -172,7 +181,7 @@ const Users = () => {
     mutationFn: (params: { id: string; reason: string }) =>
       UsersService.blockUser(params.id, params.reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["usersPage"] });
+      queryClient.invalidateQueries({ queryKey: ["usersManagerPage"] });
       toast.success("Usuario bloqueado correctamente");
     },
     onError: () => {
@@ -219,6 +228,19 @@ const Users = () => {
           disabled={
             record.role === "admin" && userTypeFilter === UserType.ADMIN
           }
+        />
+      ),
+    },
+    {
+      title: "Modo",
+      key: "mode",
+      render: (_: any, record: User) => (
+        <Switch
+          checked={record.isDevelopment}
+          onChange={() => toggleMode.mutate(record._id)}
+          checkedChildren="Dev"
+          unCheckedChildren="Prod"
+          loading={toggleMode.isPending}
         />
       ),
     },
@@ -293,7 +315,7 @@ const Users = () => {
                   UsersService.unblockUser(record._id)
                     .then(() => {
                       queryClient.invalidateQueries({
-                        queryKey: ["usersPage"],
+                        queryKey: ["usersManagerPage"],
                       });
                       toast.success("Usuario desbloqueado correctamente");
                     })
@@ -342,23 +364,41 @@ const Users = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Card>
               <Statistic
+                title="Antigüedad de la cuenta (días)"
+                value={userStats?.overview?.accountAge?.days || 0}
+                prefix={<CalendarOutlined />}
+              />
+            </Card>
+            <Card>
+              <Statistic
                 title="Total compras"
-                value={userStats?.totalOrders || 0}
+                value={userStats?.orders?.total || 0}
                 prefix={<ShoppingCartOutlined />}
               />
             </Card>
             <Card>
               <Statistic
                 title="Total gastado"
-                value={userStats?.totalSpent || 0}
+                value={userStats?.orders?.totalSpent / 100 || 0}
                 prefix={<DollarOutlined />}
                 precision={2}
               />
             </Card>
             <Card>
               <Statistic
+                title="Última compra"
+                value={
+                  userStats?.orders?.lastOrderDate
+                    ? dayjs(userStats.orders.lastOrderDate).format("DD/MM/YYYY")
+                    : "Sin compras"
+                }
+                prefix={<ShoppingCartOutlined />}
+              />
+            </Card>
+            <Card>
+              <Statistic
                 title="Promedio por compra"
-                value={userStats?.averagePurchase || 0}
+                value={userStats?.orders?.avgOrderValue / 100 || 0}
                 prefix={<DollarOutlined />}
                 precision={2}
               />
@@ -366,7 +406,7 @@ const Users = () => {
             <Card>
               <Statistic
                 title="Reseñas totales"
-                value={userStats?.totalReviews || 0}
+                value={userStats?.reviews?.total || 0}
                 prefix={<StarOutlined />}
               />
             </Card>
@@ -374,7 +414,7 @@ const Users = () => {
               <Card>
                 <Statistic
                   title="Calificación promedio"
-                  value={userStats.averageRating}
+                  value={userStats?.reviews?.avgRating}
                   precision={1}
                   suffix="/5"
                   prefix={<StarOutlined />}
@@ -387,21 +427,21 @@ const Users = () => {
       case "purchases":
         return (
           <Table
-            dataSource={userPurchases}
+            dataSource={userPurchases?.orders ?? []}
             columns={[
               {
                 title: "ID Pedido",
-                dataIndex: "orderId",
+                dataIndex: "tracking_number",
                 width: 100,
               },
               {
                 title: "Productos",
-                dataIndex: "products",
+                dataIndex: "items",
                 render: (products) => (
                   <ul className="list-none p-0">
                     {products.map((p: any) => (
-                      <li key={p.productId} className="mb-1">
-                        {p.name} x{p.quantity} - ${p.price.toFixed(2)}
+                      <li key={p._id} className="mb-1">
+                        {p.product.name} - ${p.product.price.toFixed(2)}
                       </li>
                     ))}
                   </ul>
@@ -448,12 +488,15 @@ const Users = () => {
       case "reviews":
         return (
           <Table
-            dataSource={userReviews}
+            dataSource={userReviews?.reviews}
             columns={[
               {
                 title: "Producto",
-                dataIndex: "productName",
+                dataIndex: "product",
                 ellipsis: true,
+                render: (e) => {
+                  return e.name;
+                },
               },
               {
                 title: "Calificación",
@@ -465,8 +508,11 @@ const Users = () => {
               },
               {
                 title: "Comentario",
-                dataIndex: "comment",
+                dataIndex: "original_content",
                 ellipsis: true,
+                render: (e) => {
+                  return e?.content;
+                },
               },
               {
                 title: "Fecha",

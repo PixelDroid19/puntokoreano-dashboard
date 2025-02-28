@@ -84,7 +84,6 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
       setContent(initialValues.content || "");
 
       // Initialize featured image if exists
-      console.log('initialValues', initialValues.featured_image)
       if (initialValues.featured_image?.url) {
         setFileList([
           {
@@ -296,7 +295,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
                       placeholder="Seleccione marca"
                       options={brands.map((brand) => ({
                         label: brand.display_name,
-                        value: brand._id,
+                        value: brand.id,
                       }))}
                     />
                   </Form.Item>

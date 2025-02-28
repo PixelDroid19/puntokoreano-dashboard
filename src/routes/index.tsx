@@ -25,6 +25,10 @@ import ProtectedRoutes from "../utils/ProtectedRoutes";
 import PublicRoutes from "../utils/PublicRoutes";
 import RouteError from "./RouteError";
 import BrandManagement from "../pages/brands/BrandManagement";
+import BillingSettingsPage from "../pages/settings/BillingSettings";
+import AboutSettingsPage from "../pages/settings/AboutSettings";
+import CategoriesManagement from "../pages/categoriesManagement/CategoriesManagement";
+import DevelopmentView from "../components/DevelopmentView/DevelopmentView";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -42,7 +46,16 @@ const router = createBrowserRouter(
       <Route element={<ProtectedRoutes />} errorElement={<RouteError />}>
         <Route
           path="/brands"
-          element={<BrandManagement />}
+          element={<DevelopmentView />} // element={<BrandManagement />}
+          errorElement={<RouteError />}
+        />
+      </Route>
+
+      {/* Brands */}
+      <Route element={<ProtectedRoutes />} errorElement={<RouteError />}>
+        <Route
+          path="/categoriesManagement"
+          element={<CategoriesManagement />}
           errorElement={<RouteError />}
         />
       </Route>
@@ -67,7 +80,7 @@ const router = createBrowserRouter(
         </Route>
 
         {/* Images */}
-        <Route path="/images">
+        <Route path="/image-manager">
           <Route index element={<Images />} errorElement={<RouteError />} />
           <Route
             path="add"
@@ -94,7 +107,11 @@ const router = createBrowserRouter(
         />
 
         {/* Blog */}
-        <Route path="/blogs" element={<Blog />} errorElement={<RouteError />} />
+        <Route
+          path="/blogs"
+          element={<DevelopmentView />} //element={<Blog />} 
+          errorElement={<RouteError />}
+        />
 
         {/* Users */}
         <Route
@@ -109,11 +126,24 @@ const router = createBrowserRouter(
           element={<Reviews />}
           errorElement={<RouteError />}
         />
-        
+
         {/*shipping settings route */}
         <Route
           path="/shipping-settings"
           element={<ShippingSettings />}
+          errorElement={<RouteError />}
+        />
+
+        {/* Billing Settings */}
+        <Route
+          path="/settings-billing"
+          element={<BillingSettingsPage />}
+          errorElement={<RouteError />}
+        />
+
+        <Route
+          path="/settings-about"
+          element={<AboutSettingsPage />}
           errorElement={<RouteError />}
         />
       </Route>

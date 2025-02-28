@@ -1,5 +1,6 @@
 // src/pages/orders/Orders.page.tsx
-import React from "react";
+
+import React, { useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Table,
@@ -13,12 +14,19 @@ import {
   Input,
   message,
   Timeline,
+  Tooltip,
 } from "antd";
-import { EditOutlined, EyeOutlined } from "@ant-design/icons";
+import {
+  DownloadOutlined,
+  EditOutlined,
+  EyeOutlined,
+  SyncOutlined,
+} from "@ant-design/icons";
 import type { RangePickerProps } from "antd/es/date-picker";
-import { Order, OrderStatus } from "../../types/orders";
+import { Order, OrderStatus, PaymentStatus } from "../../types/orders";
 import dayjs from "dayjs";
 import OrdersService from "../../services/orders.service";
+import { useOrdersWebSocket } from "../../hooks/useOrdersWebSocket";
 
 const { RangePicker } = DatePicker;
 
@@ -30,6 +38,15 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   delivered: "green",
   cancelled: "red",
   refunded: "purple",
+};
+
+// Mapa de colores para estados de pago
+const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
+  pending: "gold",
+  processing: "blue",
+  completed: "green",
+  failed: "red",
+  cancelled: "red",
 };
 
 // Opciones de estado
@@ -51,7 +68,10 @@ const Orders = () => {
   const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = React.useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
+  const [isRefundModalOpen, setIsRefundModalOpen] = React.useState(false);
   const [form] = Form.useForm();
+  const [refundForm] = Form.useForm();
+  const token = localStorage.getItem("auth_dashboard_token");
 
   // Query para obtener pedidos
   const { data: ordersData, isLoading } = useQuery({
@@ -62,6 +82,32 @@ const Orders = () => {
         toDate: dateRange?.[1]?.format("YYYY-MM-DD"),
         status: statusFilter || undefined,
       }),
+  });
+
+  // Mutación para verificar pago
+  const verifyPayment = useMutation({
+    mutationFn: (orderId: string) => OrdersService.verifyPayment(orderId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      message.success("Estado de pago verificado correctamente");
+    },
+    onError: (error: any) => {
+      message.error(
+        error.response?.data?.message || "Error al verificar el pago"
+      );
+    },
+  });
+
+  // Mutación para verificación masiva de pagos
+  const verifyPendingPayments = useMutation({
+    mutationFn: () => OrdersService.verifyPendingPayments(),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      message.success(`Verificados ${data.data.processed} pagos pendientes`);
+    },
+    onError: (error: any) => {
+      message.error("Error al verificar pagos pendientes");
+    },
   });
 
   // Mutación para actualizar estado
@@ -80,6 +126,95 @@ const Orders = () => {
       );
     },
   });
+
+  // Mutación para procesar reembolso
+  const processRefund = useMutation({
+    mutationFn: ({ orderId, data }: { orderId: string; data: any }) =>
+      OrdersService.processRefund(orderId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      message.success("Reembolso procesado correctamente");
+      setIsRefundModalOpen(false);
+      refundForm.resetFields();
+    },
+    onError: (error: any) => {
+      message.error(
+        error.response?.data?.message || "Error al procesar el reembolso"
+      );
+    },
+  });
+
+  const handleInvoiceAction = async (orderId: string) => {
+    try {
+      message.loading("Procesando factura...");
+      const pdfBlob = await OrdersService.downloadInvoice(orderId);
+      OrdersService.downloadPDF(pdfBlob, `factura-${orderId}.pdf`);
+      message.success("Factura descargada correctamente");
+    } catch (error) {
+      try {
+        await OrdersService.generateInvoice(orderId);
+        const pdfBlob = await OrdersService.downloadInvoice(orderId);
+        OrdersService.downloadPDF(pdfBlob, `factura-${orderId}.pdf`);
+        message.success("Factura generada y descargada correctamente");
+      } catch (genError) {
+        message.error("Error al procesar la factura");
+        console.error("Error handling invoice:", genError);
+      }
+    }
+  };
+
+  const handleDateRangeChange: RangePickerProps["onChange"] = (dates) => {
+    setDateRange(dates as [dayjs.Dayjs, dayjs.Dayjs]);
+  };
+
+  const handleStatusUpdate = async () => {
+    if (!selectedOrder) return;
+
+    try {
+      const values = await form.validateFields();
+      updateStatus.mutate({
+        orderId: selectedOrder.id,
+        data: values,
+      });
+    } catch (error) {
+      console.error("Validation failed:", error);
+    }
+  };
+
+  const handleRefundModal = (order: Order) => {
+    setSelectedOrder(order);
+    setIsRefundModalOpen(true);
+    refundForm.setFieldsValue({
+      amount: order.payment.total,
+    });
+  };
+
+  const handleRefundSubmit = async () => {
+    if (!selectedOrder) return;
+    try {
+      const values = await refundForm.validateFields();
+      processRefund.mutate({
+        orderId: selectedOrder.id,
+        data: values,
+      });
+    } catch (error) {
+      console.error("Validation failed:", error);
+    }
+  };
+
+
+  const { isConnected } = useOrdersWebSocket({
+    token, // Pasar el token directamente, sin "Bearer"
+    onPaymentUpdate: (data) => {
+      console.log('Payment updated:', data);
+    },
+    onConnectionChange: (connected) => {
+      console.log('WebSocket connection status:', connected);
+    }
+  });
+
+  
+
 
   const columns = [
     {
@@ -120,10 +255,22 @@ const Orders = () => {
       title: "Estado de Pago",
       dataIndex: ["payment", "status"],
       key: "paymentStatus",
-      render: (status: string) => (
-        <Tag color={status === "completed" ? "green" : "gold"}>
-          {status.toUpperCase()}
-        </Tag>
+      render: (status: PaymentStatus, record: Order) => (
+        <Space>
+          <Tag color={PAYMENT_STATUS_COLORS[status]}>
+            {status.toUpperCase()}
+          </Tag>
+          {status === "pending" && (
+            <Tooltip title="Verificar pago">
+              <Button
+                icon={<SyncOutlined />}
+                size="small"
+                loading={verifyPayment.isPending}
+                onClick={() => verifyPayment.mutate(record.id)}
+              />
+            </Tooltip>
+          )}
+        </Space>
       ),
     },
     {
@@ -150,39 +297,50 @@ const Orders = () => {
               setSelectedOrder(record);
               form.setFieldsValue({
                 status: record.status,
-                tracking_number: record.shipping?.tracking_number || "",
+                tracking_number: record.shipping?.tracking || "",
                 comment: "",
               });
               setIsEditModalOpen(true);
             }}
           />
+          <Button
+            icon={<DownloadOutlined />}
+            onClick={() => handleInvoiceAction(record.id)}
+            disabled={
+              record.status === "pending" ||
+              record.payment.status !== "completed"
+            }
+          />
+          {record.payment.status === "completed" && (
+            <Tooltip title="Procesar reembolso">
+              <Button
+                danger
+                onClick={() => handleRefundModal(record)}
+                disabled={["refunded", "cancelled"].includes(record.status)}
+              >
+                Reembolsar
+              </Button>
+            </Tooltip>
+          )}
         </Space>
       ),
     },
   ];
 
-  const handleDateRangeChange: RangePickerProps["onChange"] = (dates) => {
-    setDateRange(dates as [dayjs.Dayjs, dayjs.Dayjs]);
-  };
-
-  const handleStatusUpdate = async () => {
-    if (!selectedOrder) return;
-
-    try {
-      const values = await form.validateFields();
-      updateStatus.mutate({
-        orderId: selectedOrder.id,
-        data: values,
-      });
-    } catch (error) {
-      console.error("Validation failed:", error);
-    }
-  };
-
   return (
     <div className="p-6">
       <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Gestión de Pedidos</h1>
+        <Space>
+        <div>Estado de conexión: {isConnected ? 'Conectado' : 'Desconectado'}</div>
+          <Button
+            type="primary"
+            icon={<SyncOutlined />}
+            loading={verifyPendingPayments.isPending}
+            onClick={() => verifyPendingPayments.mutate()}
+          >
+            Verificar Pagos Pendientes
+          </Button>
+        </Space>
         <Space>
           <RangePicker onChange={handleDateRangeChange} />
           <Select
@@ -241,11 +399,7 @@ const Orders = () => {
                 <p>
                   Estado de Pago:
                   <Tag
-                    color={
-                      selectedOrder.payment.status === "completed"
-                        ? "green"
-                        : "gold"
-                    }
+                    color={PAYMENT_STATUS_COLORS[selectedOrder.payment.status]}
                     className="ml-2"
                   >
                     {selectedOrder.payment.status.toUpperCase()}
@@ -257,10 +411,9 @@ const Orders = () => {
                     "DD/MM/YYYY HH:mm"
                   )}
                 </p>
-                {selectedOrder.shipping?.tracking_number && (
+                {selectedOrder.shipping?.tracking && (
                   <p>
-                    Número de Seguimiento:{" "}
-                    {selectedOrder.shipping.tracking_number}
+                    Número de Seguimiento: {selectedOrder.shipping.tracking}
                   </p>
                 )}
               </div>
@@ -300,12 +453,14 @@ const Orders = () => {
                   {
                     title: "Total",
                     key: "total",
-                    dataIndex: "total",
-                    render: (total: number) =>
-                      total?.toLocaleString("es-CO", {
-                        style: "currency",
-                        currency: "COP",
-                      }),
+                    render: (_, record: any) =>
+                      (record.quantity * record.product.price).toLocaleString(
+                        "es-CO",
+                        {
+                          style: "currency",
+                          currency: "COP",
+                        }
+                      ),
                   },
                 ]}
                 summary={() => (
@@ -378,6 +533,53 @@ const Orders = () => {
             <Input.TextArea
               rows={4}
               placeholder="Agregue un comentario sobre el cambio de estado"
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Modal de Reembolso */}
+      <Modal
+        title={`Procesar Reembolso - Pedido #${selectedOrder?.orderNumber}`}
+        open={isRefundModalOpen}
+        onOk={handleRefundSubmit}
+        onCancel={() => {
+          setIsRefundModalOpen(false);
+          setSelectedOrder(null);
+          refundForm.resetFields();
+        }}
+        confirmLoading={processRefund.isPending}
+      >
+        <Form form={refundForm} layout="vertical">
+          <Form.Item
+            name="amount"
+            label="Monto a reembolsar"
+            rules={[
+              { required: true, message: "El monto es requerido" },
+              {
+                type: "number",
+                min: 1,
+                max: selectedOrder?.payment.total || 0,
+                message:
+                  "El monto debe ser mayor a 0 y menor o igual al total del pedido",
+              },
+            ]}
+          >
+            <Input
+              type="number"
+              prefix="$"
+              placeholder="Ingrese el monto a reembolsar"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="reason"
+            label="Razón del reembolso"
+            rules={[{ required: true, message: "La razón es requerida" }]}
+          >
+            <Input.TextArea
+              rows={4}
+              placeholder="Ingrese la razón del reembolso"
             />
           </Form.Item>
         </Form>

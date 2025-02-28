@@ -84,6 +84,48 @@ const ENDPOINTS: Endpoints = {
   },
 
   DASHBOARD: {
+    CATEGORIES: {
+      GET_ALL: {
+        url: `${BASE_URL}/dashboard/categories`,
+        method: "GET",
+      },
+      CREATE: {
+        url: `${BASE_URL}/dashboard/categories`,
+        method: "POST",
+      },
+      UPDATE: {
+        url: `${BASE_URL}/dashboard/categories/:id`,
+        method: "PUT",
+      },
+      DELETE: {
+        url: `${BASE_URL}/dashboard/categories/:id`,
+        method: "DELETE"  
+      },
+      UPLOAD_IMAGE: {
+        url: `${BASE_URL}/dashboard/categories/upload-image`, 
+        method: "POST"
+      }
+    },
+    SETTINGS: {
+      GET: {
+        url: `${BASE_URL}/dashboard/settings`,
+        method: "GET",
+      },
+      ABOUT: {
+        GET: {
+          url: `${BASE_URL}/dashboard/settings/about`,
+          method: "GET",
+        },
+        UPDATE: {
+          url: `${BASE_URL}/dashboard/settings/about`,
+          method: "PATCH",
+        },
+        UPDATE_CONSULTANT: {
+          url: `${BASE_URL}/dashboard/settings/about/consultants/:id`,
+          method: "PATCH",
+        },
+      },
+    },
     SHIPPING_SETTINGS: {
       GET_ALL: {
         url: `${BASE_URL}/dashboard/shipping-settings`,

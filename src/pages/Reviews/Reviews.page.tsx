@@ -90,7 +90,7 @@ const Reviews = () => {
         <Space direction="vertical" size={0}>
           <Text strong>{name}</Text>
           <Text type="secondary" className="text-xs">
-            Código: {record.product.code}
+            Código: {record?.product?.code}
           </Text>
         </Space>
       ),

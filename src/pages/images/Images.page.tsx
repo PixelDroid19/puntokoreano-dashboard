@@ -18,7 +18,7 @@ import {
 } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import FilesService, { ImageGroup } from "../../services/files.service";
-import HeaderTable from "./components/HeaderTable.component";
+import HeaderImageManager from "./components/HeaderTable.component";
 import EditGroupModal from "./components/EditGroupModal";
 import ViewGroupModal from "./components/ViewGroupModal";
 
@@ -253,7 +253,7 @@ const Images: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <HeaderTable />
+      <HeaderImageManager  />
 
       <Table
         columns={columns ?? []}

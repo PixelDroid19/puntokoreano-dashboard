@@ -136,14 +136,14 @@ const BlogPostCard: React.FC<BlogPostCardProps> = ({
         )
       }
       actions={[
-        <Tooltip title="Ver artículo">
+      /*   <Tooltip title="Ver artículo">
           <Button
             type="text"
             icon={<EyeOutlined />}
             onClick={() => onView(post)}
             className="text-blue-600 hover:text-blue-700"
           />
-        </Tooltip>,
+        </Tooltip>, */
         <Tooltip title="Editar artículo">
           <Button
             type="text"

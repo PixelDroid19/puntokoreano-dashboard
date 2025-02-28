@@ -126,14 +126,20 @@ const ShippingSettings = () => {
   });
 
   const updateLocationMultipliers = useMutation({
-    mutationFn: (data) =>
-      ShippingSettingsService.updateLocationMultipliers(data),
+    mutationFn: (data) => ShippingSettingsService.updateLocationMultipliers(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["shippingSettings"]);
-      message.success("Multiplicadores por ubicación actualizados");
+      const updatedData = locationMultipliersForm.getFieldsValue();
+      ShippingSettingsService.updateLocationMultipliers(updatedData)
+        .then(() => {
+          queryClient.invalidateQueries(["shippingSettings"]);
+          message.success("Multiplicadores por ubicación actualizados");
+        })
+        .catch((error) => {
+          message.error("Error al actualizar multiplicadores: " + error.message);
+        });
     },
   });
-
+  
   const updateDeliveryTimes = useMutation({
     mutationFn: (data) => ShippingSettingsService.updateDeliveryTimes(data),
     onSuccess: () => {
@@ -186,28 +192,32 @@ const ShippingSettings = () => {
       key: "multiplier",
       width: 200,
       render: (_, record) => (
-        <NumericFormat
-          value={record.multiplier}
-          onValueChange={({ floatValue }) => {
-            const currentValues =
-              locationMultipliersForm.getFieldValue("multipliers");
-            locationMultipliersForm.setFieldsValue({
-              multipliers: {
-                ...currentValues,
-                [record.location]: floatValue,
-              },
-            });
-          }}
-          customInput={Input}
-          className="ant-input"
-          decimalScale={2}
-          allowNegative={false}
-          min={0}
-          step={0.1}
-        />
+        <Form.Item
+          name={["multipliers", record.location]} // Estructura del nombre en cascada
+          initialValue={record.multiplier} // Valor inicial
+          rules={[{ required: true, message: "Este campo es obligatorio" }]}
+          noStyle
+        >
+          <Input
+            type="number"
+            step="0.1"
+            min={0}
+            onChange={(e) => {
+              const { value } = e.target;
+              const currentValues = locationMultipliersForm.getFieldValue("multipliers") || {};
+              locationMultipliersForm.setFieldsValue({
+                multipliers: {
+                  ...currentValues,
+                  [record.location]: parseFloat(value) || 0,
+                },
+              });
+            }}
+          />
+        </Form.Item>
       ),
     },
   ];
+  
 
   if (isLoading) {
     return (
@@ -335,7 +345,7 @@ const ShippingSettings = () => {
               <Form
                 form={locationMultipliersForm}
                 layout="vertical"
-                onFinish={updateLocationMultipliers.mutate}
+                onFinish={(e)=> {console.log(e); updateLocationMultipliers.mutate(e)}}
               >
                 <Table
                   dataSource={

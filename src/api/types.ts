@@ -87,7 +87,6 @@ export interface ShippingSettings {
   };
 }
 
-
 export interface Endpoints {
   AUTH: {
     LOGIN: ApiEndpoint;
@@ -104,6 +103,21 @@ export interface Endpoints {
     GET_ALL: ApiEndpoint;
   };
   DASHBOARD: {
+    CATEGORIES: {
+      GET_ALL: ApiEndpoint;
+      CREATE: ApiEndpoint;
+      DELETE: ApiEndpoint;
+      UPDATE: ApiEndpoint;
+      UPLOAD_IMAGE: ApiEndpoint;
+    };
+    SETTINGS: {
+      GET: ApiEndpoint;
+      ABOUT: {
+        GET: ApiEndpoint;
+        UPDATE: ApiEndpoint;
+        UPDATE_CONSULTANT: ApiEndpoint;
+      };
+    };
     SHIPPING_SETTINGS: {
       GET_ALL: ApiEndpoint;
       UPDATE_BASE_COSTS: ApiEndpoint;
