@@ -333,32 +333,46 @@ const AboutSettingsPage = () => {
             <Input.TextArea rows={4} />
           </Form.Item>
 
-          <Form.Item
-            name={["socialMission", "backgroundImage"]}
-            label="Imagen de Fondo"
-            rules={[
-              { required: true, message: "La imagen de fondo es requerida" },
-            ]}
-          >
-            <Upload
-              listType="picture-card"
-              maxCount={1}
-              beforeUpload={(file) =>
-                handleImageUpload(file, ["socialMission", "backgroundImage"])
-              }
-              showUploadList={{
-                showPreviewIcon: true,
-                showRemoveIcon: true,
-              }}
-            >
-              {!form.getFieldValue(["socialMission", "backgroundImage"]) && (
-                <div>
-                  <PlusOutlined />
-                  <div>Subir</div>
-                </div>
-              )}
-            </Upload>
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={24} md={12}>
+              <Form.Item
+                name={["socialMission", "backgroundImage"]}
+                label="Imagen de Fondo"
+                rules={[
+                  { required: true, message: "La imagen de fondo es requerida" },
+                ]}
+              >
+                <Input placeholder="URL de la imagen" />
+              </Form.Item>
+            </Col>
+            <Col span={24} md={12}>
+              <Form.Item label="O sube una imagen">
+                <Upload
+                  listType="picture-card"
+                  maxCount={1}
+                  beforeUpload={(file) =>
+                    handleImageUpload(file, ["socialMission", "backgroundImage"])
+                  }
+                  showUploadList={false}
+                >
+                  <div>
+                    <PlusOutlined />
+                    <div>Subir</div>
+                  </div>
+                </Upload>
+              </Form.Item>
+            </Col>
+          </Row>
+          
+          {form.getFieldValue(["socialMission", "backgroundImage"]) && (
+            <div className="image-preview">
+              <img 
+                src={form.getFieldValue(["socialMission", "backgroundImage"])} 
+                alt="Vista previa" 
+                style={{ maxWidth: "100%", maxHeight: "200px", objectFit: "contain" }} 
+              />
+            </div>
+          )}
         </Card>
 
         <Card title="Ubicación" className="mb-4">

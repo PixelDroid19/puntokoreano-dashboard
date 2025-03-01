@@ -195,7 +195,7 @@ export const ProductEdit = ({ open, onClose, product }: ProductEditProps) => {
                   >
                     <Select
                       onChange={handleGroupChange}
-                      options={groups?.data?.map((group) => ({
+                      options={groups?.data?.groups?.map((group) => ({
                         label: group.name,
                         value: group.name,
                       }))}

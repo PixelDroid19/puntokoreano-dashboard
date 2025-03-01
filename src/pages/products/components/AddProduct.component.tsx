@@ -163,13 +163,37 @@ const AddProduct = () => {
   };
 
   const onFinish = (values: ProductCreateInput) => {
+    // Prepare the product data with all required and optional fields
     const productData = {
-      ...values,
+      // Required fields
+      name: values.name,
+      price: values.price,
+      group: values.group,
+      subgroup: values.subgroup,
+      code: values.code, // Ensure code is sent as is (string or number)
+      
+      // Optional fields with defaults
+      stock: values.stock || 0,
+      shipping: values.shipping || [],
+      short_description: values.short_description || '',
+      long_description: values.long_description || '',
       active: true,
+      
+      // Image handling
       useGroupImages,
       imageGroup: useGroupImages ? values.imageGroup : null,
       images: useGroupImages ? [] : fileList.map((file) => file.url) || [],
-      videoUrl,
+      
+      // Additional fields
+      videoUrl: values.videoUrl || videoUrl,
+      warranty: values.warranty || '',
+      warrantyMonths: values.warrantyMonths,
+      brand: values.brand,
+      specifications: values.specifications || [],
+      variants: values.variants || [],
+      relatedProducts: values.relatedProducts || [],
+      
+      // SEO information
       seo: {
         title: values.seoTitle || values.name,
         description: values.seoDescription || values.short_description,
@@ -194,8 +218,9 @@ const AddProduct = () => {
   };
 
   const handleGroupChange = (value: string) => {
-    const selectedGroup = groups?.data?.find((g) => g.name === value);
+    const selectedGroup = groups?.data?.groups?.find((g) => g.name === value);
     if (selectedGroup) {
+      console.log('selectedGroup', selectedGroup)
       setSubgroups(selectedGroup.subgroups);
       // Limpiar el subgrupo seleccionado cuando cambia el grupo
       form.setFieldValue("subgroup", undefined);
@@ -273,7 +298,7 @@ const AddProduct = () => {
                     <Select
                       placeholder="Seleccione un grupo"
                       onChange={handleGroupChange}
-                      options={groups?.data?.map((group) => ({
+                      options={groups?.data?.groups?.map((group) => ({
                         label: group.name,
                         value: group.name,
                       }))}
