@@ -12,7 +12,11 @@ import {
   Card,
   Row,
   Col,
+  Space,
+  Button,
+  Tooltip,
 } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 import { Product } from "../../../api/types";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import ProductsService from "../../../services/products.service";
@@ -43,14 +47,28 @@ export const ProductEdit = ({ open, onClose, product }: ProductEditProps) => {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
   const [subgroups, setSubgroups] = React.useState<any[]>([]);
-  const [useGroupImages, setUseGroupImages] = React.useState(
-    product.useGroupImages
-  );
+  const [useGroupImages, setUseGroupImages] = React.useState(product.useGroupImages);
+  const [filters, setFilters] = React.useState({
+    brand: "",
+    model: "",
+    family: "",
+    transmission: "",
+    fuel: "",
+    line: "",
+  });
 
   // Queries
   const { data: groups } = useQuery({
     queryKey: ["groups"],
     queryFn: getGroups,
+  });
+
+  const { data: filterData } = useQuery({
+    queryKey: ["getFilters"],
+    queryFn: async () => {
+      const response = await axios.get(ENDPOINTS.FILTERS.GET_ALL.url);
+      return response.data;
+    },
   });
 
   const { data: imageGroups } = useQuery({
@@ -73,7 +91,7 @@ export const ProductEdit = ({ open, onClose, product }: ProductEditProps) => {
 
   React.useEffect(() => {
     if (product.group && groups?.data) {
-      const selectedGroup = groups.data.find((g) => g.name === product.group);
+      const selectedGroup = groups.data.groups.find((g) => g.name === product.group);
       if (selectedGroup) {
         setSubgroups(selectedGroup.subgroups);
       }
@@ -234,7 +252,160 @@ export const ProductEdit = ({ open, onClose, product }: ProductEditProps) => {
             </Row>
           </TabPane>
 
-          <TabPane tab="Multimedia" key="2">
+          <TabPane tab="Información del Vehículo" key="2">
+            <Card title="Detalles del Vehículo" size="small">
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item name="model" label="Modelo">
+                    <Select
+                      placeholder="Seleccione el modelo"
+                      onChange={(value) => setFilters(prev => ({ ...prev, model: value }))}
+                      options={Array.from({ length: 2025 - 2003 + 1 }, (_, i) => ({
+                        label: `${2003 + i}`,
+                        value: `${2003 + i}`,
+                      }))}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="family" label="Familia">
+                    <Select
+                      placeholder="Seleccione la familia"
+                      onChange={(value) => setFilters(prev => ({ ...prev, family: value }))}
+                      options={filterData?.data?.families?.[filters.model] || []}
+                      disabled={!filters.model}
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item name="transmission" label="Transmisión">
+                    <Select
+                      placeholder="Seleccione la transmisión"
+                      onChange={(value) => setFilters(prev => ({ ...prev, transmission: value }))}
+                      options={filterData?.data?.transmissions?.[filters.model]?.[filters.family] || []}
+                      disabled={!filters.family}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="fuel" label="Combustible">
+                    <Select
+                      placeholder="Seleccione el combustible"
+                      onChange={(value) => setFilters(prev => ({ ...prev, fuel: value }))}
+                      options={filterData?.data?.fuels?.[filters.model]?.[filters.family]?.[filters.transmission] || []}
+                      disabled={!filters.transmission}
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item name="line" label="Línea">
+                    <Select
+                      placeholder="Seleccione la línea"
+                      options={filterData?.data?.lines?.[filters.model]?.[filters.family]?.[filters.transmission]?.[filters.fuel] || []}
+                      disabled={!filters.fuel}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="brand" label="Marca">
+                    <Input placeholder="Marca del vehículo" />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </Card>
+          </TabPane>
+
+          <TabPane tab="Detalles Técnicos" key="3">
+            <Card title="Especificaciones Técnicas" size="small">
+              <Row gutter={16}>
+                <Col span={8}>
+                  <Form.Item name="maintenance_type" label="Tipo de Mantenimiento" rules={[{ required: true }]}>
+                    <Select
+                      placeholder="Seleccione tipo"
+                      options={[
+                        { label: "Preventivo", value: "preventive" },
+                        { label: "Correctivo", value: "corrective" },
+                        { label: "Actualización", value: "upgrade" },
+                        { label: "Tips", value: "tips" },
+                        { label: "General", value: "general" },
+                      ]}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item name="difficulty_level" label="Nivel de Dificultad" rules={[{ required: true }]}>
+                    <Select
+                      placeholder="Seleccione nivel"
+                      options={[
+                        { label: "Principiante", value: "beginner" },
+                        { label: "Intermedio", value: "intermediate" },
+                        { label: "Avanzado", value: "advanced" },
+                      ]}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item
+                    label={
+                      <span>
+                        Tiempo Estimado
+                        <Tooltip title="Tiempo aproximado para realizar el mantenimiento">
+                          <InfoCircleOutlined className="ml-1" />
+                        </Tooltip>
+                      </span>
+                    }
+                  >
+                    <Input.Group compact>
+                      <Form.Item name={["estimated_time", "value"]} noStyle>
+                        <Input type="number" style={{ width: "60%" }} min={1} />
+                      </Form.Item>
+                      <Form.Item name={["estimated_time", "unit"]} noStyle initialValue="minutes">
+                        <Select style={{ width: "40%" }}>
+                          <Select.Option value="minutes">Minutos</Select.Option>
+                          <Select.Option value="hours">Horas</Select.Option>
+                        </Select>
+                      </Form.Item>
+                    </Input.Group>
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Form.List name="parts_required">
+                {(fields, { add, remove }) => (
+                  <>
+                    {fields.map(({ key, name, ...restField }) => (
+                      <Space key={key} style={{ display: "flex", marginBottom: 8 }} align="baseline">
+                        <Form.Item
+                          {...restField}
+                          name={[name, "name"]}
+                          rules={[{ required: true, message: "Nombre requerido" }]}
+                        >
+                          <Input placeholder="Nombre de la pieza" />
+                        </Form.Item>
+                        <Form.Item {...restField} name={[name, "part_number"]}>
+                          <Input placeholder="Número de parte" />
+                        </Form.Item>
+                        <Button onClick={() => remove(name)} type="link" danger>
+                          Eliminar
+                        </Button>
+                      </Space>
+                    ))}
+                    <Button type="dashed" onClick={() => add()} block>
+                      + Agregar Pieza Requerida
+                    </Button>
+                  </>
+                )}
+              </Form.List>
+            </Card>
+          </TabPane>
+
+          <TabPane tab="Multimedia" key="4">
             <Card title="Imágenes">
               <Form.Item label="Usar Grupo de Imágenes" name="useGroupImages">
                 <Switch
@@ -267,7 +438,7 @@ export const ProductEdit = ({ open, onClose, product }: ProductEditProps) => {
             </Card>
           </TabPane>
 
-          <TabPane tab="Descripción" key="3">
+          <TabPane tab="Descripción" key="5">
             <Card title="Contenido" size="small">
               <Form.Item
                 name="short_description"
@@ -287,7 +458,7 @@ export const ProductEdit = ({ open, onClose, product }: ProductEditProps) => {
             </Card>
           </TabPane>
 
-          <TabPane tab="SEO" key="4">
+          <TabPane tab="SEO" key="6">
             <Card title="Optimización para Buscadores" size="small">
               <Form.Item
                 name="seoTitle"
