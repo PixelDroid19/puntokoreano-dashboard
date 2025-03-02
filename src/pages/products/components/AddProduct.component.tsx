@@ -36,6 +36,7 @@ import { NOTIFICATIONS } from "../../../enums/contants.notifications";
 import { ProductCreateInput } from "../../../api/types";
 import { DashboardService } from "../../../services/dashboard.service";
 import FilesService from "../../../services/files.service";
+import ENDPOINTS from "../../../api";
 
 const { TabPane } = Tabs;
 
@@ -89,6 +90,15 @@ const AddProduct = () => {
   const [useGroupImages, setUseGroupImages] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("1");
   const [subgroups, setSubgroups] = React.useState<[]>([]);
+  const [filters, setFilters] = React.useState({
+    brand: "",
+    model: "",
+    family: "",
+    transmission: "",
+    fuel: "",
+    line: "",
+  });
+
 
   // Queries con useQuery
   const { data: groups } = useQuery({
@@ -101,6 +111,14 @@ const AddProduct = () => {
     queryFn: () => FilesService.getGroups(),
   });
 
+  const { data: filterData } = useQuery({
+    queryKey: ["getFilters"],
+    queryFn: async () => {
+      const response = await axios.get(ENDPOINTS.FILTERS.GET_ALL.url);
+      return response.data;
+    },
+  });
+  
   const saveProduct = useMutation({
     mutationFn: (values: ProductCreateInput) => {
       return DashboardService.createProduct({
@@ -188,10 +206,17 @@ const AddProduct = () => {
       videoUrl: values.videoUrl || videoUrl,
       warranty: values.warranty || '',
       warrantyMonths: values.warrantyMonths,
-      brand: values.brand,
+      brand: values.brand || '',
       specifications: values.specifications || [],
       variants: values.variants || [],
       relatedProducts: values.relatedProducts || [],
+      
+      // Vehicle-specific fields
+      model: values.model || '',
+      family: values.family || '',
+      transmission: values.transmission || '',
+      fuel: values.fuel || '',
+      line: values.line || '',
       
       // SEO information
       seo: {
@@ -215,6 +240,27 @@ const AddProduct = () => {
       return false;
     }
     return true;
+  };
+
+  // Funciones para obtener opciones de los filtros
+  const getFamilyOptions = () => {
+    if (!filters.model) return [];
+    return filterData?.data?.families?.[filters.model] || [];
+  };
+
+  const getTransmissionOptions = () => {
+    if (!filters.model || !filters.family) return [];
+    return filterData?.data?.transmissions?.[filters.model]?.[filters.family] || [];
+  };
+
+  const getFuelOptions = () => {
+    if (!filters.model || !filters.family || !filters.transmission) return [];
+    return filterData?.data?.fuels?.[filters.model]?.[filters.family]?.[filters.transmission] || [];
+  };
+
+  const getLineOptions = () => {
+    if (!filters.model || !filters.family || !filters.transmission || !filters.fuel) return [];
+    return filterData?.data?.lines?.[filters.model]?.[filters.family]?.[filters.transmission]?.[filters.fuel] || [];
   };
 
   const handleGroupChange = (value: string) => {
@@ -338,6 +384,75 @@ const AddProduct = () => {
                 </Card>
               </Col>
             </Row>
+          </TabPane>
+
+          <TabPane tab="Información del Vehículo" key="6">
+            <Card title="Detalles del Vehículo">
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item name="model" label="Modelo">
+                    <Select
+                      placeholder="Seleccione el modelo"
+                      onChange={(value) => setFilters(prev => ({ ...prev, model: value }))}
+                      options={Array.from({ length: 2025 - 2003 + 1 }, (_, i) => ({
+                        label: `${2003 + i}`,
+                        value: `${2003 + i}`,
+                      }))}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="family" label="Familia">
+                    <Select
+                      placeholder="Seleccione la familia"
+                      onChange={(value) => setFilters(prev => ({ ...prev, family: value }))}
+                      options={getFamilyOptions()}
+                      disabled={!filters.model}
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item name="transmission" label="Transmisión">
+                    <Select
+                      placeholder="Seleccione la transmisión"
+                      onChange={(value) => setFilters(prev => ({ ...prev, transmission: value }))}
+                      options={getTransmissionOptions()}
+                      disabled={!filters.family}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="fuel" label="Combustible">
+                    <Select
+                      placeholder="Seleccione el combustible"
+                      onChange={(value) => setFilters(prev => ({ ...prev, fuel: value }))}
+                      options={getFuelOptions()}
+                      disabled={!filters.transmission}
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item name="line" label="Línea">
+                    <Select
+                      placeholder="Seleccione la línea"
+                      options={getLineOptions()}
+                      disabled={!filters.fuel}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="brand" label="Marca">
+                    <Input placeholder="Marca del vehículo" />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </Card>
           </TabPane>
 
           <TabPane tab="Multimedia" key="2">
