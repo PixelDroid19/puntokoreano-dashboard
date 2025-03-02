@@ -1,0 +1,185 @@
+/* Estilos generales */
+.highlighted-services-container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  /* Estilos para las tarjetas */
+  .service-card {
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    margin-bottom: 24px;
+    transition: all 0.3s ease;
+    border: 1px solid #f0f0f0;
+    overflow: hidden;
+  }
+  
+  .service-card:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+  }
+  
+  .service-card .ant-card-head {
+    border-bottom: 1px solid #f5f5f5;
+    background-color: #fafafa;
+    padding: 16px 24px;
+  }
+  
+  .service-card .ant-card-head-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1890ff;
+  }
+  
+  .service-card .ant-card-body {
+    padding: 24px;
+  }
+  
+  /* Estadísticas */
+  .stats-section {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 16px;
+  }
+  
+  .stats-section h4 {
+    font-size: 16px;
+    margin-bottom: 16px;
+    color: #333;
+    font-weight: 500;
+  }
+  
+  .stat-card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+  }
+  
+  .stat-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+  
+  /* Upload component */
+  .upload-component .ant-upload-picture-card-wrapper {
+    width: 100%;
+  }
+  
+  .preview-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  
+  .preview-actions {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 0 0 0 8px;
+    display: none;
+  }
+  
+  .preview-container:hover .preview-actions {
+    display: block;
+  }
+  
+  .preview-actions .ant-btn {
+    color: white;
+  }
+  
+  /* Botones estilizados */
+  .add-button {
+    border-radius: 8px;
+    height: 40px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: 1px dashed #1890ff;
+    color: #1890ff;
+    background-color: #f0f7ff;
+  }
+  
+  .add-button:hover {
+    background-color: #e6f7ff;
+    color: #096dd9;
+  }
+  
+  .save-button {
+    border-radius: 8px;
+    height: 44px;
+    font-weight: 500;
+    width: 180px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.045);
+  }
+  
+  .delete-button {
+    border: none;
+    background: transparent;
+    color: #ff4d4f;
+    transition: all 0.2s;
+  }
+  
+  .delete-button:hover {
+    color: #ff7875;
+    background-color: #fff1f0;
+  }
+  
+  /* Campos de formulario */
+  .input-field {
+    border-radius: 6px;
+    transition: all 0.3s;
+  }
+  
+  .input-field:hover {
+    border-color: #40a9ff;
+  }
+  
+  .input-field:focus {
+    border-color: #1890ff;
+    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+  }
+  
+  .switch-field .ant-switch-checked {
+    background-color: #52c41a;
+  }
+  
+  /* Contenedor principal de secciones */
+  .section-container {
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  
+  .section-title {
+    padding: 16px 24px;
+    border-bottom: 1px solid #f0f0f0;
+    background-color: #fafafa;
+  }
+  
+  .section-title h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+  }
+  
+  .section-content {
+    padding: 20px;
+  }
+  
+  /* Animaciones para elementos añadidos */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .animate-in {
+    animation: fadeIn 0.3s ease forwards;
+  }

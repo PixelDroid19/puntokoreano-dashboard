@@ -25,6 +25,8 @@ import "./styles/about-settings.css";
 const AboutSettingsPage = () => {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
+  const [useSharedHeaderImage, setUseSharedHeaderImage] = useState(false);
+  const [sharedHeaderImage, setSharedHeaderImage] = useState<string>();
 
   const {
     data: settings,
@@ -53,7 +55,7 @@ const AboutSettingsPage = () => {
     },
   });
 
-  const uploadMutation = useMutation({
+/*   const uploadMutation = useMutation({
     mutationFn: ({ file, fieldPath }: { file: File; fieldPath: string[] }) =>
       AboutService.uploadImage(file).then((url) => ({ url, fieldPath })),
     onSuccess: ({ url, fieldPath }) => {
@@ -73,7 +75,7 @@ const AboutSettingsPage = () => {
     onError: () => {
       message.error("Error al subir la imagen");
     },
-  });
+  }); */
 
   const handleSubmit = (values: AboutSettings) => {
     const formattedValues = {
@@ -227,15 +229,75 @@ const AboutSettingsPage = () => {
         <Col span={12}>
           <Form.Item
             name={[field.name, "image"]}
-            label="Imagen de Perfil"
             rules={[{ required: true, message: "La imagen es requerida" }]}
           >
-            <UploadComponent fieldPath={[field.name, "image"]} />
+            <UploadComponent 
+              value={field.value} 
+              onChange={(url) => form.setFieldValue([field.name, "image"], url)}
+              label="Imagen de Perfil"
+              required={true}
+            />
           </Form.Item>
         </Col>
         <Col span={12}>
+          <div>
+            <Form.Item label="Usar imagen de encabezado común" className="mb-2">
+              <Switch
+                checked={useSharedHeaderImage}
+                onChange={(checked) => {
+                  setUseSharedHeaderImage(checked);
+                  if (checked && sharedHeaderImage) {
+                    form.setFieldValue([field.name, "headerImage"], sharedHeaderImage);
+                  }
+                }}
+              />
+            </Form.Item>
+            {useSharedHeaderImage ? (
+              field.name === 0 && (
+                <Form.Item
+                  label="Imagen de Encabezado Común"
+                  rules={[{ required: true, message: "La imagen de encabezado es requerida" }]}
+                >
+                  <UploadComponent
+                    value={sharedHeaderImage}
+                    onChange={(url) => {
+                      setSharedHeaderImage(url);
+                      // Update all consultants with the new shared image
+                      const consultants = form.getFieldValue("consultants") || [];
+                      consultants.forEach((_, index) => {
+                        form.setFieldValue(["consultants", index, "headerImage"], url);
+                      });
+                    }}
+                    label="Imagen de Encabezado"
+                    required={true}
+                  />
+                </Form.Item>
+              )
+            ) : (
+              <Form.Item
+                name={[field.name, "headerImage"]}
+                rules={[{ required: true, message: "La imagen de encabezado es requerida" }]}
+              >
+                <UploadComponent
+                  value={form.getFieldValue([field.name, "headerImage"])}
+                  onChange={(url) => form.setFieldValue([field.name, "headerImage"], url)}
+                  label="Imagen de Encabezado"
+                  required={true}
+                />
+              </Form.Item>
+            )}
+          </div>
+        </Col>
+      </Row>
+
+      <Row gutter={16}>
+        <Col span={24}>
           <Form.Item name={[field.name, "qrCode"]} label="Código QR">
-            <UploadComponent fieldPath={[field.name, "qrCode"]} />
+            <UploadComponent 
+              value={form.getFieldValue([field.name, "qrCode"])} 
+              onChange={(url) => form.setFieldValue([field.name, "qrCode"], url)}
+              label="Código QR"
+            />
           </Form.Item>
         </Col>
       </Row>

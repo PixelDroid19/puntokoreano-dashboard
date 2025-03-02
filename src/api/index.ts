@@ -111,6 +111,34 @@ const ENDPOINTS: Endpoints = {
         url: `${BASE_URL}/dashboard/settings`,
         method: "GET",
       },
+      SEO: {
+        UPDATE: {
+          url: `${BASE_URL}/dashboard/settings/seo`,
+          method: "PATCH",
+        },
+      },
+      HIGHLIGHTED_SERVICES: {
+        GET_ALL: {
+          url: `${BASE_URL}/dashboard/highlighted-services`,
+          method: "GET",
+        },
+        CREATE: {
+          url: `${BASE_URL}/dashboard/highlighted-services`,
+          method: "POST",
+        },
+        UPDATE: {
+          url: `${BASE_URL}/dashboard/highlighted-services/:identifier`,
+          method: "PUT",
+        },
+        DELETE: {
+          url: `${BASE_URL}/dashboard/highlighted-services/:identifier`,
+          method: "DELETE",
+        },
+        UPLOAD: {
+          url: `${BASE_URL}/dashboard/upload`,
+          method: "POST",
+        },
+      },
       ABOUT: {
         GET: {
           url: `${BASE_URL}/dashboard/settings/about`,

@@ -112,6 +112,16 @@ export interface Endpoints {
     };
     SETTINGS: {
       GET: ApiEndpoint;
+      SEO: {
+        UPDATE: ApiEndpoint;
+      },
+      HIGHLIGHTED_SERVICES: {
+        GET_ALL: ApiEndpoint;
+        CREATE: ApiEndpoint;
+        DELETE: ApiEndpoint;
+        UPDATE: ApiEndpoint;
+        UPLOAD: ApiEndpoint;
+      };
       ABOUT: {
         GET: ApiEndpoint;
         UPDATE: ApiEndpoint;

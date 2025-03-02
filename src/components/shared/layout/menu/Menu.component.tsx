@@ -100,6 +100,11 @@ const menuItems = [
         label: <Link to="/settings-about">Sobre nosotros</Link>,
         title: "Configuración Sobre nosotros",
       },
+      {
+        key: "/highlighted-services",
+        label: <Link to="/highlighted-services">Servicios Destacados</Link>,
+        title: "Configuración de Servicios Destacados",
+      },
     ],
   },
 ];

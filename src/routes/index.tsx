@@ -29,6 +29,7 @@ import BillingSettingsPage from "../pages/settings/BillingSettings";
 import AboutSettingsPage from "../pages/settings/AboutSettings";
 import CategoriesManagement from "../pages/categoriesManagement/CategoriesManagement";
 import DevelopmentView from "../components/DevelopmentView/DevelopmentView";
+import HighlightedServicesSettings from "../pages/settings/HighlightedServicesSettings";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -144,6 +145,11 @@ const router = createBrowserRouter(
         <Route
           path="/settings-about"
           element={<AboutSettingsPage />}
+          errorElement={<RouteError />}
+        />
+         <Route
+          path="/highlighted-services"
+          element={<HighlightedServicesSettings />}
           errorElement={<RouteError />}
         />
       </Route>
