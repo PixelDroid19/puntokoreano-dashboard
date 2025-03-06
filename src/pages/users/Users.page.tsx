@@ -160,6 +160,40 @@ const Users = () => {
     },
   });
 
+  // Session management mutations
+  const refreshToken = useMutation({
+    mutationFn: (userId: string) => UsersService.refreshToken(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["usersManagerPage"] });
+      toast.success("Token renovado correctamente");
+    },
+    onError: () => {
+      toast.error("Error al renovar el token");
+    },
+  });
+
+  const invalidateSessions = useMutation({
+    mutationFn: (userId: string) => UsersService.invalidateSessions(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["usersManagerPage"] });
+      toast.success("Sesiones invalidadas correctamente");
+    },
+    onError: () => {
+      toast.error("Error al invalidar las sesiones");
+    },
+  });
+
+  const logoutUser = useMutation({
+    mutationFn: (userId: string) => UsersService.logoutUser(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["usersManagerPage"] });
+      toast.success("Usuario desconectado correctamente");
+    },
+    onError: () => {
+      toast.error("Error al desconectar al usuario");
+    },
+  });
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-4">
@@ -216,6 +250,9 @@ const Users = () => {
               toast.error("Error al desbloquear el usuario");
             })
         }
+        onRefreshToken={(userId) => refreshToken.mutate(userId)}
+        onInvalidateSessions={(userId) => invalidateSessions.mutate(userId)}
+        onLogout={(userId) => logoutUser.mutate(userId)}
         isToggleStatusLoading={toggleStatus.isPending}
         isToggleModeLoading={toggleMode.isPending}
         pagination={{

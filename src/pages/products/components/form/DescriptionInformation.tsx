@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Card, Col, Form, Input, Row, Space } from 'antd';
+import { Button, Card, Col, Form, Input, Row, Space, InputNumber } from 'antd';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
@@ -36,6 +36,14 @@ const DescriptionInformation: React.FC<DescriptionInformationProps> = ({
               formats={quillFormats}
               style={{ height: "300px" }}
             />
+          </Form.Item>
+
+          <Form.Item name="warranty" label="Garantía">
+            <Input placeholder="Ej: 1 año de garantía" />
+          </Form.Item>
+
+          <Form.Item name="warrantyMonths" label="Meses de Garantía">
+            <InputNumber min={0} placeholder="Ej: 12" />
           </Form.Item>
         </Card>
 
@@ -81,6 +89,70 @@ const DescriptionInformation: React.FC<DescriptionInformationProps> = ({
                 ))}
                 <Button type="dashed" onClick={() => add()} block>
                   Agregar Especificación
+                </Button>
+              </>
+            )}
+          </Form.List>
+        </Card>
+
+        <Card title="Variantes del Producto" className="mt-4">
+          <Form.List name="variants">
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Space
+                    key={key}
+                    style={{ display: "flex", marginBottom: 8 }}
+                    align="baseline"
+                  >
+                    <Form.Item
+                      {...restField}
+                      name={[name, "name"]}
+                      rules={[
+                        {
+                          required: true,
+                          message: "Ingrese el nombre de la variante",
+                        },
+                      ]}
+                    >
+                      <Input placeholder="Nombre de la variante" />
+                    </Form.Item>
+                    <Form.Item
+                      {...restField}
+                      name={[name, "value"]}
+                      rules={[
+                        { required: true, message: "Ingrese el valor" },
+                      ]}
+                    >
+                      <Input placeholder="Valor" />
+                    </Form.Item>
+                    <Form.Item
+                      {...restField}
+                      name={[name, "price"]}
+                      rules={[
+                        { required: true, message: "Ingrese el precio" },
+                      ]}
+                    >
+                      <InputNumber
+                        placeholder="Precio"
+                        min={0}
+                        formatter={(value) =>
+                          `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                        }
+                        parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
+                      />
+                    </Form.Item>
+                    <Button
+                      onClick={() => remove(name)}
+                      type="text"
+                      danger
+                    >
+                      Eliminar
+                    </Button>
+                  </Space>
+                ))}
+                <Button type="dashed" onClick={() => add()} block>
+                  Agregar Variante
                 </Button>
               </>
             )}

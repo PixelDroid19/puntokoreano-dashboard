@@ -189,9 +189,9 @@ export const ProductEdit = ({ open, onClose, product }: ProductEditProps) => {
                   <Form.Item
                     name="code"
                     label="SKU/Código"
-                    rules={[{ required: true }]}
+                    rules={[{ required: true, message: "El SKU/Código es requerido" }, { pattern: /^[0-9]+$/, message: "El SKU/Código debe ser numérico" }]}
                   >
-                    <Input />
+                    <InputNumber className="w-full" min={0} />
                   </Form.Item>
 
                   <Form.Item

@@ -120,7 +120,6 @@ export interface Endpoints {
         CREATE: ApiEndpoint;
         DELETE: ApiEndpoint;
         UPDATE: ApiEndpoint;
-        UPLOAD: ApiEndpoint;
       };
       ABOUT: {
         GET: ApiEndpoint;
@@ -185,12 +184,18 @@ export interface Endpoints {
       GET_PRODUCT_ANALYTICS: ApiEndpoint;
       GET_PERFORMANCE: ApiEndpoint;
       USERS: {
+        BASE:{
+          VALIDATE_EMAIL: ApiEndpoint;
+          VALIDATE_DOCUMENT: ApiEndpoint;
+        }
         ADMIN: {
           GET_ALL: ApiEndpoint;
           CREATE: ApiEndpoint;
           UPDATE: ApiEndpoint;
           DELETE: ApiEndpoint;
           UPDATE_PERMISSIONS: ApiEndpoint;
+          REFRESH_TOKEN: ApiEndpoint;
+          INVALIDATE_SESSIONS: ApiEndpoint;
         };
         CUSTOMERS: {
           GET_ALL: ApiEndpoint;
@@ -200,6 +205,14 @@ export interface Endpoints {
           BLOCK: ApiEndpoint;
           UNBLOCK: ApiEndpoint;
           DELETE: ApiEndpoint;
+          GET_STATS: ApiEndpoint;
+          GET_DETAILED_STATS: ApiEndpoint;
+          GET_ACTIVITY_LOG: ApiEndpoint;
+          GET_MODE: ApiEndpoint;
+          TOGGLE_MODE: ApiEndpoint;
+          REFRESH_TOKEN: ApiEndpoint;
+          INVALIDATE_SESSIONS: ApiEndpoint;
+          LOGOUT: ApiEndpoint;
         };
       };
     };

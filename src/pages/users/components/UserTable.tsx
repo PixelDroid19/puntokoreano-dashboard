@@ -15,6 +15,9 @@ interface UserTableProps {
   onBlock: (id: string, reason: string) => void;
   onUnblock: (id: string) => void;
   onDelete: (id: string) => void;
+  onRefreshToken?: (id: string) => void;
+  onInvalidateSessions?: (id: string) => void;
+  onLogout?: (id: string) => void;
   isToggleStatusLoading: boolean;
   isToggleModeLoading: boolean;
 }
@@ -29,6 +32,9 @@ const UserTable: React.FC<UserTableProps> = ({
   onBlock,
   onUnblock,
   onDelete,
+  onRefreshToken,
+  onInvalidateSessions,
+  onLogout,
   isToggleStatusLoading,
   isToggleModeLoading,
 }) => {
@@ -94,6 +100,9 @@ const UserTable: React.FC<UserTableProps> = ({
             onBlock={onBlock}
             onUnblock={onUnblock}
             onDelete={onDelete}
+            onRefreshToken={onRefreshToken}
+            onInvalidateSessions={onInvalidateSessions}
+            onLogout={onLogout}
           />
           <Tooltip title="Ver detalles">
             <Button

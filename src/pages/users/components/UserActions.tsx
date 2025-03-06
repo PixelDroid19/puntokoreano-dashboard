@@ -1,6 +1,6 @@
 import React from 'react';
 import { Space, Button, Tooltip, Modal, Form, Input } from 'antd';
-import { EditOutlined, LockOutlined, UnlockOutlined, DeleteOutlined } from '@ant-design/icons';
+import { EditOutlined, LockOutlined, UnlockOutlined, DeleteOutlined, ReloadOutlined, LogoutOutlined, StopOutlined } from '@ant-design/icons';
 import { User } from '../../../types/users.types';
 
 const { TextArea } = Input;
@@ -11,6 +11,9 @@ interface UserActionsProps {
   onBlock: (id: string, reason: string) => void;
   onUnblock: (id: string) => void;
   onDelete: (id: string) => void;
+  onRefreshToken?: (id: string) => void;
+  onInvalidateSessions?: (id: string) => void;
+  onLogout?: (id: string) => void;
 }
 
 const UserActions: React.FC<UserActionsProps> = ({
@@ -19,6 +22,7 @@ const UserActions: React.FC<UserActionsProps> = ({
   onBlock,
   onUnblock,
   onDelete,
+  onLogout,
 }) => {
   return (
     <Space>
@@ -54,6 +58,23 @@ const UserActions: React.FC<UserActionsProps> = ({
           }}
         />
       </Tooltip>
+   {/*    {onLogout && (
+        <Tooltip title="Cerrar sesión">
+          <Button
+            icon={<LogoutOutlined />}
+            onClick={() => {
+              Modal.confirm({
+                title: "Cerrar sesión de usuario",
+                content: "¿Estás seguro de cerrar la sesión de este usuario?",
+                okText: "Sí, cerrar sesión",
+                okType: "danger",
+                cancelText: "Cancelar",
+                onOk: () => onLogout(user._id),
+              });
+            }}
+          />
+        </Tooltip>
+      )} */}
       <Tooltip title="Eliminar">
         <Button
           danger

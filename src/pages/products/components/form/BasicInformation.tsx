@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Col, Form, Input, InputNumber, Row, Select } from 'antd';
+import { Card, Col, Form, Input, InputNumber, Row, Select, Switch, DatePicker } from 'antd';
 
 interface BasicInformationProps {
   form: any;
@@ -28,8 +28,23 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
 
           <Form.Item
             name="price"
-            label="Precio"
+            label="Precio Actual"
             rules={[{ required: true, type: "number" }]}
+          >
+            <InputNumber
+              className="w-full"
+              min={0}
+              formatter={(value) =>
+                `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+              }
+              parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="old_price"
+            label="Precio Original"
+            rules={[{ type: "number" }]}
           >
             <InputNumber
               className="w-full"
@@ -55,6 +70,41 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
             rules={[{ required: true, type: "number" }]}
           >
             <InputNumber className="w-full" min={0} />
+          </Form.Item>
+
+          <Form.Item name="active" label="Activo" valuePropName="checked">
+            <Switch />
+          </Form.Item>
+        </Card>
+
+        <Card title="Información de Descuento" className="mb-4">
+          <Form.Item name={["discount", "isActive"]} label="Descuento Activo" valuePropName="checked">
+            <Switch />
+          </Form.Item>
+
+          <Form.Item name={["discount", "type"]} label="Tipo de Descuento">
+            <Select>
+              <Select.Option value="permanent">Permanente</Select.Option>
+              <Select.Option value="temporary">Temporal</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item name={["discount", "percentage"]} label="Porcentaje de Descuento">
+            <InputNumber
+              className="w-full"
+              min={0}
+              max={100}
+              formatter={(value) => `${value}%`}
+              parser={(value) => value!.replace('%', '')}
+            />
+          </Form.Item>
+
+          <Form.Item name={["discount", "startDate"]} label="Fecha de Inicio">
+            <DatePicker />
+          </Form.Item>
+
+          <Form.Item name={["discount", "endDate"]} label="Fecha de Fin">
+            <DatePicker />
           </Form.Item>
         </Card>
       </Col>
@@ -100,9 +150,9 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
               mode="multiple"
               placeholder="Seleccione los métodos de envío"
               options={[
-                { label: "Envío exprés", value: "express" },
-                { label: "Envío estándar", value: "standard" },
-                { label: "Recoger en tienda", value: "pickup" },
+                { label: "Envío Estándar", value: "standard" },
+                { label: "Envío Express", value: "express" },
+                { label: "Recogida en Tienda", value: "pickup" },
               ]}
             />
           </Form.Item>

@@ -34,18 +34,17 @@ const { Title, Text } = Typography;
 
 interface HighlightedServiceStat {
   value: string | number;
-  label: string;
-  icon_name: string;
+  icon: string;
 }
 
 interface HighlightedService {
   title: string;
   description: string;
   image: string;
-  stats: HighlightedServiceStat[];
-  active: boolean;
-  order: number;
-  identifier: string;
+  stats?: HighlightedServiceStat[];
+  active?: boolean;
+  order?: number;
+  identifier?: string;
 }
 
 interface Achievement {
@@ -55,11 +54,7 @@ interface Achievement {
   color: string;
   active: boolean;
   order: number;
-}
-
-interface Settings {
-  highlighted_services: HighlightedService[];
-  achievements: Achievement[];
+  id?: string;
 }
 
 const HighlightedServicesSettings = () => {
@@ -68,38 +63,132 @@ const HighlightedServicesSettings = () => {
   const queryClient = useQueryClient();
 
   const {
-    data: settings,
-    isSuccess,
-    isFetching,
+    data: servicesData,
+    isSuccess: servicesSuccess,
+    isFetching: servicesFetching,
   } = useQuery({
-    queryKey: ["highlighted-services-settings"],
-    queryFn: () => ConfigService.getHighlightedServices().then((res) => res.data),
+    queryKey: ["highlighted-services"],
+    queryFn: () => ConfigService.getHighlightedServices(),
+  });
+
+  const {
+    data: achievementsData,
+    isSuccess: achievementsSuccess,
+    isFetching: achievementsFetching,
+  } = useQuery({
+    queryKey: ["achievements"],
+    queryFn: () => ConfigService.getAchievements(),
   });
 
   useEffect(() => {
-    if (isSuccess && !isFetching && settings) {
-      setServices(settings.highlighted_services || []);
-      setAchievements(settings.achievements || []);
+    if (servicesSuccess && !servicesFetching && servicesData) {
+      setServices(servicesData.data || []);
     }
-  }, [isSuccess, isFetching, settings]);
+  }, [servicesSuccess, servicesFetching, servicesData]);
 
-  const updateMutation = useMutation({
-    mutationFn: (data: Settings) =>
-      ConfigService.updateHighlightedServices(data as any).then((res) => res.data),
+  useEffect(() => {
+    if (achievementsSuccess && !achievementsFetching && achievementsData) {
+      setAchievements(achievementsData.data || []);
+    }
+  }, [achievementsSuccess, achievementsFetching, achievementsData]);
+
+  const createServiceMutation = useMutation({
+    mutationFn: (service: HighlightedService) => ConfigService.createHighlightedService(service),
     onSuccess: () => {
-      message.success("Configuración actualizada exitosamente");
-      queryClient.invalidateQueries({ queryKey: ["highlighted-services-settings"] });
+      message.success("Servicio creado exitosamente");
+      queryClient.invalidateQueries({ queryKey: ["highlighted-services"] });
     },
     onError: (error) => {
-      console.error("Error updating settings:", error);
-      message.error("Error al actualizar la configuración");
+      console.error("Error creating service:", error);
+      message.error("Error al crear el servicio");
+    },
+  });
+
+  const updateServiceMutation = useMutation({
+    mutationFn: ({ identifier, service }: { identifier: string; service: Partial<HighlightedService> }) =>
+      ConfigService.updateHighlightedService(identifier, service),
+    onSuccess: () => {
+      message.success("Servicio actualizado exitosamente");
+      queryClient.invalidateQueries({ queryKey: ["highlighted-services"] });
+    },
+    onError: (error) => {
+      console.error("Error updating service:", error);
+      message.error("Error al actualizar el servicio");
+    },
+  });
+
+  const deleteServiceMutation = useMutation({
+    mutationFn: (identifier: string) => ConfigService.deleteHighlightedService(identifier),
+    onSuccess: () => {
+      message.success("Servicio eliminado exitosamente");
+      queryClient.invalidateQueries({ queryKey: ["highlighted-services"] });
+    },
+    onError: (error) => {
+      console.error("Error deleting service:", error);
+      message.error("Error al eliminar el servicio");
+    },
+  });
+
+  const createAchievementMutation = useMutation({
+    mutationFn: (achievement: Achievement) => ConfigService.createAchievement(achievement),
+    onSuccess: () => {
+      message.success("Logro creado exitosamente");
+      queryClient.invalidateQueries({ queryKey: ["achievements"] });
+    },
+    onError: (error) => {
+      console.error("Error creating achievement:", error);
+      message.error("Error al crear el logro");
+    },
+  });
+
+  const updateAchievementMutation = useMutation({
+    mutationFn: ({ id, achievement }: { id: string; achievement: Partial<Achievement> }) =>
+      ConfigService.updateAchievement(id, achievement),
+    onSuccess: () => {
+      message.success("Logro actualizado exitosamente");
+      queryClient.invalidateQueries({ queryKey: ["achievements"] });
+    },
+    onError: (error) => {
+      console.error("Error updating achievement:", error);
+      message.error("Error al actualizar el logro");
+    },
+  });
+
+  const deleteAchievementMutation = useMutation({
+    mutationFn: (id: string) => ConfigService.deleteAchievement(id),
+    onSuccess: () => {
+      message.success("Logro eliminado exitosamente");
+      queryClient.invalidateQueries({ queryKey: ["achievements"] });
+    },
+    onError: (error) => {
+      console.error("Error deleting achievement:", error);
+      message.error("Error al eliminar el logro");
     },
   });
 
   const handleSubmit = () => {
-    updateMutation.mutate({
-      highlighted_services: services,
-      achievements: achievements,
+    // Update services
+    services.forEach((service) => {
+      if (service.identifier) {
+        updateServiceMutation.mutate({
+          identifier: service.identifier,
+          service,
+        });
+      } else {
+        createServiceMutation.mutate(service);
+      }
+    });
+
+    // Update achievements
+    achievements.forEach((achievement) => {
+      if (achievement.id) {
+        updateAchievementMutation.mutate({
+          id: achievement.id,
+          achievement,
+        });
+      } else {
+        createAchievementMutation.mutate(achievement);
+      }
     });
   };
 
@@ -128,9 +217,14 @@ const HighlightedServicesSettings = () => {
       okType: "danger",
       cancelText: "Cancelar",
       onOk: () => {
-        const newAchievements = [...achievements];
-        newAchievements.splice(index, 1);
-        setAchievements(newAchievements);
+        const achievement = achievements[index];
+        if (achievement.id) {
+          deleteAchievementMutation.mutate(achievement.id);
+        } else {
+          const newAchievements = [...achievements];
+          newAchievements.splice(index, 1);
+          setAchievements(newAchievements);
+        }
       },
     });
   };
@@ -155,9 +249,14 @@ const HighlightedServicesSettings = () => {
       okType: "danger",
       cancelText: "Cancelar",
       onOk: () => {
-        const newServices = [...services];
-        newServices.splice(index, 1);
-        setServices(newServices);
+        const service = services[index];
+        if (service.identifier) {
+          deleteServiceMutation.mutate(service.identifier);
+        } else {
+          const newServices = [...services];
+          newServices.splice(index, 1);
+          setServices(newServices);
+        }
       },
     });
   };
@@ -165,8 +264,8 @@ const HighlightedServicesSettings = () => {
   const handleAddStat = (serviceIndex: number) => {
     const newServices = [...services];
     newServices[serviceIndex].stats = [
-      ...newServices[serviceIndex].stats,
-      { value: "", label: "", icon_name: "" },
+      ...(newServices[serviceIndex].stats || []),
+      { value: "", icon: "" },
     ];
     setServices(newServices);
   };
@@ -185,6 +284,7 @@ const HighlightedServicesSettings = () => {
 
   const handleStatChange = (serviceIndex: number, statIndex: number, field: keyof HighlightedServiceStat, value: any) => {
     const newServices = [...services];
+    newServices[serviceIndex].stats = newServices[serviceIndex].stats || [];
     newServices[serviceIndex].stats[statIndex] = {
       ...newServices[serviceIndex].stats[statIndex],
       [field]: value,
@@ -208,12 +308,33 @@ const HighlightedServicesSettings = () => {
 
     const handleUpload = async (file: RcFile) => {
       try {
+        const isValidFileType = ["image/jpeg", "image/png", "image/gif"].includes(
+          file.type
+        );
+        const isValidFileSize = file.size / 1024 / 1024 < 2;
+
+        if (!isValidFileType) {
+          message.error("Por favor, sube un archivo de imagen (JPG, PNG, GIF)");
+          return Upload.LIST_IGNORE;
+        }
+
+        if (!isValidFileSize) {
+          message.error("La imagen debe ser menor a 2MB");
+          return Upload.LIST_IGNORE;
+        }
+
         setLoading(true);
         const url = await ConfigService.uploadImage(file);
+
+        if (!url) {
+          throw new Error("No se recibió URL del servicio de carga");
+        }
+
         setPreviewUrl(url);
         onChange?.(url);
         return false;
       } catch (error) {
+        console.error("Error de carga:", error);
         message.error("Error al subir la imagen");
         return Upload.LIST_IGNORE;
       } finally {
@@ -355,7 +476,7 @@ const HighlightedServicesSettings = () => {
               <Row gutter={24}>
                 <Col span={10}>
                   <Form.Item
-                    label="Imagen"
+                  
                     required
                     validateStatus={!service.image ? "error" : ""}
                     help={!service.image ? "La imagen es requerida" : ""}
@@ -398,40 +519,34 @@ const HighlightedServicesSettings = () => {
                         <Row gutter={16}>
                           <Col span={8}>
                             <Form.Item
+                              label="Valor"
+                              required
                               validateStatus={!stat.value ? "error" : ""}
-                              help={!stat.value ? "Valor requerido" : ""}
+                              help={!stat.value ? "El valor es requerido" : ""}
                             >
                               <Input
-                                className="input-field"
-                                placeholder="Valor (ej: 100+)"
                                 value={stat.value}
                                 onChange={(e) => handleStatChange(serviceIndex, statIndex, "value", e.target.value)}
+                                placeholder="Ej: 100+"
                               />
                             </Form.Item>
                           </Col>
-                          <Col span={8}>
+                          <Col span={16}>
                             <Form.Item
-                              validateStatus={!stat.label ? "error" : ""}
-                              help={!stat.label ? "Etiqueta requerida" : ""}
+                              label="Icono"
+                              required
+                              validateStatus={!stat.icon ? "error" : ""}
+                              help={!stat.icon ? "El icono es requerido" : ""}
                             >
                               <Input
-                                className="input-field"
-                                placeholder="Etiqueta"
-                                value={stat.label}
-                                onChange={(e) => handleStatChange(serviceIndex, statIndex, "label", e.target.value)}
-                              />
-                            </Form.Item>
-                          </Col>
-                          <Col span={8}>
-                            <Form.Item
-                              validateStatus={!stat.icon_name ? "error" : ""}
-                              help={!stat.icon_name ? "Ícono requerido" : ""}
-                            >
-                              <Input
-                                className="input-field"
-                                placeholder="Nombre del ícono"
-                                value={stat.icon_name}
-                                onChange={(e) => handleStatChange(serviceIndex, statIndex, "icon_name", e.target.value)}
+                                value={stat.icon}
+                                onChange={(e) => handleStatChange(serviceIndex, statIndex, "icon", e.target.value)}
+                                placeholder="Nombre del icono"
+                                suffix={
+                                  <Tooltip title="Nombre del icono de Ant Design o Font Awesome">
+                                    <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                                  </Tooltip>
+                                }
                               />
                             </Form.Item>
                           </Col>
@@ -636,7 +751,7 @@ const HighlightedServicesSettings = () => {
         <Button
           type="primary"
           onClick={handleSubmit}
-          loading={updateMutation.isPending}
+          loading={updateServiceMutation.isPending || updateAchievementMutation.isPending || createServiceMutation.isPending || createAchievementMutation.isPending}
           icon={<SaveOutlined />}
           size="large"
           className="save-button"

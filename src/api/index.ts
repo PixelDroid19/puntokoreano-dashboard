@@ -133,11 +133,7 @@ const ENDPOINTS: Endpoints = {
         DELETE: {
           url: `${BASE_URL}/dashboard/highlighted-services/:identifier`,
           method: "DELETE",
-        },
-        UPLOAD: {
-          url: `${BASE_URL}/dashboard/upload`,
-          method: "POST",
-        },
+        }
       },
       ABOUT: {
         GET: {
@@ -340,6 +336,16 @@ const ENDPOINTS: Endpoints = {
         method: "GET",
       },
       USERS: {
+        BASE: {
+          VALIDATE_EMAIL: {
+            url: `${BASE_URL}/dashboard/users/validate-email`,
+            method: "POST",
+          },
+          VALIDATE_DOCUMENT: {
+            url: `${BASE_URL}/dashboard/users/validate-document`,
+            method: "POST",
+          },
+        },
         ADMIN: {
           GET_ALL: {
             url: `${BASE_URL}/dashboard/users/admin`,
@@ -361,6 +367,14 @@ const ENDPOINTS: Endpoints = {
             url: `${BASE_URL}/dashboard/users/admin/:id/permissions`,
             method: "PATCH",
           },
+          REFRESH_TOKEN: {
+            url: `${BASE_URL}/dashboard/users/admin/:id/refresh-token`,
+            method: "POST",
+          },
+          INVALIDATE_SESSIONS: {
+            url: `${BASE_URL}/dashboard/users/admin/:id/invalidate-sessions`,
+            method: "POST",
+          },
         },
         CUSTOMERS: {
           GET_ALL: {
@@ -379,6 +393,22 @@ const ENDPOINTS: Endpoints = {
             url: `${BASE_URL}/dashboard/users/customers/:id/reviews`,
             method: "GET",
           },
+          GET_STATS: {
+            url: `${BASE_URL}/dashboard/users/customers/:id/stats`,
+            method: "GET",
+          },
+          GET_DETAILED_STATS: {
+            url: `${BASE_URL}/dashboard/users/customers/:id/detailed-stats`,
+            method: "GET",
+          },
+          GET_ACTIVITY_LOG: {
+            url: `${BASE_URL}/dashboard/users/customers/:id/activity-log`,
+            method: "GET",
+          },
+          GET_MODE: {
+            url: `${BASE_URL}/dashboard/users/customers/:id/mode`,
+            method: "GET",
+          },
           BLOCK: {
             url: `${BASE_URL}/dashboard/users/customers/:id/block`,
             method: "POST",
@@ -390,6 +420,22 @@ const ENDPOINTS: Endpoints = {
           DELETE: {
             url: `${BASE_URL}/dashboard/users/customers/:id`,
             method: "DELETE",
+          },
+          TOGGLE_MODE: {
+            url: `${BASE_URL}/dashboard/users/customers/:id/toggle`,
+            method: "POST",
+          },
+          REFRESH_TOKEN: {
+            url: `${BASE_URL}/dashboard/users/customers/:id/refresh-token`,
+            method: "POST",
+          },
+          INVALIDATE_SESSIONS: {
+            url: `${BASE_URL}/dashboard/users/customers/:id/invalidate-sessions`,
+            method: "POST",
+          },
+          LOGOUT: {
+            url: `${BASE_URL}/dashboard/users/customers/:id/logout`,
+            method: "POST",
           },
         },
       },
