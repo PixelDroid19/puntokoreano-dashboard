@@ -12,7 +12,13 @@ import { ConfigProvider } from "antd";
 import { useMediaQuery } from "react-responsive";
 import "./index.css";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function App() {
   const isTabletOrMobile = useMediaQuery({ query: "(max-width: 1023px)" });
