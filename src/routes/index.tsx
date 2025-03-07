@@ -16,7 +16,7 @@ import Filters from "../pages/filters/filters.page";
 import AddFilters from "../pages/filters/components/AddFilters.component";
 import Users from "../pages/users/Users.page";
 import Orders from "../pages/orders/Orders.page";
-import Blog from "../pages/blog/Blog.page";
+//import Blog from "../pages/blog/Blog.page";
 import Reviews from "../pages/Reviews/Reviews.page";
 import ShippingSettings from "../pages/shipping/ShippingSettings.page";
 
@@ -24,7 +24,7 @@ import ShippingSettings from "../pages/shipping/ShippingSettings.page";
 import ProtectedRoutes from "../utils/ProtectedRoutes";
 import PublicRoutes from "../utils/PublicRoutes";
 import RouteError from "./RouteError";
-import BrandManagement from "../pages/brands/BrandManagement";
+//import BrandManagement from "../pages/brands/BrandManagement";
 import BillingSettingsPage from "../pages/settings/BillingSettings";
 import AboutSettingsPage from "../pages/settings/AboutSettings";
 import CategoriesManagement from "../pages/categoriesManagement/CategoriesManagement";
