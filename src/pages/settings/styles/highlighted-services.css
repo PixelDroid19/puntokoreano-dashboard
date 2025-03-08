@@ -1,185 +1,231 @@
 /* Estilos generales */
 .highlighted-services-container {
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-  
-  /* Estilos para las tarjetas */
-  .service-card {
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    margin-bottom: 24px;
-    transition: all 0.3s ease;
-    border: 1px solid #f0f0f0;
-    overflow: hidden;
-  }
-  
-  .service-card:hover {
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-    transform: translateY(-4px);
-  }
-  
-  .service-card .ant-card-head {
-    border-bottom: 1px solid #f5f5f5;
-    background-color: #fafafa;
-    padding: 16px 24px;
-  }
-  
-  .service-card .ant-card-head-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: #1890ff;
-  }
-  
-  .service-card .ant-card-body {
-    padding: 24px;
-  }
-  
-  /* Estadísticas */
-  .stats-section {
-    background-color: #f9f9f9;
-    border-radius: 8px;
+  max-width: auto;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.section-container {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 32px;
+}
+
+.section-title {
+  margin-bottom: 24px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #262626;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .highlighted-services-container {
     padding: 16px;
-    margin-top: 16px;
   }
-  
-  .stats-section h4 {
-    font-size: 16px;
-    margin-bottom: 16px;
-    color: #333;
-    font-weight: 500;
-  }
-  
-  .stat-card {
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-    margin-bottom: 12px;
-    transition: all 0.2s ease;
-  }
-  
-  .stat-card:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  }
-  
-  /* Upload component */
-  .upload-component .ant-upload-picture-card-wrapper {
-    width: 100%;
-  }
-  
-  .preview-container {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  
-  .preview-actions {
-    position: absolute;
-    top: 0;
-    right: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    border-radius: 0 0 0 8px;
-    display: none;
-  }
-  
-  .preview-container:hover .preview-actions {
-    display: block;
-  }
-  
-  .preview-actions .ant-btn {
-    color: white;
-  }
-  
-  /* Botones estilizados */
-  .add-button {
-    border-radius: 8px;
-    height: 40px;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    border: 1px dashed #1890ff;
-    color: #1890ff;
-    background-color: #f0f7ff;
-  }
-  
-  .add-button:hover {
-    background-color: #e6f7ff;
-    color: #096dd9;
-  }
-  
-  .save-button {
-    border-radius: 8px;
-    height: 44px;
-    font-weight: 500;
-    width: 180px;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.045);
-  }
-  
-  .delete-button {
-    border: none;
-    background: transparent;
-    color: #ff4d4f;
-    transition: all 0.2s;
-  }
-  
-  .delete-button:hover {
-    color: #ff7875;
-    background-color: #fff1f0;
-  }
-  
-  /* Campos de formulario */
-  .input-field {
-    border-radius: 6px;
-    transition: all 0.3s;
-  }
-  
-  .input-field:hover {
-    border-color: #40a9ff;
-  }
-  
-  .input-field:focus {
-    border-color: #1890ff;
-    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-  }
-  
-  .switch-field .ant-switch-checked {
-    background-color: #52c41a;
-  }
-  
-  /* Contenedor principal de secciones */
-  .section-container {
-    background-color: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    margin-bottom: 24px;
-    overflow: hidden;
-  }
-  
-  .section-title {
-    padding: 16px 24px;
-    border-bottom: 1px solid #f0f0f0;
-    background-color: #fafafa;
-  }
-  
-  .section-title h2 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-    color: #333;
-  }
-  
+
   .section-content {
-    padding: 20px;
+    grid-template-columns: 1fr;
   }
-  
-  /* Animaciones para elementos añadidos */
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+
+  .section-title {
+    font-size: 1.25rem;
   }
-  
-  .animate-in {
-    animation: fadeIn 0.3s ease forwards;
+}
+
+/* Estilos para las tarjetas */
+
+/* Estadísticas */
+.stats-section {
+  background-color: #f9f9f9;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 20px;
+  border: 1px solid #f0f0f0;
+}
+
+.stats-section h4 {
+  font-size: 17px;
+  margin-bottom: 20px;
+  color: #262626;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.stat-card {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  margin-bottom: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid #f0f0f0;
+  padding: 16px;
+}
+
+.stat-card:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Upload component */
+.upload-component .ant-upload-picture-card-wrapper {
+  width: 100%;
+}
+
+.preview-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #f0f0f0;
+}
+
+.preview-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  border-radius: 0 0 0 12px;
+  padding: 8px;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.preview-container:hover .preview-actions {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.preview-actions .ant-btn {
+  color: white;
+  backdrop-filter: blur(4px);
+}
+
+/* Botones estilizados */
+.add-button {
+  border-radius: 12px;
+  height: 48px;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px dashed #1890ff;
+  color: #1890ff;
+  background-color: #f0f7ff;
+  font-size: 16px;
+}
+
+.add-button:hover {
+  background-color: #e6f7ff;
+  color: #096dd9;
+  border-color: #096dd9;
+  transform: translateY(-2px);
+}
+
+.save-button {
+  border-radius: 12px;
+  height: 48px;
+  font-weight: 600;
+  width: 200px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.15);
+  font-size: 16px;
+}
+
+.save-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(24, 144, 255, 0.25);
+}
+
+.delete-button {
+  border: none;
+  background: transparent;
+  color: #ff4d4f;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 8px 16px;
+  border-radius: 8px;
+}
+
+.delete-button:hover {
+  color: #ff7875;
+  background-color: #fff1f0;
+}
+
+/* Campos de formulario */
+.input-field {
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1.5px solid #d9d9d9;
+  padding: 8px 12px;
+  font-size: 15px;
+}
+
+.input-field:hover {
+  border-color: #40a9ff;
+}
+
+.input-field:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.15);
+}
+
+.switch-field .ant-switch-checked {
+  background-color: #52c41a;
+}
+
+/* Contenedor principal de secciones */
+.highlighted-services-container {
+  padding: 24px;
+}
+
+.section-container {
+  margin-bottom: 32px;
+}
+
+.section-title {
+  margin-bottom: 24px;
+}
+
+.section-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.add-button {
+  grid-column: 1 / -1;
+}
+
+.save-button {
+  min-width: 200px;
+}
+
+@media (max-width: 768px) {
+  .section-content {
+    grid-template-columns: 1fr;
   }
+
+  .highlighted-services-container {
+    padding: 16px;
+  }
+}
+
+.section-container {
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.section-title {
+  padding: 16px 20px;
+}
+
+.section-content {
+  padding: 20px;
+}
+
+.save-button {
+  width: 100%;
+  max-width: 300px;
+}

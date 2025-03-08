@@ -1,6 +1,5 @@
 import React from "react";
-import { Card, Form, Input, Button, Switch, InputNumber, Row, Col, Tooltip } from "antd";
-import { DeleteOutlined } from "@ant-design/icons";
+import { Trash2 } from "lucide-react";
 import UploadComponent from "./UploadComponent";
 
 interface HighlightedServiceStat {
@@ -21,7 +20,11 @@ interface HighlightedService {
 interface ServiceCardProps {
   service: HighlightedService;
   index: number;
-  onServiceChange: (index: number, field: keyof HighlightedService, value: any) => void;
+  onServiceChange: (
+    index: number,
+    field: keyof HighlightedService,
+    value: any
+  ) => void;
   onRemoveService: (index: number) => void;
 }
 
@@ -32,72 +35,101 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
   onRemoveService,
 }) => {
   return (
-    <Card
-      key={index}
-      title={`Servicio ${index + 1}`}
-      className="service-card animate-in"
-      extra={
-        <Button
-          danger
-          icon={<DeleteOutlined />}
-          onClick={() => onRemoveService(index)}
-          className="delete-button"
-        >
-          Eliminar
-        </Button>
-      }
-    >
-      <Form layout="vertical">
-        <Row gutter={16}>
-          <Col xs={24} md={12}>
-            <Form.Item label="Título" required>
-              <Input
-                className="input-field"
+    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 transition-all duration-300 hover:shadow-lg">
+      <div className="relative">
+        {service.image ? (
+          <img
+            src={service.image}
+            alt={service.title}
+            className="w-full h-48 object-cover rounded-t-2xl"
+          />
+        ) : (
+          <div className="w-full h-48 bg-gray-100 rounded-t-2xl" />
+        )}
+        <div className="absolute top-4 right-4">
+          <button
+            onClick={() => onRemoveService(index)}
+            className="bg-white/90 backdrop-blur-sm hover:bg-white/95 text-gray-700 p-2 rounded-full shadow-sm transition-all duration-200 hover:shadow group"
+          >
+            <Trash2 className="w-4 h-4 text-gray-600 group-hover:text-red-600" />
+          </button>
+        </div>
+      </div>
+
+      <div className="p-6 space-y-6">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1 flex-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Título <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
                 value={service.title}
-                onChange={(e) => onServiceChange(index, "title", e.target.value)}
+                onChange={(e) =>
+                  onServiceChange(index, "title", e.target.value)
+                }
                 placeholder="Título del servicio"
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors duration-200"
               />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item label="Orden">
-              <InputNumber
-                className="input-field"
+            </div>
+            <div className="w-24 ml-4">
+              <label className="block text-sm font-medium text-gray-700">
+                Orden
+              </label>
+              <input
+                type="number"
                 min={0}
                 value={service.order}
-                onChange={(value) => onServiceChange(index, "order", value)}
-                placeholder="Orden de visualización"
-                style={{ width: "100%" }}
+                onChange={(e) =>
+                  onServiceChange(index, "order", Number(e.target.value))
+                }
+                placeholder="#"
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors duration-200"
               />
-            </Form.Item>
-          </Col>
-        </Row>
+            </div>
+          </div>
 
-        <Form.Item label="Descripción" required>
-          <Input.TextArea
-            className="input-field"
-            value={service.description}
-            onChange={(e) => onServiceChange(index, "description", e.target.value)}
-            placeholder="Descripción del servicio"
-            rows={4}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Descripción <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={service.description}
+              onChange={(e) =>
+                onServiceChange(index, "description", e.target.value)
+              }
+              placeholder="Descripción del servicio"
+              rows={3}
+              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors duration-200 resize-none"
+            />
+          </div>
+
+          <UploadComponent
+            label="Imagen"
+            value={service.image}
+            onChange={(url) => onServiceChange(index, "image", url || "")}
+            required
           />
-        </Form.Item>
+        </div>
 
-        <UploadComponent
-          label="Imagen"
-          value={service.image}
-          onChange={(url) => onServiceChange(index, "image", url || "")}
-          required
-        />
-
-        <Form.Item label="Activo" className="switch-field">
-          <Switch
-            checked={service.active}
-            onChange={(checked) => onServiceChange(index, "active", checked)}
-          />
-        </Form.Item>
-      </Form>
-    </Card>
+        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+          <span className="text-sm font-medium text-gray-700">Estado</span>
+          <button
+            onClick={() => onServiceChange(index, "active", !service.active)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-2 ${
+              service.active ? "bg-blue-500" : "bg-gray-200"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                service.active ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 

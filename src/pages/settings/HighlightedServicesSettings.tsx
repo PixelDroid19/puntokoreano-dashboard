@@ -387,15 +387,19 @@ const HighlightedServicesSettings = () => {
   return (
     <div className="highlighted-services-container">
       <div className="section-container">
-        <div className="section-title">
+        <div className="section-header mb-4">
           <Row align="middle" justify="space-between">
             <Col>
               <Title level={4} style={{ margin: 0 }}>
                 <AppstoreOutlined /> Servicios Destacados
               </Title>
+              <p className="text-gray-600 mt-2">
+                Gestiona los servicios que se mostrarán en la sección destacada de la página principal. 
+                Cada servicio puede incluir un título, descripción, imagen y estado de activación.
+              </p>
             </Col>
             <Col>
-              <Tooltip title="Los servicios destacados se mostrarán en la página principal">
+              <Tooltip title="Los servicios destacados se mostrarán en la página principal en el orden especificado. Los servicios inactivos no serán visibles.">
                 <InfoCircleOutlined style={{ color: "#1890ff" }} />
               </Tooltip>
             </Col>
@@ -426,15 +430,19 @@ const HighlightedServicesSettings = () => {
       </div>
 
       <div className="section-container">
-        <div className="section-title">
+        <div className="section-header mb-4">
           <Row align="middle" justify="space-between">
             <Col>
               <Title level={4} style={{ margin: 0 }}>
                 <TrophyOutlined /> Logros
               </Title>
+              <p className="text-gray-600 mt-2">
+                Configura los logros y estadísticas destacadas que se mostrarán en la página principal. 
+                Cada logro puede incluir un título, valor numérico, ícono y color personalizado.
+              </p>
             </Col>
             <Col>
-              <Tooltip title="Los logros se mostrarán como estadísticas destacadas">
+              <Tooltip title="Los logros se mostrarán como estadísticas destacadas. Puedes personalizar el color y el orden de aparición. Los logros inactivos no serán visibles.">
                 <InfoCircleOutlined style={{ color: "#1890ff" }} />
               </Tooltip>
             </Col>

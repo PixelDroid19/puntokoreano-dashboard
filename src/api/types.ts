@@ -90,6 +90,7 @@ export interface ShippingSettings {
 export interface Endpoints {
   AUTH: {
     LOGIN: ApiEndpoint;
+    ENCRYPTION_KEY: ApiEndpoint;
   };
   PRODUCTS: {
     GET_ALL: ApiEndpoint;

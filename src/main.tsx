@@ -14,6 +14,9 @@ import "./index.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {
+    queryFn: ({ queryKey }) => {
+      console.log(queryKey, "test");
+    },
     queries: {
       refetchOnWindowFocus: false,
     },

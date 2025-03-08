@@ -52,6 +52,10 @@ const ENDPOINTS: Endpoints = {
       url: `${BASE_URL}/auth/dashboard/login`,
       method: "POST",
     },
+    ENCRYPTION_KEY: {
+      url: `${BASE_URL}/auth/encryption-key`,
+      method: "GET",
+    },
   },
 
   PRODUCTS: {
