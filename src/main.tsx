@@ -11,12 +11,11 @@ import { store } from "./redux/store.ts";
 import { ConfigProvider } from "antd";
 import { useMediaQuery } from "react-responsive";
 import "./index.css";
+import axios from "axios";
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queryFn: ({ queryKey }) => {
-      console.log(queryKey, "test");
-    },
     queries: {
       refetchOnWindowFocus: false,
     },
