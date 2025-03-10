@@ -48,22 +48,20 @@ const BrandManagement: React.FC = () => {
     },
   });
 
-
   const columns = [
     {
       title: "Logo",
-      dataIndex: ["logo", "url"],
+      dataIndex: ["logo"],
       key: "logo",
-      render: (url: string) => (
-        <img
-          src={url || "/placeholder-logo.png"}
-          alt="logo"
-          className="w-12 h-12 object-contain"
-          onError={(e) => {
-            e.currentTarget.src = "/placeholder-logo.png";
-          }}
-        />
-      ),
+      render: ({ url }: { url: string }) => {
+        return (
+          <img
+            src={url || "/placeholder-logo.png"}
+            alt="logo"
+            className="w-12 h-12 object-contain"
+          />
+        );
+      },
     },
     {
       title: "Nombre",

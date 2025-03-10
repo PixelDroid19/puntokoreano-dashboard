@@ -30,6 +30,7 @@ import AboutSettingsPage from "../pages/settings/AboutSettings";
 import CategoriesManagement from "../pages/categoriesManagement/CategoriesManagement";
 import DevelopmentView from "../components/DevelopmentView/DevelopmentView";
 import HighlightedServicesSettings from "../pages/settings/HighlightedServicesSettings";
+import BrandManagement from "../pages/brands/BrandManagement";
 
 const router = createBrowserRouter(
   createRoutesFromElements(

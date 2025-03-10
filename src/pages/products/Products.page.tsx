@@ -8,13 +8,17 @@ import {
   Popconfirm,
   message,
   Space,
+  Typography,
 } from "antd";
+
+const { Text } = Typography;
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   SearchOutlined,
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
+  PercentageOutlined,
 } from "@ant-design/icons";
 import HeaderTable from "./components/HeaderTable.component";
 import { ProductEdit } from "./components/ProductEdit";
@@ -24,6 +28,7 @@ import ProductsService from "../../services/products.service";
 import { Product } from "../../api/types";
 import debounce from "lodash/debounce";
 import { ProductView } from "./components/ProductView";
+import DiscountModal from "./components/DiscountModal";
 
 const Products = () => {
   const queryClient = useQueryClient();
@@ -34,6 +39,7 @@ const Products = () => {
   );
   const [isViewModalOpen, setIsViewModalOpen] = React.useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = React.useState(false);
   const [pagination, setPagination] = React.useState({
     current: 1,
     pageSize: 10,
@@ -177,6 +183,14 @@ const Products = () => {
               setIsEditModalOpen(true);
             }}
           />
+          <Button
+            icon={<PercentageOutlined />}
+            size="small"
+            onClick={() => {
+              setSelectedProduct(record);
+              setIsDiscountModalOpen(true);
+            }}
+          />
           <Popconfirm
             title="¿Eliminar producto?"
             description="Esta acción no se puede deshacer"
@@ -253,6 +267,14 @@ const Products = () => {
             setIsEditModalOpen(false);
             setSelectedProduct(null);
           }}
+          product={selectedProduct}
+        />
+      )}
+
+      {selectedProduct && isDiscountModalOpen && (
+        <DiscountModal
+          open={isDiscountModalOpen}
+          onClose={() => setIsDiscountModalOpen(false)}
           product={selectedProduct}
         />
       )}

@@ -110,6 +110,28 @@ const ENDPOINTS: Endpoints = {
         method: "POST"
       }
     },
+    DISCOUNTS: {
+      APPLY: {
+        url: `${BASE_URL}/dashboard/discounts/products/:productId/discount`,
+        method: "POST",
+      },
+      REMOVE: {
+        url: `${BASE_URL}/dashboard/discounts/products/:productId/discount`,
+        method: "DELETE",
+      },
+      GET_HISTORY: {
+        url: `${BASE_URL}/dashboard/discounts/products/:productId/discount/history`,
+        method: "GET",
+      },
+      BULK_APPLY: {
+        url: `${BASE_URL}/dashboard/discounts/bulk-discounts`,
+        method: "POST",
+      },
+      GET_ANALYTICS: {
+        url: `${BASE_URL}/dashboard/discounts/analytics`,
+        method: "GET",
+      },
+    },
     SETTINGS: {
       GET: {
         url: `${BASE_URL}/dashboard/settings`,

@@ -77,10 +77,6 @@ const Reviews = () => {
     },
   });
 
-  useEffect(() => {
-    console.log("reviewsData?.reviews", reviewsData?.reviews);
-  }, [reviewsData?.reviews]);
-
   const columns = [
     {
       title: "Producto",

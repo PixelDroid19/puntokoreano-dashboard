@@ -9,6 +9,7 @@ export interface Product {
   name: string;
   price: number;
   old_price?: number;
+  discount_percentage?: number;
   group: string;
   subgroup: string;
   stock: number;
@@ -104,6 +105,13 @@ export interface Endpoints {
     GET_ALL: ApiEndpoint;
   };
   DASHBOARD: {
+    DISCOUNTS: {
+      APPLY: ApiEndpoint,
+      REMOVE: ApiEndpoint,
+      GET_HISTORY: ApiEndpoint,
+      BULK_APPLY: ApiEndpoint,
+      GET_ANALYTICS: ApiEndpoint,
+    },
     CATEGORIES: {
       GET_ALL: ApiEndpoint;
       CREATE: ApiEndpoint;
