@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
-  CheckCircle2, 
   Loader2, 
   PlusCircle, 
   Car, 
@@ -351,21 +350,56 @@ export const VehicleAttributesForm: React.FC<VehicleAttributesFormProps> = ({ on
             )}
 
             {activeTab === 'transmission' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Transmisión
-                </label>
-                <input
-                  type="text"
-                  {...register('transmissionName', { required: 'Este campo es requerido' })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                  placeholder="Ej: Automática"
-                />
-                {errors.transmissionName && (
-                  <p className="mt-1 text-sm text-red-600 animate-fade-in">
-                    {errors.transmissionName.message}
-                  </p>
-                )}
+              <div className="space-y-4">
+                {/* Model selection for transmission tab */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Modelo
+                  </label>
+                  <select
+                    {...register('modelName', { required: 'Este campo es requerido' })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                  >
+                    <option value="">Selecciona un modelo</option>
+                    {models.map((model) => (
+                      <option key={model.value} value={model.value}>
+                        {model.label}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.modelName && (
+                    <p className="mt-1 text-sm text-red-600 animate-fade-in">{errors.modelName.message}</p>
+                  )}
+                  {loadingModels && (
+                    <div className="mt-2 flex items-center text-sm text-gray-500">
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Cargando modelos...
+                    </div>
+                  )}
+                </div>
+                
+                {/* Transmission input */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Transmisión
+                  </label>
+                  <input
+                    type="text"
+                    {...register('transmissionName', { 
+                      required: 'Este campo es requerido',
+                      validate: {
+                        notEmpty: (value) => value.trim() !== '' || 'El nombre de la transmisión no puede estar vacío'
+                      }
+                    })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                    placeholder="Ej: Automática"
+                  />
+                  {errors.transmissionName && (
+                    <p className="mt-1 text-sm text-red-600 animate-fade-in">
+                      {errors.transmissionName.message}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
