@@ -31,6 +31,7 @@ import CategoriesManagement from "../pages/categoriesManagement/CategoriesManage
 import DevelopmentView from "../components/DevelopmentView/DevelopmentView";
 import HighlightedServicesSettings from "../pages/settings/HighlightedServicesSettings";
 import BrandManagement from "../pages/brands/BrandManagement";
+import VehiclePages from "../pages/vehicle-families/vehicle-families.page";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -151,6 +152,13 @@ const router = createBrowserRouter(
          <Route
           path="/highlighted-services"
           element={<HighlightedServicesSettings />}
+          errorElement={<RouteError />}
+        />
+
+        {/* Vehicle Families */}
+        <Route
+          path="/vehicle-families"
+          element={<VehiclePages />}
           errorElement={<RouteError />}
         />
       </Route>

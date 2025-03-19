@@ -12,6 +12,7 @@ import {
   TagsOutlined,
   UnorderedListOutlined,
   UserOutlined,
+  CarryOutOutlined,
 } from "@ant-design/icons";
 import { SelectEventHandler } from "rc-menu/lib/interface";
 import { useDispatch, useSelector } from "react-redux";
@@ -78,6 +79,12 @@ const menuItems = [
     label: <Link to={"/reviews"}>Reseñas</Link>,
     icon: <StarOutlined />,
     title: "Reseñas",
+  },
+  {
+    key: "/vehicle-families",
+    label: <Link to={"/vehicle-families"}>Familias de Vehículos</Link>,
+    icon: <CarryOutOutlined />,
+    title: "Familias de Vehículos",
   },
   {
     key: "settings",
