@@ -104,14 +104,47 @@ export interface Endpoints {
   GROUPS: {
     GET_ALL: ApiEndpoint;
   };
+  VEHICLES: {
+    GET_ALL: ApiEndpoint;
+    CREATE: ApiEndpoint;
+    UPDATE: ApiEndpoint;
+    DELETE: ApiEndpoint;
+
+    // Brands
+    GET_BRANDS: ApiEndpoint;
+    CREATE_BRAND: ApiEndpoint;
+    UPDATE_BRAND: ApiEndpoint;
+    DELETE_BRAND: ApiEndpoint;
+
+    // Families
+    GET_FAMILIES: ApiEndpoint;
+    CREATE_FAMILY: ApiEndpoint;
+
+    // Models
+    GET_MODELS: ApiEndpoint;
+    CREATE_MODEL: ApiEndpoint;
+    GET_MODELS_BY_FAMILY?: ApiEndpoint;
+
+    // Transmissions
+    GET_TRANSMISSIONS: ApiEndpoint;
+    CREATE_TRANSMISSION: ApiEndpoint;
+
+    // Fuels
+    GET_FUELS: ApiEndpoint;
+    CREATE_FUEL: ApiEndpoint;
+
+    // Lines
+    GET_LINES: ApiEndpoint;
+    CREATE_LINE: ApiEndpoint;
+  };
   DASHBOARD: {
     DISCOUNTS: {
-      APPLY: ApiEndpoint,
-      REMOVE: ApiEndpoint,
-      GET_HISTORY: ApiEndpoint,
-      BULK_APPLY: ApiEndpoint,
-      GET_ANALYTICS: ApiEndpoint,
-    },
+      APPLY: ApiEndpoint;
+      REMOVE: ApiEndpoint;
+      GET_HISTORY: ApiEndpoint;
+      BULK_APPLY: ApiEndpoint;
+      GET_ANALYTICS: ApiEndpoint;
+    };
     CATEGORIES: {
       GET_ALL: ApiEndpoint;
       CREATE: ApiEndpoint;
@@ -123,7 +156,7 @@ export interface Endpoints {
       GET: ApiEndpoint;
       SEO: {
         UPDATE: ApiEndpoint;
-      },
+      };
       HIGHLIGHTED_SERVICES: {
         GET_ALL: ApiEndpoint;
         CREATE: ApiEndpoint;
@@ -193,10 +226,10 @@ export interface Endpoints {
       GET_PRODUCT_ANALYTICS: ApiEndpoint;
       GET_PERFORMANCE: ApiEndpoint;
       USERS: {
-        BASE:{
+        BASE: {
           VALIDATE_EMAIL: ApiEndpoint;
           VALIDATE_DOCUMENT: ApiEndpoint;
-        }
+        };
         ADMIN: {
           GET_ALL: ApiEndpoint;
           CREATE: ApiEndpoint;

@@ -24,14 +24,12 @@ import ShippingSettings from "../pages/shipping/ShippingSettings.page";
 import ProtectedRoutes from "../utils/ProtectedRoutes";
 import PublicRoutes from "../utils/PublicRoutes";
 import RouteError from "./RouteError";
-//import BrandManagement from "../pages/brands/BrandManagement";
 import BillingSettingsPage from "../pages/settings/BillingSettings";
 import AboutSettingsPage from "../pages/settings/AboutSettings";
 import CategoriesManagement from "../pages/categoriesManagement/CategoriesManagement";
 import DevelopmentView from "../components/DevelopmentView/DevelopmentView";
 import HighlightedServicesSettings from "../pages/settings/HighlightedServicesSettings";
-import BrandManagement from "../pages/brands/BrandManagement";
-import VehiclePages from "../pages/vehicle-families/vehicle-families.page";
+import VehicleManagerPages from "../pages/vehicle-manager/vehicle-management-page";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -158,7 +156,7 @@ const router = createBrowserRouter(
         {/* Vehicle Families */}
         <Route
           path="/vehicle-families"
-          element={<VehiclePages />}
+          element={<VehicleManagerPages />}
           errorElement={<RouteError />}
         />
       </Route>

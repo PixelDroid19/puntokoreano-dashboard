@@ -87,6 +87,72 @@ const ENDPOINTS: Endpoints = {
     },
   },
 
+  VEHICLES: {
+    // Core Vehicle CRUD
+    GET_ALL: { url: `${BASE_URL}/dashboard/vehicles`, method: "GET" },
+    CREATE: { url: `${BASE_URL}/dashboard/vehicles`, method: "POST" },
+    UPDATE: { url: `${BASE_URL}/dashboard/vehicles/:id`, method: "PUT" },
+    DELETE: { url: `${BASE_URL}/dashboard/vehicles/:id`, method: "DELETE" },
+    // GET_BY_ID: { url: `${BASE_URL}/dashboard/vehicles/:id`, method: "GET" }, // Add if needed
+
+    // Brands
+    GET_BRANDS: { url: `${BASE_URL}/dashboard/vehicle-brands`, method: "GET" },
+    CREATE_BRAND: {
+      url: `${BASE_URL}/dashboard/vehicle-brands`,
+      method: "POST",
+    },
+    UPDATE_BRAND: {
+      url: `${BASE_URL}/dashboard/vehicle-brands/:id`,
+      method: "PUT",
+    },
+    DELETE_BRAND: {
+      url: `${BASE_URL}/dashboard/vehicle-brands/:id`,
+      method: "DELETE",
+    },
+
+    // Families
+    GET_FAMILIES: {
+      url: `${BASE_URL}/dashboard/vehicle-families`,
+      method: "GET",
+    },
+    CREATE_FAMILY: {
+      url: `${BASE_URL}/dashboard/vehicle-families`,
+      method: "POST",
+    },
+
+    // Models
+    GET_MODELS: { url: `${BASE_URL}/dashboard/vehicles/models`, method: "GET" }, // General get
+    CREATE_MODEL: {
+      url: `${BASE_URL}/dashboard/vehicles/models`,
+      method: "POST",
+    }, // General create
+    // Optional: Keep specific getters if needed elsewhere
+    // GET_MODELS_BY_FAMILY: { url: `${BASE_URL}/dashboard/vehicles/families/:familyId/models`, method: "GET" },
+
+    // Transmissions
+    GET_TRANSMISSIONS: {
+      url: `${BASE_URL}/dashboard/vehicles/transmissions`,
+      method: "GET",
+    },
+    CREATE_TRANSMISSION: {
+      url: `${BASE_URL}/dashboard/vehicles/transmissions`,
+      method: "POST",
+    },
+
+    // Fuels
+    GET_FUELS: { url: `${BASE_URL}/dashboard/vehicles/fuels`, method: "GET" },
+    CREATE_FUEL: {
+      url: `${BASE_URL}/dashboard/vehicles/fuels`,
+      method: "POST",
+    },
+
+    GET_LINES: { url: `${BASE_URL}/dashboard/vehicles/lines`, method: "GET" },
+    CREATE_LINE: {
+      url: `${BASE_URL}/dashboard/vehicles/lines`,
+      method: "POST",
+    },
+  },
+
   DASHBOARD: {
     CATEGORIES: {
       GET_ALL: {
@@ -103,12 +169,12 @@ const ENDPOINTS: Endpoints = {
       },
       DELETE: {
         url: `${BASE_URL}/dashboard/categories/:id`,
-        method: "DELETE"  
+        method: "DELETE",
       },
       UPLOAD_IMAGE: {
-        url: `${BASE_URL}/dashboard/categories/upload-image`, 
-        method: "POST"
-      }
+        url: `${BASE_URL}/dashboard/categories/upload-image`,
+        method: "POST",
+      },
     },
     DISCOUNTS: {
       APPLY: {
@@ -159,7 +225,7 @@ const ENDPOINTS: Endpoints = {
         DELETE: {
           url: `${BASE_URL}/dashboard/highlighted-services/:identifier`,
           method: "DELETE",
-        }
+        },
       },
       ABOUT: {
         GET: {
