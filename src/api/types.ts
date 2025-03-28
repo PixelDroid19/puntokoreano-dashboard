@@ -8,27 +8,39 @@ export interface Product {
   id: string;
   name: string;
   price: number;
-  old_price?: number;
-  discount_percentage?: number;
+  stock: number;
+  reservedStock: number; // Asegúrate que esté aquí si la usan los modales
+  active: boolean;
   group: string;
   subgroup: string;
-  stock: number;
-  code: string;
-  shipping: string[];
-  images: string[];
   short_description: string;
   long_description: string;
-  active: boolean;
-  videoUrl?: string;
   useGroupImages: boolean;
-  imageGroup?: string;
+  imageGroup?: string | null;
+  images: string[];
+  discount: {
+    isActive: boolean;
+    type: "permanent" | "temporary";
+    startDate?: string | null;
+    endDate?: string | null;
+    percentage: number;
+  };
+  compatible_vehicles: any[];
+  specifications: { key: string; value: string }[];
+  variants: { name: string; value: string; price: number }[];
+  shipping: string[];
+  videoUrl?: string;
+  warranty?: string;
   seo?: {
     title: string;
     description: string;
     keywords: string[];
   };
-  created_at: string;
-  updated_at: string;
+  views?: number;
+  rating?: number;
+  createdAt: string;
+  updatedAt: string;
+  code: string;
 }
 
 export interface Brand {

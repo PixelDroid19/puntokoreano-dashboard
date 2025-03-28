@@ -1,20 +1,45 @@
 // src/pages/selectors/vehicle-manager/line-selector.tsx
-import React, { useCallback } from "react";
-import Select from "react-select/async";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  fetchLinesStart,
-  fetchLinesSuccess,
-  fetchLinesFailure,
-  selectLines,
-  selectLinesLoading,
-  selectLinesError,
-} from "../../../redux/reducers/LinesSlice";
+import React, { useState } from "react";
+import { AsyncPaginate, LoadOptions } from "react-select-async-paginate";
+import VehicleFamiliesService from "../../../services/vehicle-families.service";
 import {
   LinesOption,
   LinesSelectorProps,
 } from "../../../types/selectors.types";
-import VehicleFamiliesService from "../../../services/vehicle-families.service";
+
+interface PageAdditional {
+  page: number;
+}
+
+interface ApiLine {
+  _id: string;
+  name?: string;
+  model_id?: string;
+  brand_id?: string;
+  features?: string;
+  price?: string | number | null;
+  active?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+
+  [key: string]: any;
+}
+
+interface LineApiData {
+  lines: ApiLine[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  };
+}
+
+interface LineApiResponse {
+  success: boolean;
+  message?: string;
+  data?: LineApiData;
+}
 
 const LineSelector: React.FC<LinesSelectorProps> = ({
   onChange,
@@ -22,100 +47,117 @@ const LineSelector: React.FC<LinesSelectorProps> = ({
   placeholder = "Buscar Línea...",
   ...rest
 }) => {
-  const dispatch = useDispatch();
-  const Lines = useSelector(selectLines) as LinesOption[];
-  const loading = useSelector(selectLinesLoading);
-  const error = useSelector(selectLinesError);
+  const [error, setError] = useState<string | null>(null);
 
-  const loadOptions = useCallback(
-    async (inputValue: string) => {
-      try {
-        dispatch(fetchLinesStart());
-        const response = await VehicleFamiliesService.getLines({
-          page: 1,
-          limit: 10,
+  const loadPageOptions: LoadOptions<LinesOption, any, PageAdditional> = async (
+    search,
+    loadedOptions,
+    additional
+  ): Promise<{
+    options: LinesOption[];
+    hasMore: boolean;
+    additional?: PageAdditional;
+  }> => {
+    const pageToLoad = additional?.page || 1;
+
+    const limit = 10;
+
+    setError(null);
+
+    try {
+      const serviceResponse: LineApiResponse | LineApiData =
+        await VehicleFamiliesService.getLines({
+          page: pageToLoad,
+          limit: limit,
           sortBy: "name",
           sortOrder: "asc",
-          search: inputValue,
+          search: search,
         });
+      console.log("Respuesta RECIBIDA del servicio (Lines):", serviceResponse);
 
-        const LineOptions = response.lines.map((Line) => ({
-          value: Line._id,
-          label: Line.name,
-          brand_id: Line.brand_id,
-          features: Line.features,
-          model_id: Line.model_id,
-          price: Line.price,
-        }));
+      const responseData: LineApiData | null | undefined =
+        (serviceResponse as LineApiResponse)?.data ??
+        (serviceResponse as LineApiData);
 
-        dispatch(fetchLinesSuccess(LineOptions));
-        return LineOptions;
-      } catch (error: any) {
-        // Especifica el tipo de error
-        console.error("Error loading Lines:", error);
-        dispatch(
-          fetchLinesFailure(error.message || "Error al cargar las líneas")
+      if (
+        !responseData ||
+        !Array.isArray(responseData.lines) ||
+        !responseData.pagination
+      ) {
+        console.error(
+          "Formato de datos de API inválido (Lines):",
+          responseData
         );
-        return [];
-      }
-    },
-    [dispatch]
-  );
 
-  const handleInputChange = (inputValue: string) => {
-    return inputValue;
+        const apiMessage = (serviceResponse as LineApiResponse)?.message;
+        throw new Error(
+          apiMessage || "Formato de datos inválido de la API de líneas"
+        );
+      }
+
+      const { lines, pagination } = responseData;
+
+      const newOptions: LinesOption[] = lines.map((line: ApiLine) => {
+        const lineName = line.name || "Línea sin nombre";
+
+        return {
+          value: line._id,
+          label: lineName,
+          lineData: line,
+        };
+      });
+
+      const hasMore = pagination.currentPage < pagination.totalPages;
+
+      const nextPage = hasMore ? pagination.currentPage + 1 : undefined;
+
+      return {
+        options: newOptions,
+        hasMore: hasMore,
+        additional: nextPage ? { page: nextPage } : undefined,
+      };
+    } catch (err: any) {
+      console.error("Error en loadPageOptions (Lines):", err);
+      const errorMessage =
+        err.message || "Error inesperado al cargar las líneas";
+      setError(errorMessage);
+
+      return {
+        options: [],
+        hasMore: false,
+      };
+    }
   };
 
   const handleChange = (selectedOption: LinesOption | null) => {
     if (onChange) {
-      onChange(selectedOption ? selectedOption.value : null);
-    }
-  };
-
-  const getValue = () => {
-    if (!value) {
-      // console.log("getValue - Value prop is empty, returning null");
-      return null;
-    }
-
-    if (!Lines || Lines.length === 0) {
-      /*    console.log(
-        "getValue - Lines array is empty or undefined, returning null"
-      ); */
-      return null;
-    }
-
-    const selectedLine = Lines.find((brand) => brand.value === value);
-
-    if (selectedLine) {
-      //  console.log("getValue - Found brand:", selectedLine);
-      return selectedLine;
-    } else {
-      // console.log("getValue - Line NOT found for value:", value);
-      return null;
+      onChange(selectedOption);
     }
   };
 
   return (
     <div>
-      <Select
-        cacheOptions
-        loadOptions={loadOptions}
-        defaultOptions
-        placeholder={placeholder}
-        noOptionsMessage={() => "No se encontraron Líneas"}
-        loadingMessage={() => "Cargando Líneas..."}
-        onInputChange={handleInputChange}
+      <AsyncPaginate<LinesOption, any, PageAdditional>
+        value={value}
+        loadOptions={loadPageOptions}
+        getOptionValue={(option) => option.value}
+        getOptionLabel={(option) => option.label}
         onChange={handleChange}
-        value={getValue()}
-        isLoading={loading}
+        isSearchable={true}
+        placeholder={placeholder}
+        loadingMessage={() => "Cargando Líneas..."}
+        noOptionsMessage={({ inputValue }) =>
+          inputValue ? "No se encontraron líneas" : "Escribe para buscar..."
+        }
+        debounceTimeout={350}
         className="react-select-container"
         classNamePrefix="react-select"
         {...rest}
       />
+
       {error && (
         <p style={{ color: "red", fontSize: "0.8em", marginTop: "5px" }}>
-          Error al cargar Líneas: {error}
+          {error}
         </p>
       )}
     </div>

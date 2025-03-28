@@ -29,6 +29,18 @@ export interface FuelsOption {
   label: string;
 }
 
+export interface VehiclesOption {
+  value: string;
+  label: string;
+}
+
+export interface VehicleSelectorProps {
+  onChange?: (value: string | null) => void;
+  value?: string;
+  placeholder?: string;
+  [key: string]: any;
+}
+
 export interface TransmissionSelectorProps {
   onChange?: (value: string | null) => void;
   value?: string;

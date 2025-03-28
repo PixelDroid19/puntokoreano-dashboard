@@ -33,12 +33,6 @@ const menuItems = [
     title: "Productos",
   },
   {
-    key: "/filters",
-    label: <Link to={"/filters"}>Filtros</Link>,
-    icon: <CarOutlined />,
-    title: "FIltros",
-  },
-  {
     key: "/image-manager",
     label: <Link to={"/image-manager"}>Gestor de Imágenes</Link>,
     icon: <FileImageOutlined />,

@@ -20,11 +20,7 @@ export const lazyRoutes = {
     () => import("../pages/images/components/AddImages.component")
   ),
 
-  // Filters
-  Filters: lazy(() => import("../pages/filters/filters.page")),
-  AddFilters: lazy(
-    () => import("../pages/filters/components/AddFilters.component")
-  ),
+ 
 
   // Other pages
   Users: lazy(() => import("../pages/users/Users.page")),

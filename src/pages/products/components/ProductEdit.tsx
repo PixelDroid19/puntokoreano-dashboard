@@ -1,5 +1,5 @@
 // src/pages/products/components/ProductEdit.tsx
-// @ts-nocheck
+import React, { useEffect, useState } from "react";
 import {
   Modal,
   Form,
@@ -15,21 +15,27 @@ import {
   Space,
   Button,
   Tooltip,
+  Spin,
+  Alert,
+  Divider,
 } from "antd";
-import { InfoCircleOutlined } from "@ant-design/icons";
-import { Product } from "../../../api/types";
+import {
+  InfoCircleOutlined,
+  DeleteOutlined,
+  PlusOutlined,
+} from "@ant-design/icons";
+import type { Product } from "../../../api/types";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import ProductsService from "../../../services/products.service";
 import { getGroups } from "../../../helpers/queries.helper";
 import FilesService from "../../../services/files.service";
-import React from "react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 
 interface ProductEditProps {
   open: boolean;
   onClose: () => void;
-  product: Product;
+  productId: string;
 }
 
 const { TabPane } = Tabs;
@@ -43,208 +49,360 @@ const quillModules = {
   ],
 };
 
-export const ProductEdit = ({ open, onClose, product }: ProductEditProps) => {
+interface Subgroup {
+  name: string;
+}
+interface GroupOption {
+  name: string;
+  subgroups: Subgroup[];
+}
+interface ImageGroupOption {
+  _id: string;
+  identifier: string;
+}
+
+interface GroupsApiResponse {
+  success: boolean;
+  data: {
+    groups: GroupOption[];
+    pagination?: any;
+  };
+}
+
+interface ImageGroupsApiResponse {
+  success: boolean;
+  data: {
+    groups: ImageGroupOption[];
+    pagination?: any;
+  };
+}
+
+export const ProductEdit: React.FC<ProductEditProps> = ({
+  open,
+  onClose,
+  productId,
+}) => {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
-  const [subgroups, setSubgroups] = React.useState<any[]>([]);
-  const [useGroupImages, setUseGroupImages] = React.useState(product.useGroupImages);
-  const [filters, setFilters] = React.useState({
-    brand: "",
-    model: "",
-    family: "",
-    transmission: "",
-    fuel: "",
-    line: "",
+  const [subgroups, setSubgroups] = useState<Subgroup[]>([]);
+  const [useGroupImages, setUseGroupImages] = useState<boolean>(false);
+
+  const {
+    data: productData,
+    isLoading: isLoadingProduct,
+    isError: isErrorProduct,
+    error: errorProduct,
+  } = useQuery<Product, Error>({
+    queryKey: ["product", productId],
+    queryFn: () => ProductsService.getProductById(productId),
+    enabled: !!productId && open,
+    staleTime: 5 * 60 * 1000,
   });
 
-  // Queries
-  const { data: groups } = useQuery({
+  const { data: groupsData } = useQuery<GroupsApiResponse, Error>({
     queryKey: ["groups"],
     queryFn: getGroups,
   });
 
-  const { data: filterData } = useQuery({
-    queryKey: ["getFilters"],
-    queryFn: async () => {
-      const response = await axios.get(ENDPOINTS.FILTERS.GET_ALL.url);
-      return response.data;
-    },
-  });
-
-  const { data: imageGroups } = useQuery({
+  const { data: imageGroupsData } = useQuery<ImageGroupsApiResponse, Error>({
     queryKey: ["imageGroups"],
     queryFn: () => FilesService.getGroups(),
   });
 
   const updateMutation = useMutation({
-    mutationFn: (values: Partial<Product>) =>
-      ProductsService.updateProduct(product.id, values),
+    mutationFn: (payload: Partial<Product>) =>
+      ProductsService.updateProduct(productId, payload),
     onSuccess: () => {
       message.success("Producto actualizado correctamente");
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["product", productId] });
       onClose();
     },
-    onError: (error: Error) => {
-      message.error(error.message);
+    onError: (error: any) => {
+      message.error(
+        error?.response?.data?.message ||
+          error.message ||
+          "Error al actualizar el producto"
+      );
     },
   });
 
-  React.useEffect(() => {
-    if (product.group && groups?.data) {
-      const selectedGroup = groups.data.groups.find((g) => g.name === product.group);
-      if (selectedGroup) {
-        setSubgroups(selectedGroup.subgroups);
-      }
-    }
+  useEffect(() => {
+    if (productData && groupsData?.data?.groups) {
+      const currentGroup = groupsData.data.groups.find(
+        (g) => g.name === productData.group
+      );
+      setSubgroups(currentGroup?.subgroups || []);
+      setUseGroupImages(productData.useGroupImages || false);
 
-    // Inicializar el formulario con los valores del producto
-    form.setFieldsValue({
-      ...product,
-      imageGroup: product.imageGroup,
-      useGroupImages: product.useGroupImages,
-      seoTitle: product.seo?.title || "", 
-      seoDescription: product.seo?.description || "",
-      seoKeywords: product.seo?.keywords?.join(", ") || "",
-    });
-  }, [product, groups?.data]);
+      form.setFieldsValue({
+        ...productData,
+        seoTitle: productData.seo?.title || "",
+        seoDescription: productData.seo?.description || "",
+        seoKeywords: productData.seo?.keywords?.join(", ") || "",
+        imageGroup: productData.imageGroup || undefined,
+        model: productData.model || undefined,
+        brand: productData.brand || undefined,
+        line: productData.line || undefined,
+        transmission: productData.transmission || undefined,
+        fuel: productData.fuel || undefined,
+        maintenance_type: productData.maintenance_type || undefined,
+        difficulty_level: productData.difficulty_level || undefined,
+        estimated_time: productData.estimated_time || {
+          value: undefined,
+          unit: "minutes",
+        },
+        parts_required: productData.parts_required || [],
+
+        active: productData.active !== undefined ? productData.active : true,
+      });
+    } else if (!open) {
+      // form.resetFields(); // Si no se usa destroyOnClose
+    }
+  }, [productData, groupsData, form, open]);
 
   const handleGroupChange = (value: string) => {
-    const selectedGroup = groups?.data?.find((g) => g.name === value);
-    if (selectedGroup) {
-      setSubgroups(selectedGroup.subgroups);
-      form.setFieldValue("subgroup", undefined);
-    }
+    const selectedGroup = groupsData?.data?.groups?.find(
+      (g) => g.name === value
+    );
+    setSubgroups(selectedGroup?.subgroups || []);
+    form.setFieldsValue({ subgroup: undefined });
   };
 
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
 
-      // Preparar datos del producto
-      const productData = {
-        ...values,
-        useGroupImages,
+      const updatePayload: Partial<Product> = {
+        name: values.name,
+        price: values.price,
+        code: values.code?.toString(),
+        stock: values.stock,
+        reservedStock: values.reservedStock,
+        group: values.group,
+        subgroup: values.subgroup,
+        shipping: values.shipping,
+        short_description: values.short_description,
+        long_description: values.long_description,
+        active: values.active,
+        useGroupImages: useGroupImages,
         imageGroup: useGroupImages ? values.imageGroup : null,
-        images: useGroupImages ? [] : values.images || [],
+        videoUrl: values.videoUrl,
+        warranty: values.warranty,
         seo: {
-          title: values.seoTitle, // Enviamos el valor directamente
-          description: values.seoDescription,
+          title: values.seoTitle || productData?.name || values.name,
+          description:
+            values.seoDescription ||
+            productData?.short_description ||
+            values.short_description,
           keywords: values.seoKeywords
             ? values.seoKeywords
                 .split(",")
-                .map((k) => k.trim())
+                .map((k: string) => k.trim())
                 .filter(Boolean)
             : [],
         },
+        model: values.model,
+        brand: values.brand,
+        line: values.line,
+        transmission: values.transmission,
+        fuel: values.fuel,
+        maintenance_type: values.maintenance_type,
+        difficulty_level: values.difficulty_level,
+        estimated_time: values.estimated_time,
+        parts_required: values.parts_required,
       };
 
-      // Remover campos temporales
-      delete productData.seoTitle;
-      delete productData.seoDescription;
-      delete productData.seoKeywords;
-
-      updateMutation.mutate(productData);
-    } catch (error) {
-      console.error("Validation failed:", error);
+      updateMutation.mutate(updatePayload);
+    } catch (errorInfo) {
+      console.error("Validation Failed:", errorInfo);
+      message.error("Por favor revise los campos del formulario.");
     }
   };
 
+  if (isLoadingProduct) {
+    return (
+      <Modal
+        title="Editar Producto"
+        open={open}
+        onCancel={onClose}
+        footer={null}
+        centered
+      >
+        <div style={{ textAlign: "center", padding: "50px 0" }}>
+          <Spin size="large" tip="Cargando datos del producto..." />
+        </div>
+      </Modal>
+    );
+  }
+
+  if (isErrorProduct) {
+    return (
+      <Modal title="Error" open={open} onCancel={onClose} footer={null}>
+        <Alert
+          message="Error al cargar datos"
+          description={
+            errorProduct?.message ||
+            "No se pudieron obtener los detalles del producto."
+          }
+          type="error"
+          showIcon
+        />
+      </Modal>
+    );
+  }
+
   return (
     <Modal
-      title="Editar Producto"
+      title={`Editar Producto: ${productData?.name || ""}`}
       open={open}
       onCancel={onClose}
       onOk={handleSubmit}
+      okText="Guardar Cambios"
+      cancelText="Cancelar"
       confirmLoading={updateMutation.isPending}
-      width={800}
+      width={1000}
+      destroyOnClose
+      maskClosable={false}
     >
-      <Form form={form} layout="vertical" initialValues={product}>
-        <Tabs defaultActiveKey="1">
+      <Form form={form} layout="vertical">
+        <Tabs defaultActiveKey="1" type="card">
+          {/* --- Tab: Información Básica --- */}
           <TabPane tab="Información Básica" key="1">
             <Row gutter={16}>
-              <Col span={12}>
-                <Card title="Detalles Principales" size="small">
+              {/* Columna Izquierda */}
+              <Col xs={24} md={12}>
+                <Card
+                  title="Detalles Principales"
+                  size="small"
+                  bordered={false}
+                >
                   <Form.Item
                     name="name"
                     label="Nombre"
-                    rules={[{ required: true }]}
+                    rules={[
+                      { required: true, message: "El nombre es requerido" },
+                    ]}
                   >
-                    <Input />
+                    <Input placeholder="Nombre del producto" />
                   </Form.Item>
-
-                  <Form.Item
-                    name="price"
-                    label="Precio"
-                    rules={[{ required: true, type: "number" }]}
-                  >
-                    <InputNumber
-                      className="w-full"
-                      formatter={(value) =>
-                        `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                      }
-                      parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
-                    />
-                  </Form.Item>
-
                   <Form.Item
                     name="code"
                     label="SKU/Código"
-                    rules={[{ required: true, message: "El SKU/Código es requerido" }, { pattern: /^[0-9]+$/, message: "El SKU/Código debe ser numérico" }]}
+                    rules={[{ required: true, message: "El SKU es requerido" }]}
                   >
-                    <InputNumber className="w-full" min={0} />
+                    <Input placeholder="Código único del producto" />
                   </Form.Item>
-
+                  <Row gutter={8}>
+                    <Col span={12}>
+                      <Form.Item
+                        name="price"
+                        label="Precio"
+                        rules={[{ required: true, type: "number", min: 0 }]}
+                      >
+                        <InputNumber
+                          className="w-full"
+                          formatter={(value) =>
+                            `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                          }
+                          parser={(value) =>
+                            value ? value.replace(/\$\s?|,/g, "") : ""
+                          }
+                          min={0}
+                          step={1}
+                          placeholder="Precio de venta"
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item
+                        name="stock"
+                        label="Stock Total"
+                        rules={[{ required: true, type: "number", min: 0 }]}
+                      >
+                        <InputNumber
+                          className="w-full"
+                          min={0}
+                          placeholder="Cantidad total"
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
                   <Form.Item
-                    name="stock"
-                    label="Stock"
-                    rules={[{ required: true }]}
+                    name="reservedStock"
+                    label="Stock Reservado"
+                    tooltip="Cantidad no disponible para venta directa."
+                    rules={[{ type: "number", min: 0 }]}
                   >
-                    <InputNumber className="w-full" min={0} />
+                    <InputNumber
+                      className="w-full"
+                      min={0}
+                      placeholder="Cantidad reservada"
+                    />
                   </Form.Item>
                 </Card>
               </Col>
-
-              <Col span={12}>
-                <Card title="Categorización" size="small">
+              {/* Columna Derecha */}
+              <Col xs={24} md={12}>
+                <Card
+                  title="Categorización y Envío"
+                  size="small"
+                  bordered={false}
+                >
                   <Form.Item
                     name="group"
                     label="Grupo"
-                    rules={[{ required: true }]}
+                    rules={[{ required: true, message: "Seleccione un grupo" }]}
                   >
                     <Select
+                      placeholder="Seleccionar grupo"
                       onChange={handleGroupChange}
-                      options={groups?.data?.groups?.map((group) => ({
+                      options={groupsData?.data?.groups?.map((group) => ({
                         label: group.name,
                         value: group.name,
                       }))}
+                      loading={!groupsData}
                     />
                   </Form.Item>
-
                   <Form.Item
                     name="subgroup"
                     label="Subgrupo"
-                    rules={[{ required: true }]}
+                    rules={[
+                      { required: true, message: "Seleccione un subgrupo" },
+                    ]}
                   >
                     <Select
+                      placeholder="Seleccionar subgrupo"
                       options={subgroups?.map((sg) => ({
                         label: sg.name,
                         value: sg.name,
                       }))}
+                      disabled={!form.getFieldValue("group")}
                     />
                   </Form.Item>
-
                   <Form.Item
                     name="shipping"
-                    label="Métodos de Envío"
-                    rules={[{ required: true }]}
+                    label="Métodos de Envío Permitidos"
                   >
                     <Select
                       mode="multiple"
+                      placeholder="Seleccionar métodos de envío"
+                      allowClear
                       options={[
-                        { label: "Envío exprés", value: "express" },
-                        { label: "Envío estándar", value: "standard" },
-                        { label: "Recoger en tienda", value: "pickup" },
+                        { label: "Envío Express", value: "express" },
+                        { label: "Envío Estándar", value: "standard" },
+                        { label: "Recoger en Tienda", value: "pickup" },
                       ]}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    name="active"
+                    label="Estado del Producto"
+                    valuePropName="checked"
+                  >
+                    <Switch
+                      checkedChildren="Activo"
+                      unCheckedChildren="Inactivo"
                     />
                   </Form.Item>
                 </Card>
@@ -252,152 +410,57 @@ export const ProductEdit = ({ open, onClose, product }: ProductEditProps) => {
             </Row>
           </TabPane>
 
-          <TabPane tab="Información del Vehículo" key="2">
-            <Card title="Detalles del Vehículo" size="small">
-              <Row gutter={16}>
-                <Col span={12}>
-                  <Form.Item name="model" label="Modelo">
-                    <Select
-                      placeholder="Seleccione el modelo"
-                      onChange={(value) => setFilters(prev => ({ ...prev, model: value }))}
-                      options={Array.from({ length: 2025 - 2003 + 1 }, (_, i) => ({
-                        label: `${2003 + i}`,
-                        value: `${2003 + i}`,
-                      }))}
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="family" label="Familia">
-                    <Select
-                      placeholder="Seleccione la familia"
-                      onChange={(value) => setFilters(prev => ({ ...prev, family: value }))}
-                      options={filterData?.data?.families?.[filters.model] || []}
-                      disabled={!filters.model}
-                    />
-                  </Form.Item>
-                </Col>
-              </Row>
-
-              <Row gutter={16}>
-                <Col span={12}>
-                  <Form.Item name="transmission" label="Transmisión">
-                    <Select
-                      placeholder="Seleccione la transmisión"
-                      onChange={(value) => setFilters(prev => ({ ...prev, transmission: value }))}
-                      options={filterData?.data?.transmissions?.[filters.model]?.[filters.family] || []}
-                      disabled={!filters.family}
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="fuel" label="Combustible">
-                    <Select
-                      placeholder="Seleccione el combustible"
-                      onChange={(value) => setFilters(prev => ({ ...prev, fuel: value }))}
-                      options={filterData?.data?.fuels?.[filters.model]?.[filters.family]?.[filters.transmission] || []}
-                      disabled={!filters.transmission}
-                    />
-                  </Form.Item>
-                </Col>
-              </Row>
-
-              <Row gutter={16}>
-                <Col span={12}>
-                  <Form.Item name="line" label="Línea">
-                    <Select
-                      placeholder="Seleccione la línea"
-                      options={filterData?.data?.lines?.[filters.model]?.[filters.family]?.[filters.transmission]?.[filters.fuel] || []}
-                      disabled={!filters.fuel}
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="brand" label="Marca">
-                    <Input placeholder="Marca del vehículo" />
-                  </Form.Item>
-                </Col>
-              </Row>
-            </Card>
-          </TabPane>
-
+          {/* --- Tab: Detalles Técnicos --- */}
           <TabPane tab="Detalles Técnicos" key="3">
-            <Card title="Especificaciones Técnicas" size="small">
-              <Row gutter={16}>
-                <Col span={8}>
-                  <Form.Item name="maintenance_type" label="Tipo de Mantenimiento" rules={[{ required: true }]}>
-                    <Select
-                      placeholder="Seleccione tipo"
-                      options={[
-                        { label: "Preventivo", value: "preventive" },
-                        { label: "Correctivo", value: "corrective" },
-                        { label: "Actualización", value: "upgrade" },
-                        { label: "Tips", value: "tips" },
-                        { label: "General", value: "general" },
-                      ]}
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={8}>
-                  <Form.Item name="difficulty_level" label="Nivel de Dificultad" rules={[{ required: true }]}>
-                    <Select
-                      placeholder="Seleccione nivel"
-                      options={[
-                        { label: "Principiante", value: "beginner" },
-                        { label: "Intermedio", value: "intermediate" },
-                        { label: "Avanzado", value: "advanced" },
-                      ]}
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={8}>
-                  <Form.Item
-                    label={
-                      <span>
-                        Tiempo Estimado
-                        <Tooltip title="Tiempo aproximado para realizar el mantenimiento">
-                          <InfoCircleOutlined className="ml-1" />
-                        </Tooltip>
-                      </span>
-                    }
-                  >
-                    <Input.Group compact>
-                      <Form.Item name={["estimated_time", "value"]} noStyle>
-                        <Input type="number" style={{ width: "60%" }} min={1} />
-                      </Form.Item>
-                      <Form.Item name={["estimated_time", "unit"]} noStyle initialValue="minutes">
-                        <Select style={{ width: "40%" }}>
-                          <Select.Option value="minutes">Minutos</Select.Option>
-                          <Select.Option value="hours">Horas</Select.Option>
-                        </Select>
-                      </Form.Item>
-                    </Input.Group>
-                  </Form.Item>
-                </Col>
-              </Row>
-
+            <Card
+              title="Especificaciones Técnicas (Opcional)"
+              size="small"
+              bordered={false}
+            >
+              {/* ... (Mantener o añadir campos técnicos como maintenance_type, etc.) ... */}
+              {/* Ejemplo Form.List para 'parts_required' */}
+              <Divider>Piezas Requeridas (Opcional)</Divider>
               <Form.List name="parts_required">
                 {(fields, { add, remove }) => (
                   <>
                     {fields.map(({ key, name, ...restField }) => (
-                      <Space key={key} style={{ display: "flex", marginBottom: 8 }} align="baseline">
+                      <Space
+                        key={key}
+                        style={{ display: "flex", marginBottom: 8 }}
+                        align="baseline"
+                      >
                         <Form.Item
                           {...restField}
                           name={[name, "name"]}
-                          rules={[{ required: true, message: "Nombre requerido" }]}
+                          rules={[
+                            { required: true, message: "Nombre requerido" },
+                          ]}
+                          style={{ flexGrow: 1 }}
                         >
                           <Input placeholder="Nombre de la pieza" />
                         </Form.Item>
-                        <Form.Item {...restField} name={[name, "part_number"]}>
-                          <Input placeholder="Número de parte" />
+                        <Form.Item
+                          {...restField}
+                          name={[name, "part_number"]}
+                          style={{ flexGrow: 1 }}
+                        >
+                          <Input placeholder="Número de parte (Opcional)" />
                         </Form.Item>
-                        <Button onClick={() => remove(name)} type="link" danger>
-                          Eliminar
-                        </Button>
+                        <Button
+                          onClick={() => remove(name)}
+                          type="link"
+                          danger
+                          icon={<DeleteOutlined />}
+                        />
                       </Space>
                     ))}
-                    <Button type="dashed" onClick={() => add()} block>
-                      + Agregar Pieza Requerida
+                    <Button
+                      type="dashed"
+                      onClick={() => add()}
+                      block
+                      icon={<PlusOutlined />}
+                    >
+                      Añadir Pieza
                     </Button>
                   </>
                 )}
@@ -405,110 +468,140 @@ export const ProductEdit = ({ open, onClose, product }: ProductEditProps) => {
             </Card>
           </TabPane>
 
+          {/* --- Tab: Multimedia --- */}
           <TabPane tab="Multimedia" key="4">
-            <Card title="Imágenes">
-              <Form.Item label="Usar Grupo de Imágenes" name="useGroupImages">
-                <Switch
-                  checked={useGroupImages}
-                  onChange={(checked) => {
-                    setUseGroupImages(checked);
-                    if (checked) {
-                      form.setFieldsValue({ images: [] });
-                    } else {
-                      form.setFieldsValue({ imageGroup: undefined });
-                    }
-                  }}
-                />
+            <Card title="Imágenes" bordered={false}>
+              <Form.Item
+                label="Usar Grupo de Imágenes"
+                name="useGroupImages"
+                valuePropName="checked"
+              >
+                <Switch onChange={setUseGroupImages} />
               </Form.Item>
-
-              {useGroupImages ? (
+              {useGroupImages && (
                 <Form.Item
                   name="imageGroup"
-                  label="Grupo de Imágenes"
-                  rules={[{ required: useGroupImages }]}
+                  label="Seleccionar Grupo de Imágenes"
+                  rules={[
+                    {
+                      required: useGroupImages,
+                      message: "Seleccione un grupo",
+                    },
+                  ]}
                 >
                   <Select
-                    options={imageGroups?.data?.groups?.map((group) => ({
+                    placeholder="Buscar o seleccionar grupo"
+                    showSearch
+                    allowClear
+                    optionFilterProp="label"
+                    options={imageGroupsData?.data?.groups?.map((group) => ({
                       label: group.identifier,
                       value: group._id,
                     }))}
+                    loading={!imageGroupsData}
                   />
                 </Form.Item>
-              ) : null}
+              )}
+              {!useGroupImages && (
+                <Alert
+                  type="warning"
+                  message="La carga/gestión de imágenes individuales debe implementarse por separado."
+                />
+              )}
+            </Card>
+            <Card
+              title="Video (Opcional)"
+              bordered={false}
+              style={{ marginTop: 16 }}
+            >
+              <Form.Item name="videoUrl" label="URL del Video (YouTube, Vimeo)">
+                <Input placeholder="https://..." />
+              </Form.Item>
             </Card>
           </TabPane>
 
+          {/* --- Tab: Descripción --- */}
           <TabPane tab="Descripción" key="5">
-            <Card title="Contenido" size="small">
+            <Card title="Contenido Descriptivo" size="small" bordered={false}>
               <Form.Item
                 name="short_description"
                 label="Descripción Corta"
-                rules={[{ required: true, max: 150 }]}
+                rules={[{ required: true, message: "Requerida" }, { max: 200 }]}
               >
-                <Input.TextArea rows={3} maxLength={150} showCount />
+                <Input.TextArea
+                  rows={3}
+                  maxLength={200}
+                  showCount
+                  placeholder="..."
+                />
               </Form.Item>
-
               <Form.Item
                 name="long_description"
                 label="Descripción Detallada"
-                rules={[{ required: true }]}
+                rules={[
+                  {
+                    validator: (_, value) =>
+                      !value || value === "<p><br></p>"
+                        ? Promise.reject(new Error("Requerida"))
+                        : Promise.resolve(),
+                    required: true,
+                  },
+                ]}
               >
-                <ReactQuill modules={quillModules} />
+                <ReactQuill
+                  modules={quillModules}
+                  theme="snow"
+                  style={{ minHeight: "200px" }}
+                />
               </Form.Item>
             </Card>
           </TabPane>
 
+          {/* --- Tab: SEO --- */}
           <TabPane tab="SEO" key="6">
-            <Card title="Optimización para Buscadores" size="small">
+            <Card
+              title="Optimización para Buscadores"
+              size="small"
+              bordered={false}
+            >
               <Form.Item
                 name="seoTitle"
                 label="Título SEO"
-                rules={[
-                  {
-                    max: 60,
-                    message: "El título SEO no debe exceder 60 caracteres",
-                  },
-                ]}
+                rules={[{ max: 70 }]}
+                extra="Si vacío, usa nombre producto."
               >
-                <Input placeholder="Título para SEO (si se deja vacío se usará el nombre del producto)" />
+                <Input
+                  placeholder="Título atractivo (max 70 car.)"
+                  maxLength={70}
+                  showCount
+                />
               </Form.Item>
-
               <Form.Item
                 name="seoDescription"
-                label="Descripción SEO"
-                rules={[
-                  {
-                    max: 160,
-                    message:
-                      "La descripción SEO no debe exceder 160 caracteres",
-                  },
-                ]}
+                label="Meta Descripción"
+                rules={[{ max: 160 }]}
+                extra="Si vacío, usa desc. corta."
               >
                 <Input.TextArea
                   rows={3}
-                  placeholder="Descripción para SEO (si se deja vacío se usará la descripción corta)"
-                  showCount
                   maxLength={160}
+                  showCount
+                  placeholder="Resumen conciso (max 160 car.)."
                 />
               </Form.Item>
-
               <Form.Item
                 name="seoKeywords"
-                label="Palabras Clave"
-                help="Separar palabras clave por comas"
+                label="Palabras Clave (Opcional)"
+                extra="Separar por comas."
               >
                 <Input.TextArea
                   rows={2}
-                  placeholder="ej: repuesto, motor, hyundai"
+                  placeholder="Ej: repuesto, motor, hyundai"
                 />
               </Form.Item>
             </Card>
           </TabPane>
         </Tabs>
-
-        <Form.Item name="active" valuePropName="checked">
-          <Switch checkedChildren="Activo" unCheckedChildren="Inactivo" />
-        </Form.Item>
       </Form>
     </Modal>
   );

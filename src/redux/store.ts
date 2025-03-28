@@ -9,9 +9,6 @@ import fuelsSlice from "./reducers/FuelsSlice";
 import transmissionsSlice from "./reducers/TransmissionsSlice";
 import LinesSlice from "./reducers/LinesSlice";
 
-
-
-
 export const store = configureStore({
   reducer: {
     user: userReducer,
@@ -21,9 +18,9 @@ export const store = configureStore({
     models: modelsReducer,
     fuels: fuelsSlice,
     transmissions: transmissionsSlice,
-    lines: LinesSlice
+    lines: LinesSlice,
   },
-  
+
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: false,

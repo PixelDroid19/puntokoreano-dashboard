@@ -12,8 +12,6 @@ import Products from "../pages/products/Products.page";
 import AddProduct from "../pages/products/components/AddProduct.component";
 import Images from "../pages/images/Images.page";
 import AddImages from "../pages/images/components/AddImages.component";
-import Filters from "../pages/filters/filters.page";
-import AddFilters from "../pages/filters/components/AddFilters.component";
 import Users from "../pages/users/Users.page";
 import Orders from "../pages/orders/Orders.page";
 //import Blog from "../pages/blog/Blog.page";
@@ -90,16 +88,6 @@ const router = createBrowserRouter(
           />
         </Route>
 
-        {/* Filters */}
-        <Route path="/filters">
-          <Route index element={<Filters />} errorElement={<RouteError />} />
-          <Route
-            path="add"
-            element={<AddFilters />}
-            errorElement={<RouteError />}
-          />
-        </Route>
-
         {/* Orders */}
         <Route
           path="/orders"
@@ -110,7 +98,7 @@ const router = createBrowserRouter(
         {/* Blog */}
         <Route
           path="/blogs"
-          element={<DevelopmentView />} //element={<Blog />} 
+          element={<DevelopmentView />} //element={<Blog />}
           errorElement={<RouteError />}
         />
 
@@ -147,7 +135,7 @@ const router = createBrowserRouter(
           element={<AboutSettingsPage />}
           errorElement={<RouteError />}
         />
-         <Route
+        <Route
           path="/highlighted-services"
           element={<HighlightedServicesSettings />}
           errorElement={<RouteError />}

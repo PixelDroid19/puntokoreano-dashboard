@@ -56,6 +56,7 @@
     "react-responsive": "^10.0.0",
     "react-router-dom": "^6.23.0",
     "react-select": "^5.10.1",
+    "react-select-async-paginate": "^0.7.9",
     "react-toastify": "^10.0.6",
     "recharts": "^2.14.1",
     "redux": "^5.0.1",

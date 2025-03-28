@@ -83,6 +83,12 @@ interface GetFamiliesResponse {
   total: number;
   totalPages: number;
 }
+
+interface GetVehiclesResponse {
+  vehicles: any[];
+  total: number;
+  totalPages: number;
+}
 interface GetModelsResponse {
   models: any[];
   total: number;
@@ -229,12 +235,13 @@ class VehicleFamiliesService {
   }
 
   // GET /vehicles - Obtiene todos los vehículos registrados
-  static async getVehicles(): Promise<any[]> {
+  static async getVehicles(params: GetParams): Promise<GetVehiclesResponse> {
     try {
       const response = await axios({
-        url: `${BASE_URL}/dashboard/vehicles`,
+        url: ENDPOINTS.VEHICLES.CREATE.url,
         method: "GET",
         headers: this.getHeaders(),
+        params: params,
       });
 
       return response.data.data;

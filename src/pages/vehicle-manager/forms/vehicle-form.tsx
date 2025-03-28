@@ -18,9 +18,6 @@ import {
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import BrandSelector from "../selectors/brand-selector";
-import FamilySelector from "../selectors/family-selector";
-import ModelSelector from "../selectors/model-selector";
 import LineSelector from "../selectors/line-selector";
 import TransmissionSelector from "../selectors/transmission-selector";
 import FuelSelector from "../selectors/fuel-selector";

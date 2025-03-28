@@ -9,8 +9,9 @@ import {
   message,
   Space,
   Typography,
+  Card,
+  Badge,
 } from "antd";
-
 const { Text } = Typography;
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -19,35 +20,35 @@ import {
   EditOutlined,
   EyeOutlined,
   PercentageOutlined,
+  FilterOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import HeaderTable from "./components/HeaderTable.component";
 import { ProductEdit } from "./components/ProductEdit";
 import { useMediaQuery } from "react-responsive";
-import React from "react";
 import ProductsService from "../../services/products.service";
-import { Product } from "../../api/types";
+import type { Product } from "../../api/types";
 import debounce from "lodash/debounce";
 import { ProductView } from "./components/ProductView";
 import DiscountModal from "./components/DiscountModal";
+import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useState } from "react";
 
 const Products = () => {
   const queryClient = useQueryClient();
   const isTabletOrMobile = useMediaQuery({ query: "(max-width: 1023px)" });
-  const [searchText, setSearchText] = React.useState("");
-  const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(
-    null
-  );
-  const [isViewModalOpen, setIsViewModalOpen] = React.useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
-  const [isDiscountModalOpen, setIsDiscountModalOpen] = React.useState(false);
-  const [pagination, setPagination] = React.useState({
+  const [searchText, setSearchText] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
+  const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
     total: 0,
   });
 
-  // Query para obtener productos
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["products", pagination.current, pagination.pageSize, searchText],
     queryFn: () =>
       ProductsService.getProducts({
@@ -57,54 +58,71 @@ const Products = () => {
       }),
   });
 
-  // Mutación para eliminar producto
   const deleteProduct = useMutation({
     mutationFn: (id: string) => ProductsService.deleteProduct(id),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
+
       message.success("Producto eliminado correctamente");
     },
-    onError: (error: Error) => {
-      message.error(error.message);
+    onError: (error: any) => {
+      message.error(
+        error?.response?.data?.message ||
+          error.message ||
+          "Error al eliminar producto"
+      );
     },
   });
 
-  // Mutación para toggle status
   const toggleStatus = useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) =>
-      ProductsService.toggleProductStatus(id, active),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
+      ProductsService.updateProduct(id, { active }),
+    onSuccess: (response, variables) => {
+      queryClient.setQueryData(
+        ["products", pagination.current, pagination.pageSize, searchText],
+        (oldData: any) => {
+          if (!oldData) return oldData;
+          return {
+            ...oldData,
+            products: oldData.products.map((p: Product) =>
+              p.id === variables.id ? { ...p, active: variables.active } : p
+            ),
+          };
+        }
+      );
+      queryClient.invalidateQueries({ queryKey: ["products"], exact: false });
       message.success("Estado actualizado correctamente");
     },
-    onError: (error: Error) => {
-      message.error(error.message);
+    onError: (error: any, variables) => {
+      message.error(
+        error?.response?.data?.message ||
+          error.message ||
+          "Error al actualizar estado"
+      );
+      queryClient.invalidateQueries({ queryKey: ["products"] });
     },
   });
 
-  // Manejador de cambio de página
-  const handleTableChange = (pagination: any) => {
+  const handleTableChange = (newPagination: any) => {
     setPagination((prev) => ({
       ...prev,
-      current: pagination.current,
-      pageSize: pagination.pageSize,
+      current: newPagination.current,
+      pageSize: newPagination.pageSize,
     }));
   };
 
-  // Búsqueda debounced
   const handleSearch = debounce((value: string) => {
     setSearchText(value);
     setPagination((prev) => ({ ...prev, current: 1 }));
   }, 500);
 
-  // Columnas de la tabla
   const columns = [
     {
       title: "Nombre",
       dataIndex: "name",
       key: "name",
       ellipsis: isTabletOrMobile,
-      fixed: isTabletOrMobile,
+
       render: (name: string) =>
         isTabletOrMobile ? (
           <Tooltip placement="topLeft" title={name}>
@@ -126,32 +144,56 @@ const Products = () => {
       dataIndex: "price",
       key: "price",
       ellipsis: true,
-      render: (price: number) =>
-        price?.toLocaleString("es-CO", {
-          style: "currency",
-          currency: "COP",
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 0,
-        }),
+      render: (price: number, record: Product) => (
+        <div>
+          <Text
+            className={
+              record.discount?.isActive ? "text-red-500 font-medium" : ""
+            }
+          >
+            {price?.toLocaleString("es-CO", {
+              style: "currency",
+              currency: "COP",
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            })}
+          </Text>
+
+          {record.discount?.isActive && record.discount?.percentage > 0 && (
+            <Badge
+              count={`-${record.discount.percentage}%`}
+              style={{ backgroundColor: "#ff4d4f", fontSize: "10px" }}
+              className="ml-1 align-middle"
+            />
+          )}
+        </div>
+      ),
     },
     {
       title: "Stock",
       dataIndex: "stock",
       key: "stock",
       ellipsis: true,
+      // render no necesita cambios si solo depende de 'stock'
       render: (stock: number) => {
         const color = stock > 10 ? "green" : stock > 0 ? "orange" : "red";
-        return <Tag color={color}>{stock.toLocaleString("es-CO")}</Tag>;
+        return (
+          <Tag color={color} className="px-2 py-1 font-medium">
+            {stock.toLocaleString("es-CO")}
+          </Tag>
+        );
       },
     },
     {
       title: "Estado",
       dataIndex: "active",
       key: "active",
+
       render: (active: boolean, record: Product) => (
         <Tag
           color={active ? "green" : "volcano"}
           style={{ cursor: "pointer" }}
+          className="px-2 py-1 transition-all hover:shadow-sm"
           onClick={() =>
             toggleStatus.mutate({ id: record.id, active: !active })
           }
@@ -164,120 +206,192 @@ const Products = () => {
     {
       title: "Acciones",
       key: "action",
-      width: 120,
-      render: (_, record: Product) => (
+      width: 150,
+      fixed: !isTabletOrMobile ? "right" : undefined,
+
+      render: (_: any, record: Product) => (
         <Space>
-          <Button
-            icon={<EyeOutlined />}
-            size="small"
-            onClick={() => {
-              setSelectedProduct(record);
-              setIsViewModalOpen(true);
-            }}
-          />
-          <Button
-            icon={<EditOutlined />}
-            size="small"
-            onClick={() => {
-              setSelectedProduct(record);
-              setIsEditModalOpen(true);
-            }}
-          />
-          <Button
-            icon={<PercentageOutlined />}
-            size="small"
-            onClick={() => {
-              setSelectedProduct(record);
-              setIsDiscountModalOpen(true);
-            }}
-          />
-          <Popconfirm
-            title="¿Eliminar producto?"
-            description="Esta acción no se puede deshacer"
-            onConfirm={() => deleteProduct.mutate(record.id)}
-            okText="Sí"
-            cancelText="No"
-          >
-            <Button icon={<DeleteOutlined />} size="small" danger />
-          </Popconfirm>
+          <Tooltip title="Ver detalles">
+            <Button
+              icon={<EyeOutlined />}
+              size="middle"
+              className="text-blue-500 hover:text-blue-600 hover:border-blue-500 transition-colors"
+              onClick={() => {
+                setSelectedProduct(record);
+                setIsViewModalOpen(true);
+              }}
+            />
+          </Tooltip>
+          <Tooltip title="Editar">
+            <Button
+              icon={<EditOutlined />}
+              size="middle"
+              className="text-green-500 hover:text-green-600 hover:border-green-500 transition-colors"
+              onClick={() => {
+                setSelectedProduct(record);
+                setIsEditModalOpen(true);
+              }}
+            />
+          </Tooltip>
+          <Tooltip title="Gestionar descuento">
+            <Button
+              icon={<PercentageOutlined />}
+              size="middle"
+              className="text-purple-500 hover:text-purple-600 hover:border-purple-500 transition-colors"
+              onClick={() => {
+                setSelectedProduct(record);
+                setIsDiscountModalOpen(true);
+              }}
+            />
+          </Tooltip>
+          <Tooltip title="Eliminar">
+            <Popconfirm
+              title="¿Eliminar producto?"
+              description="Esta acción no se puede deshacer"
+              onConfirm={() => deleteProduct.mutate(record.id)}
+              okText="Sí"
+              cancelText="No"
+              placement="left"
+              okButtonProps={{ danger: true }}
+            >
+              <Button
+                icon={<DeleteOutlined />}
+                size="middle"
+                danger
+                className="hover:bg-red-50 transition-colors"
+              />
+            </Popconfirm>
+          </Tooltip>
         </Space>
       ),
     },
   ];
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (data?.pagination) {
       setPagination((prev) => ({
         ...prev,
         total: data.pagination.total,
       }));
     }
-  }, [data]);
+  }, [data?.pagination]);
 
   if (isError) {
-    return <div className="error-container">Error al cargar los productos</div>;
+    return (
+      <div className="error-container p-8 text-center">
+        <Card className="bg-red-50 border-red-200">
+          <Text type="danger" className="text-lg">
+            Error al cargar los productos
+          </Text>
+          <div className="mt-4">
+            <Button
+              type="primary"
+              danger
+              icon={<ReloadOutlined />}
+              onClick={() => refetch()}
+            >
+              Reintentar
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   return (
-    <div className="products-container">
-      <div className="table-header">
-        <HeaderTable />
-        <Input
-          placeholder="Buscar por nombre o SKU"
-          prefix={<SearchOutlined />}
-          onChange={(e) => handleSearch(e.target.value)}
-          style={{ width: 300, marginBottom: 16 }}
-        />
-      </div>
+    <div className="p-4 lg:p-6">
+      <HeaderTable />
 
-      <Table
-        size="middle"
-        loading={isLoading}
-        scroll={{ x: isTabletOrMobile ? 850 : true }}
-        dataSource={data?.products.map((product) => ({
-          ...product,
-          key: product.id,
-        }))}
-        columns={columns}
-        pagination={{
-          ...pagination,
-          showSizeChanger: true,
-          showTotal: (total) => `Total ${total} productos`,
-        }}
-        onChange={handleTableChange}
-      />
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="mt-4"
+      >
+        <Card className="shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+          {" "}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+            <Input
+              placeholder="Buscar por nombre o SKU"
+              prefix={<SearchOutlined className="text-gray-400" />}
+              onChange={(e) => handleSearch(e.target.value)}
+              style={{ maxWidth: 300 }}
+              size="large"
+              allowClear
+              className="rounded-lg"
+            />
+            <Space wrap>
+              <Button
+                icon={<ReloadOutlined />}
+                size="large"
+                onClick={() => refetch()}
+                loading={isLoading}
+                className="hover:bg-blue-50 transition-colors"
+              >
+                Actualizar
+              </Button>
+            </Space>
+          </div>
+          <Table
+            size="middle"
+            loading={isLoading}
+            scroll={{ x: isTabletOrMobile ? 850 : "max-content" }}
+            dataSource={
+              data?.products?.map((product) => ({
+                ...product,
+                key: product.id,
+              })) || []
+            }
+            columns={columns}
+            pagination={{
+              ...pagination,
+              showSizeChanger: true,
+              showTotal: (total, range) =>
+                `${range[0]}-${range[1]} de ${total} productos`,
+              className: "pagination-custom mt-4",
+              showQuickJumper: true,
+            }}
+            onChange={handleTableChange}
+            className="products-table"
+            rowClassName="hover:bg-gray-50 transition-colors cursor-pointer"
+          />
+        </Card>
+      </motion.div>
 
-      {/* Modal de Vista */}
-      {selectedProduct && (
-        <ProductView
-          open={isViewModalOpen}
-          onClose={() => {
-            setIsViewModalOpen(false);
-            setSelectedProduct(null);
-          }}
-          product={selectedProduct}
-        />
-      )}
+      <AnimatePresence>
+        {selectedProduct && isViewModalOpen && (
+          <ProductView
+            open={isViewModalOpen}
+            onClose={() => {
+              setIsViewModalOpen(false);
+              setSelectedProduct(null);
+            }}
+            productId={selectedProduct.id}
+          />
+        )}
 
-      {/* ProductEdit Modal */}
-      {selectedProduct && (
-        <ProductEdit
-          open={isEditModalOpen}
-          onClose={() => {
-            setIsEditModalOpen(false);
-            setSelectedProduct(null);
-          }}
-          product={selectedProduct}
-        />
-      )}
+        {selectedProduct && isEditModalOpen && (
+          <ProductEdit
+            open={isEditModalOpen}
+            onClose={() => {
+              setIsEditModalOpen(false);
+              setSelectedProduct(null);
+            }}
+            productId={selectedProduct.id}
+          />
+        )}
 
-      {selectedProduct && isDiscountModalOpen && (
-        <DiscountModal
-          open={isDiscountModalOpen}
-          onClose={() => setIsDiscountModalOpen(false)}
-          product={selectedProduct}
-        />
-      )}
+        {selectedProduct && isDiscountModalOpen && (
+          <DiscountModal
+            open={isDiscountModalOpen}
+            onClose={() => {
+              setIsDiscountModalOpen(false);
+              setSelectedProduct(null);
+            }}
+            product={selectedProduct}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
