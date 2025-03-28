@@ -903,7 +903,7 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
                   label={
                     <div className="flex items-center">
                       <CarOutlined className="mr-1 text-blue-600" />
-                      <span>Vehículos Compatibles</span>
+                      <span>Vehículos Compatibles / Aplicaciones </span>
                       {renderFieldHelp(
                         "Vehículos Compatibles",
                         "Seleccione los vehículos con los que este producto es compatible. Los IDs se guardarán para el backend."
