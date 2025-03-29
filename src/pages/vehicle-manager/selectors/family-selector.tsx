@@ -1,20 +1,42 @@
 // src/pages/selectors/vehicle-manager/FamilySelector.tsx
-import React, { useCallback } from "react";
-import Select from "react-select/async";
+import React, { useState } from "react";
+import { AsyncPaginate, LoadOptions } from "react-select-async-paginate";
 import VehicleFamiliesService from "../../../services/vehicle-families.service";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  fetchFamilysStart,
-  fetchFamilysSuccess,
-  fetchFamilysFailure,
-  selectFamilys,
-  selectFamilysLoading,
-  selectFamilysError,
-} from "../../../redux/reducers/familiesSlice";
 import {
   FamilieOption,
   FamilieSelectorProps,
 } from "../../../types/selectors.types";
+
+// --- API Type Definitions ---
+interface ApiFamily {
+  _id: string;
+  name: string;
+  brand_id?: string;
+  [key: string]: any;
+}
+
+interface FamilyApiData {
+  families: ApiFamily[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  };
+}
+
+// Adjust based on your actual API response structure
+interface FamilyApiResponse {
+  success: boolean;
+  message?: string;
+  data?: FamilyApiData;
+}
+// Alternative: type FamilyApiResponse = FamilyApiData;
+
+interface PageAdditional {
+  page: number;
+}
+// --- End of Type Definitions ---
 
 const FamilySelector: React.FC<FamilieSelectorProps> = ({
   onChange,
@@ -22,96 +44,119 @@ const FamilySelector: React.FC<FamilieSelectorProps> = ({
   placeholder = "Buscar Familia...",
   ...rest
 }) => {
-  const dispatch = useDispatch();
-  const families = useSelector(selectFamilys) as FamilieOption[];
-  const loading = useSelector(selectFamilysLoading);
-  const error = useSelector(selectFamilysError);
+  const [error, setError] = useState<string | null>(null);
 
-  const loadOptions = useCallback(
-    async (inputValue: string) => {
+  const loadPageOptions: LoadOptions<FamilieOption, any, PageAdditional> =
+    async (
+      search,
+      loadedOptions,
+      additional
+    ): Promise<{
+      options: FamilieOption[];
+      hasMore: boolean;
+      additional?: PageAdditional;
+    }> => {
+      const pageToLoad = additional?.page || 1;
+      const limit = 10;
+
+      setError(null);
+
       try {
-        dispatch(fetchFamilysStart());
-        const response = await VehicleFamiliesService.getFamilies({
-          page: 1,
-          limit: 10, 
-          sortBy: "name",
-          sortOrder: "asc",
-          search: inputValue,
-        });
+        const serviceResponse: FamilyApiResponse | FamilyApiData =
+          await VehicleFamiliesService.getFamilies({ // Correct service call
+            page: pageToLoad,
+            limit: limit,
+            sortBy: "name",
+            sortOrder: "asc",
+            search: search,
+          });
 
-        const familyOptions = response.families.map((family) => ({
-          value: family._id,
-          label: family.name,
-          brand_id: family.brand_id,
-        }));
-        dispatch(fetchFamilysSuccess(familyOptions));
-        return familyOptions;
-      } catch (error: any) {
-        // Especifica el tipo de error
-        console.error("Error loading families:", error);
-        dispatch(
-          fetchFamilysFailure(error.message || "Error al cargar Familias")
+        console.log(
+          "Respuesta RECIBIDA del servicio (Families):",
+          serviceResponse
         );
-        return [];
-      }
-    },
-    [dispatch]
-  );
 
-  const handleInputChange = (inputValue: string) => {
-    return inputValue;
-  };
+        // *** IMPORTANT: Adapt the following based on your actual API response structure ***
+        const responseData: FamilyApiData | null | undefined =
+          (serviceResponse as FamilyApiResponse)?.data ??
+          (serviceResponse as FamilyApiData);
+
+        if (
+          !responseData ||
+          !Array.isArray(responseData.families) || // Check for 'families' array
+          !responseData.pagination
+        ) {
+          console.error(
+            "Formato de datos de API inválido (Families):",
+            responseData
+          );
+          const apiMessage = (serviceResponse as FamilyApiResponse)?.message;
+          throw new Error(
+            apiMessage || "Formato de datos inválido de la API de familias"
+          );
+        }
+        // *** End of Structure Adaptation ***
+
+        const { families, pagination } = responseData;
+
+        const newOptions: FamilieOption[] = families.map(
+          (family: ApiFamily) => ({
+            value: family._id,
+            label: family.name, // Simple label
+            brand_id: family.brand_id
+          })
+        );
+
+        const hasMore = pagination.currentPage < pagination.totalPages;
+        const nextPage = hasMore ? pagination.currentPage + 1 : undefined;
+
+        return {
+          options: newOptions,
+          hasMore: hasMore,
+          additional: nextPage ? { page: nextPage } : undefined,
+        };
+      } catch (err: any) {
+        console.error("Error en loadPageOptions (Families):", err);
+        const errorMessage =
+          err.message || "Error inesperado al cargar las familias";
+        setError(errorMessage);
+
+        return {
+          options: [],
+          hasMore: false,
+        };
+      }
+    };
 
   const handleChange = (selectedOption: FamilieOption | null) => {
     if (onChange) {
-      onChange(selectedOption ? selectedOption.value : null);
-    }
-  };
-
-  const getValue = () => {
-    if (!value) {
-     // console.log("getValue - Value prop is empty, returning null");
-      return null;
-    }
-
-    if (!families || families.length === 0) {
-   /*    console.log(
-        "getValue - Familys array is empty or undefined, returning null"
-      ); */
-      return null;
-    }
-
-    const selectedFamily = families.find((brand) => brand.value === value);
-
-    if (selectedFamily) {
-    //  console.log("getValue - Found brand:", selectedFamily);
-      return selectedFamily;
-    } else {
-     // console.log("getValue - Family NOT found for value:", value);
-      return null;
+      onChange(selectedOption);
     }
   };
 
   return (
     <div>
-      <Select
-        cacheOptions
-        loadOptions={loadOptions}
-        defaultOptions
-        placeholder={placeholder}
-        noOptionsMessage={() => "No se encontraron familias"}
-        loadingMessage={() => "Cargando familias..."}
-        onInputChange={handleInputChange}
+      <AsyncPaginate<FamilieOption, any, PageAdditional>
+        value={value}
+        loadOptions={loadPageOptions}
+        getOptionValue={(option) => option.value}
+        getOptionLabel={(option) => option.label}
         onChange={handleChange}
-        value={getValue()}
-        isLoading={loading}
+        isSearchable={true}
+        placeholder={placeholder}
+        loadingMessage={() => "Cargando familias..."}
+        noOptionsMessage={({ inputValue }) =>
+          inputValue ? "No se encontraron familias" : "Escribe para buscar..."
+        }
+        debounceTimeout={350}
         className="react-select-container"
         classNamePrefix="react-select"
         {...rest}
       />
+
       {error && (
         <p style={{ color: "red", fontSize: "0.8em", marginTop: "5px" }}>
-          Error al cargar Familias: {error}
+          {error}
         </p>
       )}
     </div>

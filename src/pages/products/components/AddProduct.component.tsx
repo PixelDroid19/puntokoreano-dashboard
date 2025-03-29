@@ -12,7 +12,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
-import React from "react";
+import React, { useEffect } from "react";
 import { RcFile } from "antd/es/upload";
 import { getGroups } from "../../../helpers/queries.helper";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -295,6 +295,7 @@ const AddProduct = () => {
       setSubgroups([]);
     }
   };
+
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

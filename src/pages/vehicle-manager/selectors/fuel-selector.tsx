@@ -1,17 +1,42 @@
 // src/pages/selectors/vehicle-manager/FuelSelector.tsx
-import React, { useCallback } from "react";
-import Select from "react-select/async";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  fetchFuelsStart,
-  fetchFuelsSuccess,
-  fetchFuelsFailure,
-  selectFuels,
-  selectFuelsLoading,
-  selectFuelsError,
-} from "../../../redux/reducers/FuelsSlice";
-import { FuelsOption, FuelSelectorProps } from "../../../types/selectors.types";
+import React, { useState } from "react";
+import { AsyncPaginate, LoadOptions } from "react-select-async-paginate";
 import VehicleFamiliesService from "../../../services/vehicle-families.service";
+import {
+  FuelsOption,
+  FuelSelectorProps,
+} from "../../../types/selectors.types";
+
+// --- API Type Definitions ---
+interface ApiFuel {
+  _id: string;
+  name: string;
+  octane_rating?: number;
+  [key: string]: any;
+}
+
+interface FuelApiData {
+  fuels: ApiFuel[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  };
+}
+
+// Adjust based on your actual API response structure
+interface FuelApiResponse {
+  success: boolean;
+  message?: string;
+  data?: FuelApiData;
+}
+// Alternative: type FuelApiResponse = FuelApiData;
+
+interface PageAdditional {
+  page: number;
+}
+// --- End of Type Definitions ---
 
 const FuelSelector: React.FC<FuelSelectorProps> = ({
   onChange,
@@ -19,97 +44,124 @@ const FuelSelector: React.FC<FuelSelectorProps> = ({
   placeholder = "Buscar combustible...",
   ...rest
 }) => {
-  const dispatch = useDispatch();
-  const Fuels = useSelector(selectFuels) as FuelsOption[];
-  const loading = useSelector(selectFuelsLoading);
-  const error = useSelector(selectFuelsError);
+  const [error, setError] = useState<string | null>(null);
 
-  const loadOptions = useCallback(
-    async (inputValue: string) => {
+  const loadPageOptions: LoadOptions<FuelsOption, any, PageAdditional> =
+    async (
+      search,
+      loadedOptions,
+      additional
+    ): Promise<{
+      options: FuelsOption[];
+      hasMore: boolean;
+      additional?: PageAdditional;
+    }> => {
+      const pageToLoad = additional?.page || 1;
+      const limit = 10;
+
+      setError(null);
+
       try {
-        dispatch(fetchFuelsStart());
-        const response = await VehicleFamiliesService.getFuels({
-          page: 1,
-          limit: 10,
-          sortBy: "name",
-          sortOrder: "asc",
-          search: inputValue,
-        });
+        const serviceResponse: FuelApiResponse | FuelApiData =
+          await VehicleFamiliesService.getFuels({
+            page: pageToLoad,
+            limit: limit,
+            sortBy: "name",
+            sortOrder: "asc",
+            search: search,
+          });
 
-        const FuelOptions = response.fuels.map((fuel) => ({
-          value: fuel._id,
-          label: `${fuel.name} (${fuel.octane_rating})`,
-          octane_rating: fuel.octane_rating,
-        }));
-
-        dispatch(fetchFuelsSuccess(FuelOptions));
-        return FuelOptions;
-      } catch (error: any) {
-        // Especifica el tipo de error
-        console.error("Error loading Fuels:", error);
-        dispatch(
-          fetchFuelsFailure(error.message || "Error al cargar combustibles")
+        console.log(
+          "Respuesta RECIBIDA del servicio (Fuels):",
+          serviceResponse
         );
-        return [];
-      }
-    },
-    [dispatch]
-  );
 
-  const handleInputChange = (inputValue: string) => {
-    return inputValue;
-  };
+        // *** IMPORTANT: Adapt the following based on your actual API response structure ***
+        const responseData: FuelApiData | null | undefined =
+          (serviceResponse as FuelApiResponse)?.data ??
+          (serviceResponse as FuelApiData);
+
+        if (
+          !responseData ||
+          !Array.isArray(responseData.fuels) ||
+          !responseData.pagination
+        ) {
+          console.error(
+            "Formato de datos de API inválido (Fuels):",
+            responseData
+          );
+          const apiMessage = (serviceResponse as FuelApiResponse)?.message;
+          throw new Error(
+            apiMessage || "Formato de datos inválido de la API de combustibles"
+          );
+        }
+        // *** End of Structure Adaptation ***
+
+        const { fuels, pagination } = responseData;
+
+        const newOptions: FuelsOption[] = fuels.map(
+          (fuel: ApiFuel) => ({
+            value: fuel._id,
+            label: `${fuel.name}${
+              fuel.octane_rating ? ` (${fuel.octane_rating} Oct.)` : ""
+            }`,
+            octane_rating: fuel.octane_rating,
+            fuelData: fuel,
+          })
+        );
+
+        const hasMore = pagination.currentPage < pagination.totalPages;
+        const nextPage = hasMore ? pagination.currentPage + 1 : undefined;
+
+        return {
+          options: newOptions,
+          hasMore: hasMore,
+          additional: nextPage ? { page: nextPage } : undefined,
+        };
+      } catch (err: any) {
+        console.error("Error en loadPageOptions (Fuels):", err);
+        const errorMessage =
+          err.message || "Error inesperado al cargar los combustibles";
+        setError(errorMessage);
+
+        return {
+          options: [],
+          hasMore: false,
+        };
+      }
+    };
 
   const handleChange = (selectedOption: FuelsOption | null) => {
     if (onChange) {
-      onChange(selectedOption ? selectedOption.value : null);
-    }
-  };
-
-  const getValue = () => {
-    if (!value) {
-      // console.log("getValue - Value prop is empty, returning null");
-      return null;
-    }
-
-    if (!Fuels || Fuels.length === 0) {
-      /*    console.log(
-        "getValue - Fuels array is empty or undefined, returning null"
-      ); */
-      return null;
-    }
-
-    const selectedFuel = Fuels.find((fuel) => fuel.value === value);
-
-    if (selectedFuel) {
-      //  console.log("getValue - Found fuel:", selectedFuel);
-      return selectedFuel;
-    } else {
-      // console.log("getValue - fuel NOT found for value:", value);
-      return null;
+      onChange(selectedOption);
     }
   };
 
   return (
     <div>
-      <Select
-        cacheOptions
-        loadOptions={loadOptions}
-        defaultOptions
-        placeholder={placeholder}
-        noOptionsMessage={() => "No se encontraron combustibles"}
-        loadingMessage={() => "Cargando combustible..."}
-        onInputChange={handleInputChange}
+      <AsyncPaginate<FuelsOption, any, PageAdditional>
+        value={value}
+        loadOptions={loadPageOptions}
+        getOptionValue={(option) => option.value}
+        getOptionLabel={(option) => option.label}
         onChange={handleChange}
-        value={getValue()}
-        isLoading={loading}
+        isSearchable={true}
+        placeholder={placeholder}
+        loadingMessage={() => "Cargando combustibles..."}
+        noOptionsMessage={({ inputValue }) =>
+          inputValue
+            ? "No se encontraron combustibles"
+            : "Escribe para buscar..."
+        }
+        debounceTimeout={350}
         className="react-select-container"
         classNamePrefix="react-select"
         {...rest}
       />
+
       {error && (
         <p style={{ color: "red", fontSize: "0.8em", marginTop: "5px" }}>
-          Error al cargar combustible: {error}
+          {error}
         </p>
       )}
     </div>

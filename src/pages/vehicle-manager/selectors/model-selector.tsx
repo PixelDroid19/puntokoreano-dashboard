@@ -1,20 +1,56 @@
 // src/pages/selectors/vehicle-manager/ModelSelector.tsx
-import React, { useCallback } from "react";
-import Select from "react-select/async";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  fetchModelsStart,
-  fetchModelsSuccess,
-  fetchModelsFailure,
-  selectModels,
-  selectModelsLoading,
-  selectModelsError,
-} from "../../../redux/reducers/ModelsSlice";
-import {
-  ModelsOption,
-  ModelSelectorProps,
-} from "../../../types/selectors.types";
+import React, { useState } from "react";
+import { AsyncPaginate, LoadOptions } from "react-select-async-paginate";
 import VehicleFamiliesService from "../../../services/vehicle-families.service";
+import {
+  ModelsOption as OriginalModelsOption,
+  ModelSelectorProps as OriginalModelSelectorProps,
+} from "../../../types/selectors.types";
+
+interface ApiModel {
+  _id: string;
+  name?: string;
+  brand_id?: string;
+  family_id?: string;
+  engineType?: string;
+  year?: number;
+  active?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+
+  [key: string]: any;
+}
+
+interface ModelApiData {
+  models: ApiModel[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  };
+}
+
+interface ModelApiResponse {
+  success: boolean;
+  message?: string;
+  data?: ModelApiData;
+}
+
+export interface ModelsOption extends OriginalModelsOption {
+  modelData: ApiModel;
+}
+
+interface PageAdditional {
+  page: number;
+}
+
+export interface ModelSelectorProps
+  extends Omit<OriginalModelSelectorProps, "value" | "onChange"> {
+  value: ModelsOption | null;
+
+  onChange: (selectedOption: ModelsOption | null) => void;
+}
 
 const ModelSelector: React.FC<ModelSelectorProps> = ({
   onChange,
@@ -22,99 +58,118 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
   placeholder = "Buscar Modelo...",
   ...rest
 }) => {
-  const dispatch = useDispatch();
-  const Models = useSelector(selectModels) as ModelsOption[];
-  const loading = useSelector(selectModelsLoading);
-  const error = useSelector(selectModelsError);
+  const [error, setError] = useState<string | null>(null);
 
-  const loadOptions = useCallback(
-    async (inputValue: string) => {
-      try {
-        dispatch(fetchModelsStart());
-        const response = await VehicleFamiliesService.getModels({
-          page: 1,
-          limit: 10,
+  const loadPageOptions: LoadOptions<
+    ModelsOption,
+    any,
+    PageAdditional
+  > = async (
+    search,
+    loadedOptions,
+    additional
+  ): Promise<{
+    options: ModelsOption[];
+    hasMore: boolean;
+    additional?: PageAdditional;
+  }> => {
+    const pageToLoad = additional?.page || 1;
+    const limit = 10;
+
+    setError(null);
+
+    try {
+      const serviceResponse: ModelApiResponse | ModelApiData =
+        await VehicleFamiliesService.getModels({
+          page: pageToLoad,
+          limit: limit,
           sortBy: "name",
           sortOrder: "asc",
-          search: inputValue,
+          search: search,
         });
 
-        const ModelOptions = response.models.map((Model) => ({
-          value: Model._id,
-          label: Model.name,
-          brand_id: Model.brand_id,
-          family_id: Model.family_id,
-          engineType: Model.engineType,
-          year: Model.year,
-          active: Model.active,
-        }));
+      console.log("Respuesta RECIBIDA del servicio (Models):", serviceResponse);
 
-        dispatch(fetchModelsSuccess(ModelOptions));
-        return ModelOptions;
-      } catch (error: any) {
-        // Especifica el tipo de error
-        console.error("Error loading Models:", error);
-        dispatch(fetchModelsFailure(error.message || "Error al cargar modelos"));
-        return [];
+      const responseData: ModelApiData | null | undefined =
+        (serviceResponse as ModelApiResponse)?.data ??
+        (serviceResponse as ModelApiData);
+
+      if (
+        !responseData ||
+        !Array.isArray(responseData.models) ||
+        !responseData.pagination
+      ) {
+        console.error(
+          "Formato de datos de API inválido (Models):",
+          responseData
+        );
+        const apiMessage = (serviceResponse as ModelApiResponse)?.message;
+        throw new Error(
+          apiMessage || "Formato de datos inválido de la API de modelos"
+        );
       }
-    },
-    [dispatch]
-  );
 
-  const handleInputChange = (inputValue: string) => {
-    return inputValue;
+      const { models, pagination } = responseData;
+
+      const newOptions: ModelsOption[] = models.map((model: ApiModel) => {
+        const modelName = model.name || "Modelo sin nombre";
+        return {
+          value: model._id,
+          label: modelName,
+          modelData: model,
+        };
+      });
+
+      const hasMore = pagination.currentPage < pagination.totalPages;
+      const nextPage = hasMore ? pagination.currentPage + 1 : undefined;
+
+      return {
+        options: newOptions,
+        hasMore: hasMore,
+        additional: nextPage ? { page: nextPage } : undefined,
+      };
+    } catch (err: any) {
+      console.error("Error en loadPageOptions (Models):", err);
+      const errorMessage =
+        err.message || "Error inesperado al cargar los modelos";
+      setError(errorMessage);
+
+      return {
+        options: [],
+        hasMore: false,
+      };
+    }
   };
 
   const handleChange = (selectedOption: ModelsOption | null) => {
     if (onChange) {
-      onChange(selectedOption ? selectedOption.value : null);
-    }
-  };
-
-  const getValue = () => {
-    if (!value) {
-      // console.log("getValue - Value prop is empty, returning null");
-      return null;
-    }
-
-    if (!Models || Models.length === 0) {
-      /*    console.log(
-        "getValue - Models array is empty or undefined, returning null"
-      ); */
-      return null;
-    }
-
-    const selectedModel = Models.find((brand) => brand.value === value);
-
-    if (selectedModel) {
-      //  console.log("getValue - Found brand:", selectedModel);
-      return selectedModel;
-    } else {
-      // console.log("getValue - Model NOT found for value:", value);
-      return null;
+      onChange(selectedOption);
     }
   };
 
   return (
     <div>
-      <Select
-        cacheOptions
-        loadOptions={loadOptions}
-        defaultOptions
-        placeholder={placeholder}
-        noOptionsMessage={() => "No se encontraron Modelos"}
-        loadingMessage={() => "Cargando Modelos..."}
-        onInputChange={handleInputChange}
+      <AsyncPaginate<ModelsOption, any, PageAdditional>
+        value={value}
+        loadOptions={loadPageOptions}
+        getOptionValue={(option) => option.value}
+        getOptionLabel={(option) => option.label}
         onChange={handleChange}
-        value={getValue()}
-        isLoading={loading}
+        isSearchable={true}
+        placeholder={placeholder}
+        loadingMessage={() => "Cargando Modelos..."}
+        noOptionsMessage={({ inputValue }) =>
+          inputValue ? "No se encontraron modelos" : "Escribe para buscar..."
+        }
+        debounceTimeout={350}
         className="react-select-container"
         classNamePrefix="react-select"
         {...rest}
       />
+
       {error && (
         <p style={{ color: "red", fontSize: "0.8em", marginTop: "5px" }}>
-          Error al cargar Modelos: {error}
+          {error}
         </p>
       )}
     </div>

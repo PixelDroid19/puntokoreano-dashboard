@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import FamilySelector from "../selectors/family-selector";
-import BrandSelector from "../selectors/brand-selector";
 import { useState } from "react";
 import VehicleFamiliesService from "../../../services/vehicle-families.service";
 import FormSuccess from "../ui/FormSuccess";
@@ -12,7 +11,7 @@ import FormSuccess from "../ui/FormSuccess";
 interface ModelFormData {
   name: string;
   active: boolean;
-  brand_id: string;
+
   family_id: string;
   engineType: string;
   year: string;
@@ -21,9 +20,6 @@ interface ModelFormData {
 export default function ModelForm() {
   const [formSuccess, setFormSuccess] = useState(false);
   const [selectedFamilyValue, setSelectedFamilyValue] = useState<string | null>(
-    null
-  );
-  const [selectedBrandValue, setSelectedBrandValue] = useState<string | null>(
     null
   );
 
@@ -36,7 +32,7 @@ export default function ModelForm() {
   } = useForm<ModelFormData>({
     defaultValues: {
       active: true,
-      brand_id: "",
+
       family_id: "",
       engineType: "",
       year: "",
@@ -48,7 +44,6 @@ export default function ModelForm() {
     mutationFn: (data: ModelFormData) =>
       VehicleFamiliesService.addModel({
         name: data.name!,
-        brandId: data.brand_id!,
         engineType: data.engineType!,
         year: data.year!,
         familyId: data.family_id!,
@@ -77,15 +72,13 @@ export default function ModelForm() {
   });
 
   const onSubmit = (data: ModelFormData) => {
+    console.log(data);
     mutate({
       ...data,
+      family_id: data.family_id.value
     });
   };
 
-  const handleBrandChange = (value: string | null) => {
-    setSelectedBrandValue(value);
-    setValue("brand_id", value || "");
-  };
 
   const handleFamilyChange = (value: string | null) => {
     setSelectedFamilyValue(value);
@@ -105,13 +98,7 @@ export default function ModelForm() {
         />
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <label className="block text-sm font-medium mb-1">Marca</label>
-            <BrandSelector
-              onChange={handleBrandChange}
-              value={selectedBrandValue}
-            />
-          </div>
+        
 
           <div className="space-y-2">
             <label className="block text-sm font-medium mb-1">Familia</label>

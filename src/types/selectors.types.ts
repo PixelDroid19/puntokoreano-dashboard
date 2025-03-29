@@ -9,9 +9,16 @@ export interface LinesOption {
   label: string;
 }
 
+interface ApiFamily {
+  _id: string;
+  name: string;
+  brand_id?: string;
+  [key: string]: any;
+}
 export interface FamilieOption {
   value: string;
   label: string;
+  brand_id?: string;
 }
 
 export interface ModelsOption {
@@ -19,14 +26,32 @@ export interface ModelsOption {
   label: string;
 }
 
+interface ApiTransmission {
+  _id: string;
+  name: string;
+  gears?: number;
+  [key: string]: any;
+}
+
+interface ApiFuel {
+  _id: string;
+  name: string;
+  octane_rating?: number;
+  [key: string]: any;
+}
+
 export interface TransmissionsOption {
   value: string;
   label: string;
+  gears?: number;
+  transmissionData: ApiTransmission;
 }
 
 export interface FuelsOption {
   value: string;
   label: string;
+  octane_rating?: number;
+  fuelData: ApiFuel;
 }
 
 export interface VehiclesOption {

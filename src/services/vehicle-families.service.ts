@@ -1,9 +1,7 @@
 // src/services/vehicle-families.service.ts
 import axios from "axios";
 import ENDPOINTS, { BASE_URL } from "../api";
-import replaceUrlParams from "../utils/replaceUrlParams.ts";
 
-// Types for the API responses
 export interface BrandItem {
   _id: string;
   name: string;
@@ -80,42 +78,70 @@ interface GetParams {
 
 interface GetFamiliesResponse {
   families: any[];
-  total: number;
-  totalPages: number;
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  };
 }
 
 interface GetVehiclesResponse {
   vehicles: any[];
-  total: number;
-  totalPages: number;
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  };
 }
 interface GetModelsResponse {
   models: any[];
-  total: number;
-  totalPages: number;
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  };
 }
 
 interface GetFuelsResponse {
   fuels: any[];
-  total: number;
-  totalPages: number;
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  };
 }
 
 interface GetLinesResponse {
   lines: any[];
-  total: number;
-  totalPages: number;
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  };
 }
 interface GetTransmissionsResponse {
   transmissions: any[];
-  total: number;
-  totalPages: number;
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  };
 }
 
 interface GetBrandsResponse {
   brands: any[];
-  total: number;
-  totalPages: number;
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  };
 }
 
 interface CreateFamilyPayload {
@@ -127,14 +153,12 @@ interface CreateFamilyPayload {
 interface CreateModel {
   name: string;
   familyId: string;
-  brandId: string;
   year: string;
   engineType: string;
   active: boolean;
 }
 
 class VehicleFamiliesService {
-  // GET /brands - Obtiene todas las marcas de vehículos
   static async getBrands(params: GetParams): Promise<GetBrandsResponse> {
     try {
       const response = await axios(`${BASE_URL}/dashboard/vehicle-brands`, {
@@ -143,6 +167,11 @@ class VehicleFamiliesService {
         params: params,
       });
 
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida de la API de marcas"
+        );
+      }
       return response.data.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -155,7 +184,6 @@ class VehicleFamiliesService {
     }
   }
 
-  // POST /brands - Crea una nueva marca de vehículo
   static async createBrand(data: {
     name: string;
     country?: string;
@@ -168,7 +196,11 @@ class VehicleFamiliesService {
         headers: this.getHeaders(),
         data,
       });
-
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida al crear marca"
+        );
+      }
       return response.data.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -180,7 +212,6 @@ class VehicleFamiliesService {
     }
   }
 
-  // PUT /brands/:id - Actualiza una marca de vehículo
   static async updateBrand(
     id: string,
     data: { name?: string; country?: string; active?: boolean }
@@ -192,7 +223,11 @@ class VehicleFamiliesService {
         headers: this.getHeaders(),
         data,
       });
-
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida al actualizar marca"
+        );
+      }
       return response.data.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -205,14 +240,18 @@ class VehicleFamiliesService {
     }
   }
 
-  // DELETE /brands/:id - Elimina una marca de vehículo
   static async deleteBrand(id: string): Promise<void> {
     try {
-      await axios({
+      const response = await axios({
         url: `${BASE_URL}/dashboard/vehicle-brands/${id}`,
         method: "DELETE",
         headers: this.getHeaders(),
       });
+      if (!response.data?.success) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida al eliminar marca"
+        );
+      }
     } catch (error) {
       if (axios.isAxiosError(error)) {
         throw new Error(
@@ -223,8 +262,12 @@ class VehicleFamiliesService {
       throw error;
     }
   }
+
   private static getToken(): string {
-    return localStorage.getItem("auth_dashboard_token") || "";
+    if (typeof window !== "undefined" && window.localStorage) {
+      return localStorage.getItem("auth_dashboard_token") || "";
+    }
+    return "";
   }
 
   private static getHeaders() {
@@ -234,7 +277,6 @@ class VehicleFamiliesService {
     };
   }
 
-  // GET /vehicles - Obtiene todos los vehículos registrados
   static async getVehicles(params: GetParams): Promise<GetVehiclesResponse> {
     try {
       const response = await axios({
@@ -243,7 +285,11 @@ class VehicleFamiliesService {
         headers: this.getHeaders(),
         params: params,
       });
-
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida de la API de vehículos"
+        );
+      }
       return response.data.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -255,7 +301,6 @@ class VehicleFamiliesService {
     }
   }
 
-  // GET /families - Obtiene todas las familias de vehículos
   static async getFamilies(params: GetParams): Promise<GetFamiliesResponse> {
     try {
       const response = await axios(`${BASE_URL}/dashboard/vehicle-families`, {
@@ -263,20 +308,23 @@ class VehicleFamiliesService {
         headers: this.getHeaders(),
         params: params,
       });
-
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida de la API de familias"
+        );
+      }
       return response.data.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         throw new Error(
           error.response?.data?.message ||
-            "Error al obtener las marcas de vehículos"
+            "Error al obtener las familias de vehículos"
         );
       }
       throw error;
     }
   }
 
-  // GET /families/:familyId/models - Obtiene modelos por familia
   static async getModels(params: GetParams): Promise<GetModelsResponse> {
     try {
       const response = await axios({
@@ -285,7 +333,11 @@ class VehicleFamiliesService {
         headers: this.getHeaders(),
         params: params,
       });
-
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida de la API de modelos"
+        );
+      }
       return response.data.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -297,7 +349,6 @@ class VehicleFamiliesService {
     }
   }
 
-  // GET /vehicles/transmissions - Obtiene transmisiones disponibles
   static async getTransmissions(
     params: GetParams
   ): Promise<GetTransmissionsResponse> {
@@ -308,7 +359,12 @@ class VehicleFamiliesService {
         headers: this.getHeaders(),
         params,
       });
-
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message ||
+            "Respuesta inválida de la API de transmisiones"
+        );
+      }
       return response.data.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -320,7 +376,6 @@ class VehicleFamiliesService {
     }
   }
 
-  // GET /vehicles/fuels - Obtiene combustibles disponibles
   static async getFuels(params: GetParams): Promise<GetFuelsResponse> {
     try {
       const response = await axios({
@@ -329,7 +384,12 @@ class VehicleFamiliesService {
         headers: this.getHeaders(),
         params,
       });
-
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message ||
+            "Respuesta inválida de la API de combustibles"
+        );
+      }
       return response.data.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -349,23 +409,31 @@ class VehicleFamiliesService {
         headers: this.getHeaders(),
         params,
       });
-
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida de la API de líneas"
+        );
+      }
       return response.data.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         throw new Error(
-          error.response?.data?.message || "Error al obtener los combustibles"
+          error.response?.data?.message || "Error al obtener las líneas"
         );
       }
       throw error;
     }
   }
 
-  // POST /register - Registra un vehículo completo
   static async addVehicle(vehicleData: VehicleData): Promise<any> {
-    // Validar campos requeridos
-    if (!vehicleData.transmission_id || !vehicleData.fuel_id || !vehicleData.line_id) {
-      throw new Error("Los campos transmisión, combustible y línea son requeridos");
+    if (
+      !vehicleData.transmission_id ||
+      !vehicleData.fuel_id ||
+      !vehicleData.line_id
+    ) {
+      throw new Error(
+        "Los campos transmisión, combustible y línea son requeridos"
+      );
     }
 
     try {
@@ -375,7 +443,11 @@ class VehicleFamiliesService {
         headers: this.getHeaders(),
         data: vehicleData,
       });
-
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida al registrar vehículo"
+        );
+      }
       return response.data.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -387,7 +459,6 @@ class VehicleFamiliesService {
     }
   }
 
-  // PUT /:id - Actualiza los datos de un vehículo
   static async updateVehicle(
     id: string,
     vehicleData: Partial<VehicleData>
@@ -399,7 +470,11 @@ class VehicleFamiliesService {
         headers: this.getHeaders(),
         data: vehicleData,
       });
-
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida al actualizar vehículo"
+        );
+      }
       return response.data.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -411,16 +486,18 @@ class VehicleFamiliesService {
     }
   }
 
-  // DELETE /:id - Elimina un vehículo
-  static async deleteVehicle(id: string): Promise<any> {
+  static async deleteVehicle(id: string): Promise<void> {
     try {
       const response = await axios({
         url: `${BASE_URL}/dashboard/vehicles/${id}`,
         method: "DELETE",
         headers: this.getHeaders(),
       });
-
-      return response.data.data;
+      if (!response.data?.success) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida al eliminar vehículo"
+        );
+      }
     } catch (error) {
       if (axios.isAxiosError(error)) {
         throw new Error(
@@ -430,19 +507,21 @@ class VehicleFamiliesService {
       throw error;
     }
   }
-  
-  // POST /api/dashboard/vehicle-families - Create a new vehicle family
+
   static async createFamily(payload: CreateFamilyPayload): Promise<FamilyItem> {
-    // Aceptar un objeto como argumento
     try {
       const response = await axios({
         url: `${BASE_URL}/dashboard/vehicle-families`,
         method: "POST",
         headers: this.getHeaders(),
-        data: payload, // Enviar el objeto payload completo
+        data: payload,
       });
-
-      return response.data.data;
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida al crear familia"
+        );
+      }
+      return response.data.data as FamilyItem;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         throw new Error(
@@ -454,28 +533,16 @@ class VehicleFamiliesService {
     }
   }
 
-  // POST /api/dashboard/vehicles/models - Add a new model to a family
-  static async addModel({
-    name,
-    familyId,
-    brandId,
-    year,
-    engineType,
-  }: CreateModel): Promise<any> {
-    // Validate inputs
-    if (!familyId) {
-      throw new Error("El ID de la familia es requerido");
-    }
-
-    if (!name || typeof name !== "string" || name.trim() === "") {
-      throw new Error("Nombre de modelo inválido: debe ser un texto no vacío");
-    }
-
-    // Use current year as default if year is not provided
-    const modelYear = year || new Date().getFullYear().toString();
-    if (isNaN(parseInt(modelYear)) || parseInt(modelYear) <= 0) {
-      throw new Error("Formato de año inválido");
-    }
+  static async addModel(payload: CreateModel): Promise<any> {
+    if (!payload.familyId) throw new Error("El ID de la familia es requerido");
+    if (!payload.name?.trim()) throw new Error("Nombre de modelo inválido");
+    if (!payload.engineType?.trim()) throw new Error("Tipo de motor inválido");
+    if (
+      !payload.year ||
+      isNaN(parseInt(payload.year)) ||
+      payload.year.length !== 4
+    )
+      throw new Error("Año inválido");
 
     try {
       const response = await axios({
@@ -483,52 +550,38 @@ class VehicleFamiliesService {
         method: "POST",
         headers: this.getHeaders(),
         data: {
-          family_id: familyId,
-          brand_id: brandId,
-          engine_type: engineType,
-          year: modelYear,
-          name: name.trim(),
+          name: payload.name.trim(),
+          family_id: payload.familyId,
+          year: parseInt(payload.year),
+          engine_type: payload.engineType.trim(),
+          active: payload.active !== undefined ? payload.active : true,
         },
       });
-
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida al añadir modelo"
+        );
+      }
       return response.data.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        // Handle specific error cases from the backend
-        if (error.response?.status === 400) {
-          throw new Error(
-            error.response?.data?.message ||
-              "El modelo ya existe para este año o los datos son inválidos"
-          );
-        } else if (error.response?.status === 404) {
-          throw new Error("Familia de vehículo no encontrada");
-        } else {
-          throw new Error(
-            error.response?.data?.message || "Error al añadir el modelo"
-          );
-        }
+        throw new Error(
+          error.response?.data?.message || "Error al añadir el modelo"
+        );
       }
       throw error;
     }
   }
 
-  // POST /api/dashboard/vehicles/transmissions - Add a new transmission to a model
   static async addTransmission(
     transmissionName: string,
     gears?: number
   ): Promise<any> {
-    if (
-      !transmissionName ||
-      typeof transmissionName !== "string" ||
-      transmissionName.trim() === ""
-    ) {
-      throw new Error(
-        "Nombre de transmisión inválido: debe ser un texto no vacío"
-      );
+    if (!transmissionName?.trim()) {
+      throw new Error("Nombre de transmisión inválido");
     }
-
-    if (gears !== undefined && !Number.isInteger(gears)) {
-      throw new Error("El número de marchas debe ser un número entero");
+    if (gears !== undefined && (!Number.isInteger(gears) || gears < 0)) {
+      throw new Error("El número de marchas debe ser un entero no negativo");
     }
 
     try {
@@ -538,40 +591,40 @@ class VehicleFamiliesService {
         headers: this.getHeaders(),
         data: {
           name: transmissionName.trim(),
-          gears: gears, // Include gears in the data payload
+          ...(gears !== undefined &&
+            gears !== null &&
+            !isNaN(gears) && { gears: gears }),
+          active: true,
         },
       });
-
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida al añadir transmisión"
+        );
+      }
       return response.data.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        // Handle specific error cases from the backend
-        if (error.response?.status === 400) {
-          throw new Error(
-            error.response?.data?.message ||
-              "Datos inválidos. Verifique el nombre y el número de marchas." // More specific error message
-          );
-        } else if (error.response?.status === 404) {
-          throw new Error("Familia de vehículo o modelo no encontrado");
-        } else {
-          throw new Error(
-            error.response?.data?.message || "Error al añadir la transmisión"
-          );
-        }
+        throw new Error(
+          error.response?.data?.message || "Error al añadir la transmisión"
+        );
       }
       throw error;
     }
   }
 
-  // POST /api/dashboard/vehicles/fuels - Add a new fuel type to a model/transmission
   static async addFuel(name: string, octane_rating?: number): Promise<any> {
-    if (!name || typeof name !== "string" || name.trim() === "") {
-      throw new Error(
-        "Nombre de combustible inválido: debe ser un texto no vacío"
-      );
+    if (!name?.trim()) {
+      throw new Error("Nombre de combustible inválido");
     }
 
     const upperCaseName = name.trim().toUpperCase();
+    if (
+      octane_rating !== undefined &&
+      (isNaN(octane_rating) || octane_rating < 0)
+    ) {
+      throw new Error("Octanaje inválido");
+    }
 
     try {
       const response = await axios({
@@ -580,53 +633,44 @@ class VehicleFamiliesService {
         headers: this.getHeaders(),
         data: {
           name: upperCaseName,
-          octane_rating: octane_rating,
+          ...(octane_rating !== undefined &&
+            octane_rating !== null &&
+            !isNaN(octane_rating) && { octane_rating: octane_rating }),
+          active: true,
         },
       });
-
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida al crear combustible"
+        );
+      }
       return response.data.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        if (error.response?.status === 400) {
-          throw new Error(error.response?.data?.message || "Datos inválidos");
-        } else if (error.response?.status === 409) {
-          throw new Error(
-            error.response?.data?.message || "El combustible ya existe"
-          );
-        } else {
-          throw new Error(
-            error.response?.data?.message || "Error al crear el combustible"
-          );
-        }
+        throw new Error(
+          error.response?.data?.message || "Error al crear el combustible"
+        );
       }
       throw error;
     }
   }
 
-  // POST /api/dashboard/vehicles/lines - Add a new line to a model/transmission/fuel
   static async addLine(
-    brandId: string,
     modelId: string,
     lineName: string,
-    features: string,
-    price?: string,
+    features?: string,
+    price?: string | number,
     active: boolean = true
   ): Promise<any> {
-    // Validación de inputs
-    if (!brandId) {
-      throw new Error("El ID de la marca es requerido");
-    }
+    if (!modelId) throw new Error("El ID del modelo es requerido");
+    if (!lineName?.trim()) throw new Error("Nombre de línea inválido");
 
-    if (!modelId) {
-      throw new Error("El ID del modelo es requerido");
-    }
-
-    if (!lineName || typeof lineName !== "string" || lineName.trim() === "") {
-      throw new Error("Nombre de línea inválido: debe ser un texto no vacío");
-    }
-
-    if (price && isNaN(parseFloat(price))) {
-      throw new Error("Formato de precio inválido");
+    let numericPrice: number | undefined = undefined;
+    if (price !== undefined && price !== null && price !== "") {
+      numericPrice = Number(price);
+      if (isNaN(numericPrice) || numericPrice < 0) {
+        throw new Error("Formato de precio inválido");
+      }
     }
 
     try {
@@ -635,35 +679,28 @@ class VehicleFamiliesService {
         method: "POST",
         headers: this.getHeaders(),
         data: {
-          brand_id: brandId,
           model_id: modelId,
           name: lineName.trim(),
-          features: features.trim(),
-          price: price ? parseFloat(price) : undefined,
+          features: features?.trim() || "",
+          price: numericPrice,
           active,
         },
       });
-
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida al añadir línea"
+        );
+      }
       return response.data.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        if (error.response?.status === 400) {
-          throw new Error(
-            error.response?.data?.message ||
-              "La línea ya existe o los datos son inválidos"
-          );
-        } else if (error.response?.status === 404) {
-          throw new Error("Marca o modelo no encontrado");
-        } else {
-          throw new Error(
-            error.response?.data?.message || "Error al añadir la línea"
-          );
-        }
+        throw new Error(
+          error.response?.data?.message || "Error al añadir la línea"
+        );
       }
       throw error;
     }
   }
-
 }
 
 export default VehicleFamiliesService;

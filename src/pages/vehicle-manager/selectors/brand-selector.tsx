@@ -1,114 +1,153 @@
 // src/pages/selectors/vehicle-manager/BrandSelector.tsx
-import React, { useCallback } from "react";
-import Select from "react-select/async";
+import React, { useState } from "react";
+import { AsyncPaginate, LoadOptions } from "react-select-async-paginate";
 import VehicleFamiliesService from "../../../services/vehicle-families.service";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  fetchBrandsStart,
-  fetchBrandsSuccess,
-  fetchBrandsFailure,
-  selectBrands,
-  selectBrandsLoading,
-  selectBrandsError,
-} from "../../../redux/reducers/brandsSlice";
 import {
   BrandOption,
-  BrandSelectorProps,
+  BrandSelectorProps as UpdatedBrandSelectorProps,
 } from "../../../types/selectors.types";
 
-const BrandSelector: React.FC<BrandSelectorProps> = ({
+// --- API Type Definitions ---
+interface ApiBrand {
+  _id: string;
+  name: string;
+  country?: string;
+  [key: string]: any;
+}
+
+interface BrandApiData {
+  brands: ApiBrand[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  };
+}
+
+interface BrandApiResponse {
+  success: boolean;
+  message?: string;
+  data?: BrandApiData;
+}
+
+interface PageAdditional {
+  page: number;
+}
+
+const BrandSelector: React.FC<UpdatedBrandSelectorProps> = ({
   onChange,
   value,
   placeholder = "Buscar marca...",
   ...rest
 }) => {
-  const dispatch = useDispatch();
-  const brands = useSelector(selectBrands) as BrandOption[];
-  const loading = useSelector(selectBrandsLoading);
-  const error = useSelector(selectBrandsError);
+  const [error, setError] = useState<string | null>(null);
 
-  const loadOptions = useCallback(
-    async (inputValue: string) => {
-      try {
-        dispatch(fetchBrandsStart());
-        const response = await VehicleFamiliesService.getBrands({
-          page: 1,
-          limit: 10, // Ajusta según necesidad
+  const loadPageOptions: LoadOptions<BrandOption, any, PageAdditional> = async (
+    search,
+    loadedOptions,
+    additional
+  ): Promise<{
+    options: BrandOption[];
+    hasMore: boolean;
+    additional?: PageAdditional;
+  }> => {
+    const pageToLoad = additional?.page || 1;
+    const limit = 10;
+
+    setError(null);
+
+    try {
+      const serviceResponse: BrandApiResponse | BrandApiData =
+        await VehicleFamiliesService.getBrands({
+          page: pageToLoad,
+          limit: limit,
           sortBy: "name",
           sortOrder: "asc",
-          search: inputValue,
+          search: search,
         });
-        const brandOptions = response.brands.map((brand) => ({
-          value: brand._id,
-          label: brand.name,
-          country: brand.country,
-        }));
-        dispatch(fetchBrandsSuccess(brandOptions));
-        return brandOptions;
-      } catch (error: any) {
-        // Especifica el tipo de error
-        console.error("Error loading brands:", error);
-        dispatch(fetchBrandsFailure(error.message || "Error al cargar marcas"));
-        return [];
-      }
-    },
-    [dispatch]
-  );
 
-  const handleInputChange = (inputValue: string) => {
-    return inputValue;
+      console.log("Respuesta RECIBIDA del servicio (Brands):", serviceResponse);
+
+      const responseData: BrandApiData | null | undefined =
+        (serviceResponse as BrandApiResponse)?.data ??
+        (serviceResponse as BrandApiData);
+
+      if (
+        !responseData ||
+        !Array.isArray(responseData.brands) ||
+        !responseData.pagination
+      ) {
+        console.error(
+          "Formato de datos de API inválido (Brands):",
+          responseData
+        );
+        const apiMessage = (serviceResponse as BrandApiResponse)?.message;
+        throw new Error(
+          apiMessage || "Formato de datos inválido de la API de marcas"
+        );
+      }
+      // *** End of Structure Adaptation ***
+
+      const { brands, pagination } = responseData;
+
+      const newOptions: BrandOption[] = brands.map((brand: ApiBrand) => ({
+        value: brand._id,
+        label: brand.name, // Keep label simple or enhance as needed
+        country: brand.country, // Include extra data if useful
+        brandData: brand, // Store the full data object
+      }));
+
+      const hasMore = pagination.currentPage < pagination.totalPages;
+      const nextPage = hasMore ? pagination.currentPage + 1 : undefined;
+
+      return {
+        options: newOptions,
+        hasMore: hasMore,
+        additional: nextPage ? { page: nextPage } : undefined,
+      };
+    } catch (err: any) {
+      console.error("Error en loadPageOptions (Brands):", err);
+      const errorMessage =
+        err.message || "Error inesperado al cargar las marcas";
+      setError(errorMessage);
+
+      return {
+        options: [],
+        hasMore: false,
+      };
+    }
   };
 
   const handleChange = (selectedOption: BrandOption | null) => {
     if (onChange) {
-      onChange(selectedOption ? selectedOption.value : null);
-    }
-  };
-
-  const getValue = () => {
-    if (!value) {
-     // console.log("getValue - Value prop is empty, returning null");
-      return null; 
-    }
-
-    if (!brands || brands.length === 0) {
-    /*   console.log(
-        "getValue - Brands array is empty or undefined, returning null"
-      ); */
-      return null;
-    }
-
-    const selectedBrand = brands.find((brand) => brand.value === value);
-
-    if (selectedBrand) {
-      //console.log("getValue - Found brand:", selectedBrand);
-      return selectedBrand;
-    } else {
-      //console.log("getValue - Brand NOT found for value:", value);
-      return null;
+      onChange(selectedOption);
     }
   };
 
   return (
     <div>
-      <Select
-        cacheOptions
-        loadOptions={loadOptions}
-        defaultOptions
-        placeholder={placeholder}
-        noOptionsMessage={() => "No se encontraron marcas"}
-        loadingMessage={() => "Cargando marcas..."}
-        onInputChange={handleInputChange}
+      <AsyncPaginate<BrandOption, any, PageAdditional>
+        value={value}
+        loadOptions={loadPageOptions}
+        getOptionValue={(option) => option.value}
+        getOptionLabel={(option) => option.label}
         onChange={handleChange}
-        value={getValue()}
-        isLoading={loading}
+        isSearchable={true}
+        placeholder={placeholder}
+        loadingMessage={() => "Cargando marcas..."}
+        noOptionsMessage={({ inputValue }) =>
+          inputValue ? "No se encontraron marcas" : "Escribe para buscar..."
+        }
+        debounceTimeout={350}
         className="react-select-container"
         classNamePrefix="react-select"
         {...rest}
       />
+
       {error && (
         <p style={{ color: "red", fontSize: "0.8em", marginTop: "5px" }}>
-          Error al cargar marcas: {error}
+          {error}
         </p>
       )}
     </div>

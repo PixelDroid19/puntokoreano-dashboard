@@ -56,15 +56,16 @@ export default function FamilyForm() {
   });
 
   const onSubmit = (data: FamilyFormData) => {
-    if (!selectedBrandValue) {
-      console.error("No brand selected");
-      return;
-    }
-
-    mutate({
+    const payload = {
       ...data,
-      brand_id: selectedBrandValue,
-    });
+      brand_id:
+        typeof data.brand_id === "object" && data.brand_id !== null
+          ? data.brand_id.value
+          : data.brand_id,
+    };
+
+    console.log("Payload a enviar:", payload);
+    mutate(payload);
   };
 
   const handleBrandChange = (value: string | null) => {

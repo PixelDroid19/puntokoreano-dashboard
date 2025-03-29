@@ -373,7 +373,7 @@ export interface DashboardAnalytics {
     active: number;
     recentlyAdded: number;
     categoryDistribution: Array<{
-      _id: string;
+      _id: string | null; // Category name might be null
       count: number;
     }>;
   };
@@ -381,20 +381,81 @@ export interface DashboardAnalytics {
     lowStockAlerts: number;
     totalValue: number;
   };
-  filters: {
+  vehicles: {
     total: number;
-    familyDistribution: Array<{
-      _id: string;
+    active: number;
+    recentlyAdded: number;
+    monthlyGrowth: number; // This seems redundant with recentlyAdded if both are 30 days
+    growthPercentage: number;
+  };
+  brands: {
+    total: number;
+    active: number;
+    recentlyAdded: number;
+  };
+  families: {
+    total: number;
+    active: number;
+    recentlyAdded: number;
+  };
+  customers: {
+    total: number;
+    recentlyAdded: number;
+    monthlyGrowth: number; // Redundant?
+    growthPercentage: number;
+  };
+  lines: {
+    total: number;
+    active: number;
+    recentlyAdded: number;
+    brandDistribution: Array<{
       count: number;
+      brandId: string | null; // Brand ID might be null if lookup fails
+      brandName: string | null; // Brand name might be null
     }>;
   };
-  recentActivity: Array<{
+  recentActivityLogs: ActivityLog[]; // Use the more specific type below
+  vehicleActivity: VehicleActivity[]; // Use the more specific type below
+  // Note: 'filters' section was removed in the previous controller adjustment
+  // If you need it back, you'll have to re-add the aggregation in the backend
+}
+
+export interface ActivityLog {
+  id?: string;
+  _id?: string;
+  type: string;
+  action: string;
+  details?: string | object;
+  userType?: string;
+  userName?: string;
+  timestamp: string;
+}
+
+export interface VehicleActivity {
+  type:
+    | "vehicle"
+    | "brand"
+    | "family"
+    | "model"
+    | "line"
+    | "transmission"
+    | "fuel";
+  title: string;
+  description: string;
+  timestamp: string;
+  details?: {
     id: string;
-    name: string;
-    price: number;
-    category: string;
-    updatedAt: string;
-  }>;
+    country?: string;
+    brand?: string;
+    family?: string;
+    engine?: string;
+    model?: string;
+    transmission?: string;
+    fuel?: string;
+    color?: string;
+    features?: string;
+    price?: string | number;
+  };
 }
 
 export interface ApiResponse<T> {
