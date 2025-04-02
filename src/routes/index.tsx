@@ -14,7 +14,7 @@ import Images from "../pages/images/Images.page";
 import AddImages from "../pages/images/components/AddImages.component";
 import Users from "../pages/users/Users.page";
 import Orders from "../pages/orders/Orders.page";
-//import Blog from "../pages/blog/Blog.page";
+import Blog from "../pages/blog/blog-management";
 import Reviews from "../pages/Reviews/Reviews.page";
 import ShippingSettings from "../pages/shipping/ShippingSettings.page";
 
@@ -98,7 +98,7 @@ const router = createBrowserRouter(
         {/* Blog */}
         <Route
           path="/blogs"
-          element={<DevelopmentView />} //element={<Blog />}
+          element={<Blog />} 
           errorElement={<RouteError />}
         />
 

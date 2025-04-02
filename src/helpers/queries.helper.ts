@@ -1,9 +1,9 @@
-import axios from "axios";
 import ENDPOINTS from "../api";
+import { axiosInstance } from "../utils/axios-interceptor";
 
 export const getGroups = async () => {
   try {
-    const result = await axios.get(ENDPOINTS.GROUPS.GET_ALL.url);
+    const result = await axiosInstance.get(ENDPOINTS.GROUPS.GET_ALL.url);
     if (result.status === 200) {
       return result?.data;
     }

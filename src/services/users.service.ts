@@ -1,6 +1,5 @@
 // src/services/users.service.ts
-// @ts-nocheck
-import { api } from "./auth.service";
+
 import ENDPOINTS from "../api";
 import {
   User,
@@ -11,6 +10,7 @@ import {
   UpdateUserData,
   PaginatedResponse,
 } from "../types/users.types";
+import { axiosInstance } from "../utils/axios-interceptor";
 
 interface GetUsersParams {
   userType?: "admin" | "customer" | "all";
@@ -45,7 +45,7 @@ class UsersService {
           ":id",
           userId
         );
-      const response = await api.post(url);
+      const response = await axiosInstance.post(url);
       return response.data;
     } catch (error) {
       return this.handleError(error);
@@ -59,7 +59,7 @@ class UsersService {
           ":id",
           userId
         );
-      const response = await api.get(url);
+      const response = await axiosInstance.get(url);
       return response.data;
     } catch (error) {
       return this.handleError(error);
@@ -83,7 +83,7 @@ class UsersService {
         params.userType === "admin"
           ? ENDPOINTS.DASHBOARD.ANALYTICS.USERS.ADMIN.GET_ALL
           : ENDPOINTS.DASHBOARD.ANALYTICS.USERS.CUSTOMERS.GET_ALL;
-      const response = await api.get(url, {
+      const response = await axiosInstance.get(url, {
         params: this.formatParams(params),
       });
       return response.data;
@@ -101,7 +101,7 @@ class UsersService {
           ":id",
           userId
         );
-      const response = await api.get(url);
+      const response = await axiosInstance.get(url);
       return response.data.data;
     } catch (error) {
       return this.handleError(error);
@@ -120,7 +120,7 @@ class UsersService {
           ":id",
           userId
         );
-      const response = await api.get(url, { params });
+      const response = await axiosInstance.get(url, { params });
       return response.data.data;
     } catch (error) {
       return this.handleError(error);
@@ -139,7 +139,7 @@ class UsersService {
           ":id",
           userId
         );
-      const response = await api.get(url, { params });
+      const response = await axiosInstance.get(url, { params });
       return response.data.data;
     } catch (error) {
       return this.handleError(error);
@@ -157,7 +157,7 @@ class UsersService {
         userType === "admin"
           ? ENDPOINTS.DASHBOARD.ANALYTICS.USERS.ADMIN.CREATE
           : ENDPOINTS.DASHBOARD.ANALYTICS.USERS.CUSTOMERS.CREATE;
-      const response = await api.post(url, data);
+      const response = await axiosInstance.post(url, data);
       return response.data.data;
     } catch (error) {
       return this.handleError(error);
@@ -182,7 +182,7 @@ class UsersService {
               ":id",
               id
             );
-      const response = await api.patch(endpoint, data);
+      const response = await axiosInstance.patch(endpoint, data);
       return response.data.data;
     } catch (error) {
       return this.handleError(error);
@@ -208,7 +208,10 @@ class UsersService {
               ":id",
               userId
             );
-        await api.post(url, active ? {} : { reason: "Blocked by admin" });
+        await axiosInstance.post(
+          url,
+          active ? {} : { reason: "Blocked by admin" }
+        );
       } else {
         const url = active
           ? ENDPOINTS.DASHBOARD.ANALYTICS.USERS.CUSTOMERS.UNBLOCK.url.replace(
@@ -219,7 +222,10 @@ class UsersService {
               ":id",
               userId
             );
-        await api.post(url, active ? {} : { reason: "Blocked by admin" });
+        await axiosInstance.post(
+          url,
+          active ? {} : { reason: "Blocked by admin" }
+        );
       }
     } catch (error) {
       return this.handleError(error);
@@ -235,7 +241,7 @@ class UsersService {
           ":id",
           userId
         );
-      await api.post(url, { reason });
+      await axiosInstance.post(url, { reason });
     } catch (error) {
       return this.handleError(error);
     }
@@ -250,7 +256,7 @@ class UsersService {
           ":id",
           userId
         );
-      await api.post(url);
+      await axiosInstance.post(url);
     } catch (error) {
       return this.handleError(error);
     }
@@ -274,7 +280,7 @@ class UsersService {
               ":id",
               id
             );
-      await api.delete(url, { params: options });
+      await axiosInstance.delete(url, { params: options });
     } catch (error) {
       return this.handleError(error);
     }
@@ -292,7 +298,7 @@ class UsersService {
           ":id",
           userId
         );
-      await api.patch(url, { permissions });
+      await axiosInstance.patch(url, { permissions });
     } catch (error) {
       return this.handleError(error);
     }
@@ -315,7 +321,7 @@ class UsersService {
               ":id",
               userId
             );
-      await api.post(url);
+      await axiosInstance.post(url);
     } catch (error) {
       return this.handleError(error);
     }
@@ -338,7 +344,7 @@ class UsersService {
               ":id",
               userId
             );
-      await api.post(url);
+      await axiosInstance.post(url);
     } catch (error) {
       return this.handleError(error);
     }
@@ -355,7 +361,7 @@ class UsersService {
         );
 
       // Make the API call with empty data object to prevent potential undefined issues
-      const res =  await api.post(url, {});
+      const res = await axiosInstance.post(url, {});
       console.log("Logout response:", res);
     } catch (error) {
       console.error("Logout error details:", error);
@@ -411,24 +417,13 @@ class UsersService {
   ): Promise<void> {
     return this.deleteUser(id, "customer", options);
   }
-  // Private helper methods
-  private static getUsersEndpoint(userType?: string): string {
-    switch (userType) {
-      case "admin":
-        return this.ADMIN_URL;
-      case "customer":
-        return this.CUSTOMERS_URL;
-      default:
-        return this.BASE_URL;
-    }
-  }
   /**
    * Validar si existe un email
    */
   static async validateEmail(email: string): Promise<boolean> {
     try {
       const { url } = ENDPOINTS.DASHBOARD.ANALYTICS.USERS.BASE.VALIDATE_EMAIL;
-      const response = await api.post(url, { email });
+      const response = await axiosInstance.post(url, { email });
       return response.data.exists;
     } catch (error) {
       return this.handleError(error);
@@ -444,7 +439,7 @@ class UsersService {
     try {
       const { url } =
         ENDPOINTS.DASHBOARD.ANALYTICS.USERS.BASE.VALIDATE_DOCUMENT;
-      const response = await api.post(url, { type, number });
+      const response = await axiosInstance.post(url, { type, number });
       return response.data.exists;
     } catch (error) {
       return this.handleError(error);
@@ -453,16 +448,14 @@ class UsersService {
   /**
    * Obtener estadísticas detalladas del usuario
    */
-  static async getUserDetailedStats(
-    userId: string
-  ): Promise<DetailedUserStats> {
+  static async getUserDetailedStats(userId: string) {
     try {
       const url =
         ENDPOINTS.DASHBOARD.ANALYTICS.USERS.CUSTOMERS.GET_DETAILED_STATS.url.replace(
           ":id",
           userId
         );
-      const response = await api.get(url);
+      const response = await axiosInstance.get(url);
       return response.data.data;
     } catch (error) {
       return this.handleError(error);
@@ -474,14 +467,14 @@ class UsersService {
   static async getUserActivityLog(
     userId: string,
     params: { page?: number; limit?: number } = {}
-  ): Promise<PaginatedResponse<UserActivity>> {
+  ) {
     try {
       const url =
         ENDPOINTS.DASHBOARD.ANALYTICS.USERS.CUSTOMERS.GET_ACTIVITY_LOG.url.replace(
           ":id",
           userId
         );
-      const response = await api.get(url, { params });
+      const response = await axiosInstance.get(url, { params });
       return response.data.data;
     } catch (error) {
       return this.handleError(error);

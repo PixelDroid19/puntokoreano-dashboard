@@ -1,6 +1,7 @@
 // src/services/discount.service.ts
 import axios from "axios";
-import { BASE_URL } from "../api";
+import { ACCESS_TOKEN_KEY, BASE_URL } from "../api";
+import { axiosInstance } from "../utils/axios-interceptor";
 
 export interface DiscountData {
   isActive: boolean;
@@ -51,7 +52,7 @@ export interface DiscountAnalytics {
 
 class DiscountService {
   private static getToken(): string {
-    return localStorage.getItem("auth_dashboard_token") || "";
+    return localStorage.getItem(ACCESS_TOKEN_KEY) || "";
   }
 
   private static getHeaders() {
@@ -66,7 +67,7 @@ class DiscountService {
    */
   static async applyDiscount(productId: string, discountData: DiscountData): Promise<any> {
     try {
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/discounts/products/${productId}/discount`,
         method: "POST",
         headers: this.getHeaders(),
@@ -89,7 +90,7 @@ class DiscountService {
    */
   static async removeDiscount(productId: string, reason?: string): Promise<any> {
     try {
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/discounts/products/${productId}/discount`,
         method: "DELETE",
         headers: this.getHeaders(),
@@ -116,7 +117,7 @@ class DiscountService {
     limit = 10
   ): Promise<{ history: DiscountHistoryItem[]; pagination: any }> {
     try {
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/discounts/products/${productId}/discount/history`,
         method: "GET",
         headers: this.getHeaders(),
@@ -143,7 +144,7 @@ class DiscountService {
     reason?: string
   ): Promise<any> {
     try {
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/discounts/bulk-discounts`,
         method: "POST",
         headers: this.getHeaders(),
@@ -177,7 +178,7 @@ class DiscountService {
       if (startDate) params.startDate = new Date(startDate).toISOString().split('T')[0];
       if (endDate) params.endDate = new Date(endDate).toISOString().split('T')[0];
 
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/discounts/analytics`,
         method: "GET",
         headers: this.getHeaders(),

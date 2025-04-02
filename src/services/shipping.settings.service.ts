@@ -1,18 +1,16 @@
 // src/services/shipping.settings.service.ts
 import ENDPOINTS from "../api";
 import { ApiResponse, ShippingSettings } from "../api/types";
-import { api } from "./auth.service";
+import { axiosInstance } from "../utils/axios-interceptor";
 
 class ShippingSettingsService {
-  private static readonly BASE_URL = "/dashboard/shipping-settings";
-
   /**
    * Get all shipping settings
    */
   static async getSettings(): Promise<ShippingSettings> {
     try {
       const { url } = ENDPOINTS.DASHBOARD.SHIPPING_SETTINGS.GET_ALL;
-      const response = await api.get<ApiResponse<ShippingSettings>>(url);
+      const response = await axiosInstance.get<ApiResponse<ShippingSettings>>(url);
       return response.data.data;
     } catch (error: any) {
       throw new Error(
@@ -31,7 +29,7 @@ class ShippingSettingsService {
   }): Promise<ApiResponse<ShippingSettings["base_costs"]>> {
     try {
       const { url } = ENDPOINTS.DASHBOARD.SHIPPING_SETTINGS.UPDATE_BASE_COSTS;
-      const response = await api.patch<
+      const response = await axiosInstance.patch<
         ApiResponse<ShippingSettings["base_costs"]>
       >(url, data);
       return response.data;
@@ -51,7 +49,7 @@ class ShippingSettingsService {
   }): Promise<ApiResponse<ShippingSettings["weight_rules"]>> {
     try {
       const { url } = ENDPOINTS.DASHBOARD.SHIPPING_SETTINGS.UPDATE_WEIGHT_RULES;
-      const response = await api.patch<
+      const response = await axiosInstance.patch<
         ApiResponse<ShippingSettings["weight_rules"]>
       >(url, data);
       return response.data;
@@ -72,7 +70,7 @@ class ShippingSettingsService {
     try {
       const { url } =
         ENDPOINTS.DASHBOARD.SHIPPING_SETTINGS.UPDATE_LOCATION_MULTIPLIERS;
-      const response = await api.patch<
+      const response = await axiosInstance.patch<
         ApiResponse<ShippingSettings["location_multipliers"]>
       >(url, data);
       return response.data;
@@ -93,7 +91,7 @@ class ShippingSettingsService {
     try {
       const { url } =
         ENDPOINTS.DASHBOARD.SHIPPING_SETTINGS.UPDATE_DELIVERY_TIMES;
-      const response = await api.patch<
+      const response = await axiosInstance.patch<
         ApiResponse<ShippingSettings["delivery_times"]>
       >(url, data);
       return response.data;
@@ -114,7 +112,7 @@ class ShippingSettingsService {
     try {
       const { url } =
         ENDPOINTS.DASHBOARD.SHIPPING_SETTINGS.UPDATE_FREE_SHIPPING;
-      const response = await api.patch<
+      const response = await axiosInstance.patch<
         ApiResponse<ShippingSettings["free_shipping_rules"]>
       >(url, data);
       return response.data;
@@ -123,49 +121,6 @@ class ShippingSettingsService {
         error.response?.data?.message ||
           "Error al actualizar las reglas de envío gratis"
       );
-    }
-  }
-  /**
-   * Validate shipping settings
-   */
-  private static validateSettings(settings: Partial<ShippingSettings>): void {
-    if (settings.base_costs) {
-      if (settings.base_costs.standard < 0 || settings.base_costs.express < 0) {
-        throw new Error("Los costos base no pueden ser negativos");
-      }
-    }
-
-    if (settings.weight_rules) {
-      if (
-        settings.weight_rules.base_weight < 0 ||
-        settings.weight_rules.extra_cost_per_kg < 0
-      ) {
-        throw new Error("Los valores de peso no pueden ser negativos");
-      }
-    }
-
-    if (settings.delivery_times) {
-      const { standard, express } = settings.delivery_times;
-      if (standard.min > standard.max || express.min > express.max) {
-        throw new Error("El tiempo mínimo no puede ser mayor al máximo");
-      }
-      if (
-        standard.min < 0 ||
-        express.min < 0 ||
-        standard.max < 0 ||
-        express.max < 0
-      ) {
-        throw new Error("Los tiempos de entrega no pueden ser negativos");
-      }
-    }
-
-    if (settings.free_shipping_rules) {
-      if (
-        settings.free_shipping_rules.threshold < 0 ||
-        settings.free_shipping_rules.min_purchase < 0
-      ) {
-        throw new Error("Los montos no pueden ser negativos");
-      }
     }
   }
 

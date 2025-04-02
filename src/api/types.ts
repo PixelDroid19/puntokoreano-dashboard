@@ -103,7 +103,9 @@ export interface ShippingSettings {
 export interface Endpoints {
   AUTH: {
     LOGIN: ApiEndpoint;
-    ENCRYPTION_KEY: ApiEndpoint;
+    CHECK_SESSION: ApiEndpoint;
+    REFRESH_TOKEN: ApiEndpoint;
+    LOGOUT: ApiEndpoint;
   };
   PRODUCTS: {
     GET_ALL: ApiEndpoint;
@@ -199,12 +201,27 @@ export interface Endpoints {
     };
     BLOG: {
       GET_ALL: ApiEndpoint;
+      GET_ONE: ApiEndpoint;
       CREATE: ApiEndpoint;
       UPDATE: ApiEndpoint;
       DELETE: ApiEndpoint;
-      GET_STATS: ApiEndpoint;
-      UPLOAD_IMAGE: ApiEndpoint;
+      GET_STATS: ApiEndpoint; 
+      UPLOAD_IMAGE: ApiEndpoint; 
     };
+    BLOG_TAGS: { // <<< ADDED SECTION
+      GET_ALL: ApiEndpoint;
+      GET_ONE: ApiEndpoint;
+      CREATE: ApiEndpoint;
+      UPDATE: ApiEndpoint;
+      DELETE: ApiEndpoint;
+  };
+    BLOG_CATEGORIES: { 
+      GET_ALL: ApiEndpoint;
+      GET_ONE: ApiEndpoint;
+      CREATE: ApiEndpoint;
+      UPDATE: ApiEndpoint;
+      DELETE: ApiEndpoint;
+  };
     PRODUCTS: {
       CREATE: ApiEndpoint;
       UPDATE: ApiEndpoint;
@@ -459,9 +476,10 @@ export interface VehicleActivity {
 }
 
 export interface ApiResponse<T> {
-  success: boolean;
+  success: boolean | string;
   data: T;
   message?: string;
+  status?: boolean | string;
 }
 
 export interface ErrorResponse {

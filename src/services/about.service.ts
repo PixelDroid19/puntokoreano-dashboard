@@ -1,17 +1,16 @@
 // src/services/about.service.ts
-import { api } from "./auth.service";
-import axios from "axios";
 import type {
   AboutSettings,
   ConsultantUpdate,
   AboutSettingsResponse,
 } from "../types/about.types";
 import ENDPOINTS from "../api";
+import { axiosInstance } from "../utils/axios-interceptor";
 
 class AboutService {
   static async getSettings(): Promise<AboutSettingsResponse> {
     try {
-      const response = await api.get(
+      const response = await axiosInstance.get(
         ENDPOINTS.DASHBOARD.SETTINGS.ABOUT.GET.url
       );
       return response.data;
@@ -26,7 +25,7 @@ class AboutService {
     settings: Partial<AboutSettings>
   ): Promise<AboutSettingsResponse> {
     try {
-      const response = await api.patch(
+      const response = await axiosInstance.patch(
         ENDPOINTS.DASHBOARD.SETTINGS.ABOUT.UPDATE.url,
         settings
       );
@@ -48,7 +47,7 @@ class AboutService {
           ":id",
           id
         );
-      const response = await api.patch(url, data);
+      const response = await axiosInstance.patch(url, data);
       return response.data;
     } catch (error: any) {
       throw new Error(
@@ -62,7 +61,7 @@ class AboutService {
       const formData = new FormData();
       formData.append("image", file);
 
-      const response = await axios.post(
+      const response = await axiosInstance.post(
         `https://api.imgbb.com/1/upload?key=${
           import.meta.env.VITE_IMGBB_API_KEY
         }`,

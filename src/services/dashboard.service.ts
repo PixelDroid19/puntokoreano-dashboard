@@ -1,16 +1,16 @@
 // src/services/dashboard.service.ts
-// @ts-nocheck
-import axios from 'axios';
 import { 
   ProductCreateInput, 
   ProductResponse,
   DashboardAnalytics
 } from '../api/types';
-import ENDPOINTS from '../api';
+import ENDPOINTS, { ACCESS_TOKEN_KEY } from '../api';
+import { axiosInstance } from '../utils/axios-interceptor';
+import axios from 'axios';
 
 export class DashboardService {
   private static getToken(): string {
-    return localStorage.getItem('auth_dashboard_token') || '';
+    return localStorage.getItem(ACCESS_TOKEN_KEY) || '';
   }
 
   private static getHeaders() {
@@ -24,7 +24,7 @@ export class DashboardService {
   static async createProduct(product: ProductCreateInput): Promise<ProductResponse> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.CREATE;
-      const response = await axios({
+      const response = await axiosInstance({
         url,
         method,
         headers: this.getHeaders(),
@@ -46,7 +46,7 @@ export class DashboardService {
   static async updateProduct(id: string, product: Partial<ProductCreateInput>): Promise<ProductResponse> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.UPDATE;
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${url}/${id}`,
         method,
         headers: this.getHeaders(),
@@ -65,7 +65,7 @@ export class DashboardService {
   static async deleteProduct(id: string): Promise<void> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.DELETE;
-      await axios({
+      await axiosInstance({
         url: `${url}/${id}`,
         method,
         headers: this.getHeaders(),
@@ -93,7 +93,7 @@ export class DashboardService {
   }> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.GET_ALL;
-      const response = await axios({
+      const response = await axiosInstance({
         url,
         method,
         headers: this.getHeaders(),
@@ -113,7 +113,7 @@ export class DashboardService {
   static async getAnalytics(): Promise<DashboardAnalytics> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.ANALYTICS.GET;
-      const response = await axios({
+      const response = await axiosInstance({
         url,
         method,
         headers: this.getHeaders(),
@@ -134,7 +134,7 @@ export class DashboardService {
   static async getAnalyticsByDateRange(startDate: Date, endDate: Date): Promise<DashboardAnalytics> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.ANALYTICS.GET;
-      const response = await axios({
+      const response = await axiosInstance({
         url,
         method,
         headers: this.getHeaders(),
@@ -166,7 +166,7 @@ export class DashboardService {
   }> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.ANALYTICS.GET;
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${url}/products`,
         method,
         headers: this.getHeaders(),
@@ -204,7 +204,7 @@ export class DashboardService {
   }> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.ANALYTICS.GET;
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${url}/performance`,
         method,
         headers: this.getHeaders(),

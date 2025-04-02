@@ -1,9 +1,7 @@
 // services/files.service.ts
 // @ts-nocheck
 import ENDPOINTS from "../api";
-import { api } from "./auth.service";
-import axios from "axios";
-
+import { axiosInstance } from "../utils/axios-interceptor";
 
 export interface ImageData {
   _id: string;
@@ -50,7 +48,7 @@ class FilesService {
     tags?: string[];
   }) {
     try {
-      const response = await api.post(
+      const response = await axiosInstance.post(
         ENDPOINTS.DASHBOARD.FILES.CREATE_GROUP.url,
         data
       );
@@ -65,7 +63,7 @@ class FilesService {
       const formData = new FormData();
       formData.append("image", file);
 
-      const response = await axios.post(
+      const response = await axiosInstance.post(
         `https://api.imgbb.com/1/upload?key=${
           import.meta.env.VITE_IMGBB_API_KEY
         }`,
@@ -95,7 +93,7 @@ class FilesService {
         const formData = new FormData();
         formData.append("image", file);
 
-        const response = await axios.post(
+        const response = await axiosInstance.post(
           `https://api.imgbb.com/1/upload?key=${
             import.meta.env.VITE_IMGBB_API_KEY
           }`,
@@ -128,7 +126,7 @@ class FilesService {
       const uploadedImages = await Promise.all(uploadPromises);
 
       // 4. Enviar las imágenes al backend
-      const response = await api.post(
+      const response = await axiosInstance.post(
         `${ENDPOINTS.DASHBOARD.FILES.CREATE_GROUP.url}/${identifier}`,
         { images: uploadedImages }
       );
@@ -170,7 +168,7 @@ class FilesService {
       formData.append("identifier", identifier);
       formData.append("images", JSON.stringify(uploadedImages));
 
-      const response = await api.post(
+      const response = await axiosInstance.post(
         ENDPOINTS.DASHBOARD.FILES.CREATE_GROUP.url,
         formData,
         {
@@ -197,7 +195,7 @@ class FilesService {
     tag?: string;
   }): Promise<FilesResponse> {
     try {
-      const response = await api.get(ENDPOINTS.DASHBOARD.FILES.GET_GROUPS.url, {
+      const response = await axiosInstance.get(ENDPOINTS.DASHBOARD.FILES.GET_GROUPS.url, {
         params,
         timeout: 10000,
       });
@@ -212,7 +210,7 @@ class FilesService {
    */
   static async deleteImage(identifier: string, imageId: string) {
     try {
-      const response = await api.delete(
+      const response = await axiosInstance.delete(
         `${ENDPOINTS.DASHBOARD.FILES.DELETE_IMAGE.url}/${identifier}/images/${imageId}`
       );
       return response.data;
@@ -232,7 +230,7 @@ class FilesService {
     }
   ) {
     try {
-      const response = await api.patch(
+      const response = await axiosInstance.patch(
         `${ENDPOINTS.DASHBOARD.FILES.UPDATE_GROUP.url}/${identifier}`,
         data
       );
@@ -248,7 +246,7 @@ class FilesService {
 
   static async deleteGroup(identifier: string) {
     try {
-      const response = await api.delete(
+      const response = await axiosInstance.delete(
         `${ENDPOINTS.DASHBOARD.FILES.DELETE_GROUP.url}/${identifier}`
       );
       return response.data;
@@ -265,7 +263,7 @@ class FilesService {
     data: { description?: string; tags?: string[] }
   ) {
     try {
-      const response = await api.patch(
+      const response = await axiosInstance.patch(
         `${ENDPOINTS.DASHBOARD.FILES.UPDATE_GROUP.url}/${identifier}`,
         data
       );

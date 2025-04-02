@@ -20,12 +20,12 @@ import { NOTIFICATIONS } from "../../../enums/contants.notifications";
 import { ProductCreateInput } from "../../../api/types";
 import { DashboardService } from "../../../services/dashboard.service";
 import FilesService from "../../../services/files.service";
-import axios from "axios";
 
 import BasicInformation from "./form/BasicInformation";
 import MultimediaInformation from "./form/MultimediaInformation";
 import DescriptionInformation from "./form/DescriptionInformation";
 import SeoInformation from "./form/SeoInformation";
+import { axiosInstance } from "../../../utils/axios-interceptor";
 
 const { TabPane } = Tabs;
 
@@ -120,7 +120,7 @@ const AddProduct = () => {
     formData.append("image", file);
 
     try {
-      const response = await axios.post(
+      const response = await axiosInstance.post(
         `https://api.imgbb.com/1/upload?key=${
           import.meta.env.VITE_IMGBB_API_KEY
         }`,

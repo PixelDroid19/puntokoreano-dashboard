@@ -20,10 +20,10 @@ import {
 } from "@ant-design/icons";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
-import axios from "axios";
 import type { RcFile, UploadFile } from "antd/es/upload";
 import type { SelectProps } from "antd";
 import type { BlogPost, Brand } from "../../../types/blog.types";
+import { axiosInstance } from "../../../../utils/axios-interceptor";
 
 interface BlogPostFormProps {
   initialValues?: Partial<BlogPost>;
@@ -128,7 +128,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
 
     try {
       setUploadLoading(true);
-      const response = await axios.post(
+      const response = await axiosInstance.post(
         `https://api.imgbb.com/1/upload?key=${
           import.meta.env.VITE_IMGBB_API_KEY
         }`,

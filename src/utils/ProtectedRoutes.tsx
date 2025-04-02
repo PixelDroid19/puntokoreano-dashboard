@@ -1,88 +1,107 @@
 // src/routes/ProtectedRoutes.tsx
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Navigate, Outlet } from "react-router-dom";
-import { useMutation } from "@tanstack/react-query";
-import axios from "axios";
-import { login } from "../redux/reducers/userSlice";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { loginSuccess, logout } from "../redux/reducers/userSlice";
+import { RootState, store } from "../redux/store"; 
 import Loading from "../components/shared/loading/Loading.component";
 import MainLayout from "../components/shared/layout/MainLayout.component";
+import ENDPOINTS, { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "../api";
+import { axiosInstance } from "./axios-interceptor";
+
 
 const ProtectedRoutes = () => {
   const dispatch = useDispatch();
-  const { auth } = useSelector((state: Record<string, any>) => state.user);
+  const location = useLocation();
 
-  // Estado local para control de carga y verificación
-  const [isLoading, setIsLoading] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
-
-  // Obtener token del localStorage
-  const token = localStorage.getItem("auth_dashboard_token");
-
-  // Mutación para verificar autenticación
-  const authMutation = useMutation({
-    mutationFn: async () => {
-      return axios.get(
-        `${import.meta.env.VITE_API_REST_URL}/api/dashboard/user-profile`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-    },
-    onSuccess: ({ data }) => {
-      dispatch(
-        login({
-          // @ts-ignore
-          ...data.user,
-          auth: true,
-          auth_dashboard_token: token,
-        })
-      );
-    },
-    onError: () => {
-      // En caso de error, limpiar el token inválido
-      localStorage.removeItem("auth_dashboard_token");
-    },
-    onSettled: () => {
-      setIsLoading(false);
-      setAuthChecked(true);
-    },
-  });
+  const { auth } = useSelector((state: RootState) => state.user);
+  const [isVerifying, setIsVerifying] = useState(true);
 
   useEffect(() => {
-    const verifyAuth = async () => {
-      // Verificar solo si hay token y no está autenticado
-      if (token && !auth && !authChecked) {
-        setIsLoading(true);
-        await authMutation.mutateAsync();
-      } else {
-        setAuthChecked(true);
+    const verifyAuthOnLoad = async () => {
+      // Si ya estamos autenticados en Redux, no necesitamos verificar de nuevo
+      if (auth) {
+        setIsVerifying(false);
+        return;
+      }
+
+      const storedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+
+      if (!storedToken) {
+        setIsVerifying(false);
+        return;
+      }
+
+      try {
+        // Usar el endpoint CHECK_SESSION que debería validar el token y devolver datos del usuario
+        const response = await axiosInstance.get(ENDPOINTS.AUTH.CHECK_SESSION.url);
+
+        if (response.data?.success && response.data?.data?.user) {
+          // El token es válido, rehidratar el estado de Redux
+          const { user, tokenExpires } = response.data.data; // Asume que check-session devuelve user y tokenExpires
+          dispatch(
+            loginSuccess({
+              user: user,
+              token: storedToken,
+              // Usar expiración del backend o un default seguro (ej. 1 hora)
+              expiresAt: tokenExpires || Date.now() + 3600 * 1000,
+              auth: true,
+            })
+          );
+        } else {
+          // El endpoint respondió pero no fue exitoso o faltan datos
+          console.warn(
+            "Check session responded but was not successful or data missing."
+          );
+          // El interceptor de AuthService debería haber manejado 401/403,
+          // pero por si acaso, limpiamos aquí también si la respuesta no es válida.
+          // No llamamos a handleLogout directamente para evitar bucles si el error no fue 401/403.
+          localStorage.removeItem(ACCESS_TOKEN_KEY);
+          localStorage.removeItem(REFRESH_TOKEN_KEY); // Limpiar ambos si existe
+          dispatch(logout());
+        }
+      } catch (error) {
+        // El interceptor de AuthService debería haber manejado errores 401/403
+        // y llamado a handleLogout (que a su vez llama a dispatch(logout)).
+        // Si llegamos aquí, podría ser otro error (red, etc.) o el interceptor falló.
+        console.error("Error during initial auth verification:", error);
+        // Asegurarse de limpiar el estado si la verificación falla por cualquier motivo
+        // y el interceptor no lo hizo (por ejemplo, si no fue un error 401/403).
+        // Verificar si el logout ya ocurrió a través del estado de Redux es más seguro que usar store.getState() directamente aquí.
+        // Nota: Acceder a store.getState() aquí puede no ser ideal en componentes,
+        // verificar el estado 'auth' de Redux antes de despachar de nuevo podría ser una alternativa.
+        // Sin embargo, si el interceptor ya limpió, el estado `auth` podría ya ser `false`.
+        // Una opción segura es simplemente despachar logout si aún no está autenticado tras el error.
+        // Si se usa store.getState(), asegurarse que 'store' esté importado correctamente.
+        if (store.getState().user.auth) {
+          // Verificar si el logout ya ocurrió vía store (si está disponible)
+          localStorage.removeItem(ACCESS_TOKEN_KEY);
+          localStorage.removeItem(REFRESH_TOKEN_KEY);
+          dispatch(logout());
+        }
+      } finally {
+        setIsVerifying(false);
       }
     };
 
-    verifyAuth();
-  }, [token, auth, authChecked]);
+    verifyAuthOnLoad();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch]); // Depender solo de 'dispatch'. 'auth' se usa solo para la optimización inicial.
 
-  // Mostrar loading durante la verificación inicial
-  if (isLoading) {
+  if (isVerifying) {
     return <Loading />;
   }
 
-  // Una vez verificada la autenticación, redirigir o mostrar contenido
-  if (authChecked) {
-    if (!auth) {
-      return <Navigate to="/login" replace />;
-    }
-
-    return (
-      <MainLayout>
-        <Outlet />
-      </MainLayout>
-    );
+  if (!auth) {
+    // Guardar la ruta a la que se intentaba acceder para redirigir después del login
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Fallback loading mientras se verifica el estado
-  return <Loading />;
+  return (
+    <MainLayout>
+      <Outlet />
+    </MainLayout>
+  );
 };
 
 export default ProtectedRoutes;

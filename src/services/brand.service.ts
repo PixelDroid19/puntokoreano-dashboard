@@ -1,12 +1,11 @@
 // src/services/brand.service.ts
 import ENDPOINTS from "../api";
 import { Brand } from "../api/types";
-import { api } from "./auth.service";
-
+import { axiosInstance } from "../utils/axios-interceptor";
 class BrandService {
   static async getBrands() {
     try {
-      const { data } = await api.get(ENDPOINTS.DASHBOARD.BRAND.GET_ALL.url);
+      const { data } = await axiosInstance.get(ENDPOINTS.DASHBOARD.BRAND.GET_ALL.url);
       return data;
     } catch (error) {
       console.error("Error fetching brands:", error);
@@ -16,7 +15,7 @@ class BrandService {
 
   static async getBrandByName(name: string) {
     try {
-      const { data } = await api.get(
+      const { data } = await axiosInstance.get(
         `${ENDPOINTS.DASHBOARD.BRAND.GET_ALL.url}?name=${name}`
       );
       return data.data?.find(
@@ -30,7 +29,7 @@ class BrandService {
 
   static async createBrand(brandData: Partial<Brand>) {
     try {
-      const { data } = await api.post(
+      const { data } = await axiosInstance.post(
         ENDPOINTS.DASHBOARD.BRAND.CREATE.url,
         brandData
       );
@@ -44,7 +43,7 @@ class BrandService {
   static async updateBrand(id: string, brandData: Partial<Brand>) {
     try {
       const url = ENDPOINTS.DASHBOARD.BRAND.UPDATE.url.replace(":id", id);
-      const { data } = await api.put(url, brandData);
+      const { data } = await axiosInstance.put(url, brandData);
       return data;
     } catch (error) {
       console.error("Error updating brand:", error);
@@ -55,7 +54,7 @@ class BrandService {
   static async deleteBrand(id: string) {
     try {
       const url = ENDPOINTS.DASHBOARD.BRAND.DELETE.url.replace(":id", id);
-      const { data } = await api.delete(url);
+      const { data } = await axiosInstance.delete(url);
       return data;
     } catch (error) {
       console.error("Error deleting brand:", error);
@@ -68,7 +67,7 @@ class BrandService {
       const url = ENDPOINTS.DASHBOARD.BRAND.ASSOCIATE_BLOG.url
         .replace(":brandId", brandId)
         .replace(":blogId", blogId);
-      const { data } = await api.post(url);
+      const { data } = await axiosInstance.post(url);
       return data;
     } catch (error) {
       console.error("Error associating blog with brand:", error);
@@ -81,7 +80,7 @@ class BrandService {
       const url = ENDPOINTS.DASHBOARD.BRAND.DISSOCIATE_BLOG.url
         .replace(":brandId", brandId)
         .replace(":blogId", blogId);
-      const { data } = await api.delete(url);
+      const { data } = await axiosInstance.delete(url);
       return data;
     } catch (error) {
       console.error("Error dissociating blog from brand:", error);

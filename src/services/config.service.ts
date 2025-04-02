@@ -1,13 +1,12 @@
 // src/services/config.service.ts
 import { SeoConfig, SiteConfig } from "../types/orders";
-import { api } from "./auth.service";
 import ENDPOINTS from "../api";
-import axios from "axios";
+import { axiosInstance } from "../utils/axios-interceptor";
 
 class ConfigService {
   static async getSettings() {
     try {
-      const response = await api.get(ENDPOINTS.DASHBOARD.SETTINGS.GET.url);
+      const response = await axiosInstance.get(ENDPOINTS.DASHBOARD.SETTINGS.GET.url);
       return response.data;
     } catch (error) {
       console.error("Error fetching settings:", error);
@@ -17,7 +16,7 @@ class ConfigService {
 
   static async updateSeo(seoConfig: SeoConfig) {
     try {
-      const response = await api.patch(
+      const response = await axiosInstance.patch(
         ENDPOINTS.DASHBOARD.SETTINGS.SEO.UPDATE.url,
         seoConfig
       );
@@ -30,7 +29,7 @@ class ConfigService {
 
   static async updateSettings(settings: Partial<SiteConfig>) {
     try {
-      const response = await api.patch(
+      const response = await axiosInstance.patch(
         ENDPOINTS.DASHBOARD.SETTINGS.GET.url,
         settings
       );
@@ -43,7 +42,7 @@ class ConfigService {
   // Highlighted Services Methods
   static async getHighlightedServices() {
     try {
-      const response = await api.get(
+      const response = await axiosInstance.get(
         ENDPOINTS.DASHBOARD.SETTINGS.HIGHLIGHTED_SERVICES.GET_ALL.url
       );
       return response.data;
@@ -54,7 +53,7 @@ class ConfigService {
   }
   static async createHighlightedService(service: any) {
     try {
-      const response = await api.post(
+      const response = await axiosInstance.post(
         ENDPOINTS.DASHBOARD.SETTINGS.HIGHLIGHTED_SERVICES.CREATE.url,
         service
       );
@@ -71,7 +70,7 @@ class ConfigService {
           ":identifier",
           identifier
         );
-      const response = await api.put(url, service);
+      const response = await axiosInstance.put(url, service);
       return response.data;
     } catch (error) {
       console.error(`Error updating highlighted service ${identifier}:`, error);
@@ -85,7 +84,7 @@ class ConfigService {
           ":identifier",
           identifier
         );
-      const response = await api.delete(url);
+      const response = await axiosInstance.delete(url);
       return response.data;
     } catch (error) {
       console.error(`Error deleting highlighted service ${identifier}:`, error);
@@ -95,7 +94,7 @@ class ConfigService {
   // Achievements Methods
   static async getAchievements() {
     try {
-      const response = await api.get(
+      const response = await axiosInstance.get(
         ENDPOINTS.DASHBOARD.SETTINGS.HIGHLIGHTED_SERVICES.GET_ALL.url +
           "/achievements"
       );
@@ -107,7 +106,7 @@ class ConfigService {
   }
   static async createAchievement(achievement: any) {
     try {
-      const response = await api.post(
+      const response = await axiosInstance.post(
         ENDPOINTS.DASHBOARD.SETTINGS.HIGHLIGHTED_SERVICES.GET_ALL.url +
           "/achievements",
         achievement
@@ -120,7 +119,7 @@ class ConfigService {
   }
   static async updateAchievement(id: string, achievement: any) {
     try {
-      const response = await api.put(
+      const response = await axiosInstance.put(
         `${ENDPOINTS.DASHBOARD.SETTINGS.HIGHLIGHTED_SERVICES.GET_ALL.url}/achievements/${id}`,
         achievement
       );
@@ -132,7 +131,7 @@ class ConfigService {
   }
   static async deleteAchievement(id: string) {
     try {
-      const response = await api.delete(
+      const response = await axiosInstance.delete(
         `${ENDPOINTS.DASHBOARD.SETTINGS.HIGHLIGHTED_SERVICES.GET_ALL.url}/achievements/${id}`
       );
       return response.data;
@@ -146,7 +145,7 @@ class ConfigService {
       const formData = new FormData();
       formData.append("image", file);
 
-      const response = await axios.post(
+      const response = await axiosInstance.post(
         `https://api.imgbb.com/1/upload?key=${
           import.meta.env.VITE_IMGBB_API_KEY
         }`,

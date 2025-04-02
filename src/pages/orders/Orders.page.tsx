@@ -27,6 +27,7 @@ import { Order, OrderStatus, PaymentStatus } from "../../types/orders";
 import dayjs from "dayjs";
 import OrdersService from "../../services/orders.service";
 import { useOrdersWebSocket } from "../../hooks/useOrdersWebSocket";
+import { ACCESS_TOKEN_KEY } from "../../api";
 
 const { RangePicker } = DatePicker;
 
@@ -71,7 +72,7 @@ const Orders = () => {
   const [isRefundModalOpen, setIsRefundModalOpen] = React.useState(false);
   const [form] = Form.useForm();
   const [refundForm] = Form.useForm();
-  const token = localStorage.getItem("auth_dashboard_token");
+  const token = localStorage.getItem(ACCESS_TOKEN_KEY);
 
   // Query para obtener pedidos
   const { data: ordersData, isLoading } = useQuery({

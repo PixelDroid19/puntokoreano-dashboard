@@ -1,9 +1,9 @@
 // src/services/products.service.ts
-// @ts-nocheck
 
 import axios from "axios";
 import { Product } from "../api/types";
 import ENDPOINTS from "../api";
+import { axiosInstance } from "../utils/axios-interceptor";
 
 interface PaginationParams {
   page?: number;
@@ -22,29 +22,17 @@ interface PaginatedResponse {
 }
 
 class ProductsService {
-  private static getToken(): string {
-    return localStorage.getItem("auth_dashboard_token") || "";
-  }
-
-  private static getHeaders() {
-    return {
-      Authorization: `Bearer ${this.getToken()}`,
-      "Content-Type": "application/json",
-    };
-  }
-
   static async getProducts(
     params?: PaginationParams
   ): Promise<PaginatedResponse> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.GET_ALL;
-      const response = await axios({
+      const response = await axiosInstance({
         url,
         method,
-        headers: this.getHeaders(),
         params,
       });
-   
+
       return response.data;
       // Modified to access response.data directly instead of response.data?.data
     } catch (error) {
@@ -60,10 +48,9 @@ class ProductsService {
   static async getProductById(id: string): Promise<Product> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.GET_BY_ID;
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${url}/${id}`,
         method,
-        headers: this.getHeaders(),
       });
 
       return response.data.data;
@@ -80,10 +67,9 @@ class ProductsService {
   static async deleteProduct(id: string): Promise<void> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.DELETE;
-      await axios({
+      await axiosInstance({
         url: `${url}/${id}`,
         method,
-        headers: this.getHeaders(),
       });
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -101,10 +87,9 @@ class ProductsService {
   ): Promise<Product> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.UPDATE;
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${url}/${id}`,
         method,
-        headers: this.getHeaders(),
         data,
       });
 
@@ -129,10 +114,10 @@ class ProductsService {
   static async searchProducts(searchTerm: string): Promise<Product[]> {
     try {
       const { url, method } = ENDPOINTS.PRODUCTS.SEARCH;
-      const response = await axios({
+      const response = await axiosInstance({
         url,
         method,
-        headers: this.getHeaders(),
+
         params: { query: searchTerm },
       });
 
@@ -150,10 +135,10 @@ class ProductsService {
   static async exportToExcel(limit?: number): Promise<Blob> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.EXPORT_EXCEL;
-      const response = await axios({
+      const response = await axiosInstance({
         url,
         method,
-        headers: this.getHeaders(),
+
         responseType: "blob",
         params: { limit },
       });
@@ -181,11 +166,10 @@ class ProductsService {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await axios({
+      const response = await axiosInstance({
         url,
         method,
         headers: {
-          ...this.getHeaders(),
           "Content-Type": "multipart/form-data",
         },
         data: formData,
@@ -203,61 +187,64 @@ class ProductsService {
   }
 
   /**
- * Downloads the Excel template for product imports
- * @returns Promise<Blob> The Excel file as a Blob
- * @throws Error if the download fails
- */
-static async downloadTemplate(): Promise<Blob> {
-  try {
-    const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.DOWNLOAD_TEMPLATE;
-    
-    // Configure request with proper headers for Excel download
-    const response = await axios({
-      url,
-      method,
-      headers: {
-        ...this.getHeaders(),
-        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      },
-      responseType: 'blob', // Important for handling binary files
-    });
+   * Downloads the Excel template for product imports
+   * @returns Promise<Blob> The Excel file as a Blob
+   * @throws Error if the download fails
+   */
+  static async downloadTemplate(): Promise<Blob> {
+    try {
+      const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.DOWNLOAD_TEMPLATE;
 
-    // Validate response
-    if (!(response.data instanceof Blob)) {
-      throw new Error('Invalid response format');
+      // Configure request with proper headers for Excel download
+      const response = await axiosInstance({
+        url,
+        method,
+        headers: {
+          Accept:
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        },
+        responseType: "blob", // Important for handling binary files
+      });
+
+      // Validate response
+      if (!(response.data instanceof Blob)) {
+        throw new Error("Invalid response format");
+      }
+
+      // Ensure proper MIME type
+      const excelBlob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      // Set suggested filename for download
+      const filename =
+        response.headers["content-disposition"]?.split("filename=")[1] ||
+        "plantilla_productos.xlsx";
+
+      // Trigger download
+      const url1 = window.URL.createObjectURL(excelBlob);
+      const link = document.createElement("a");
+      link.href = url1;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      return excelBlob;
+    } catch (error) {
+      // Enhanced error handling
+      if (axios.isAxiosError(error)) {
+        const message =
+          error.response?.data instanceof Blob
+            ? await error.response.data.text()
+            : error.response?.data?.message || "Error al descargar plantilla";
+
+        throw new Error(message);
+      }
+      throw error;
     }
-
-    // Ensure proper MIME type
-    const excelBlob = new Blob([response.data], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    });
-
-    // Set suggested filename for download
-    const filename = response.headers['content-disposition']?.split('filename=')[1] || 'plantilla_productos.xlsx';
-    
-    // Trigger download
-    const url1 = window.URL.createObjectURL(excelBlob);
-    const link = document.createElement('a');
-    link.href = url1;
-    link.setAttribute('download', filename);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-
-    return excelBlob;
-  } catch (error) {
-    // Enhanced error handling
-    if (axios.isAxiosError(error)) {
-      const message = error.response?.data instanceof Blob 
-        ? await error.response.data.text() 
-        : error.response?.data?.message || 'Error al descargar plantilla';
-      
-      throw new Error(message);
-    }
-    throw error;
   }
-}
 }
 
 export default ProductsService;

@@ -1,6 +1,6 @@
 // services/category.service.ts
-import { api } from "./auth.service";
 import ENDPOINTS from "../api";
+import { axiosInstance } from "../utils/axios-interceptor";
 
 export interface Category {
   _id: string;
@@ -43,22 +43,22 @@ class CategoriesService {
     limit?: number;
     search?: string;
   }) {
-    const response = await api.get(this.BASE_URL, { params });
+    const response = await axiosInstance.get(this.BASE_URL, { params });
     return response.data.data;
   }
 
   static async createCategory(data: Omit<Category, '_id'>) {
-    const response = await api.post(this.BASE_URL, data);
+    const response = await axiosInstance.post(this.BASE_URL, data);
     return response.data.data;
   }
 
   static async updateCategory(id: string, data: Partial<Omit<Category, '_id'>>) {
-    const response = await api.put(`${this.BASE_URL}/${id}`, data);
+    const response = await axiosInstance.put(`${this.BASE_URL}/${id}`, data);
     return response.data.data;
   }
 
   static async updateSubgroupStatus({categoryId, subgroupId, active}: SubgroupStatusUpdate) {
-    const response = await api.patch(
+    const response = await axiosInstance.patch(
       `${this.BASE_URL}/${categoryId}/subgroups/${subgroupId}/status`,
       { active }
     );
@@ -68,7 +68,7 @@ class CategoriesService {
   static async uploadImage(file: File) {
     const formData = new FormData();
     formData.append('image', file);
-    const response = await api.post(`${this.BASE_URL}/upload-image`, formData);
+    const response = await axiosInstance.post(`${this.BASE_URL}/upload-image`, formData);
     return response.data.data.url;
   }
 }

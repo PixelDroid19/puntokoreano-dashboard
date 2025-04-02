@@ -1,6 +1,7 @@
 // src/services/vehicle-families.service.ts
 import axios from "axios";
 import ENDPOINTS, { BASE_URL } from "../api";
+import { axiosInstance } from "../utils/axios-interceptor";
 
 export interface BrandItem {
   _id: string;
@@ -161,11 +162,14 @@ interface CreateModel {
 class VehicleFamiliesService {
   static async getBrands(params: GetParams): Promise<GetBrandsResponse> {
     try {
-      const response = await axios(`${BASE_URL}/dashboard/vehicle-brands`, {
-        method: "GET",
-        headers: this.getHeaders(),
-        params: params,
-      });
+      const response = await axiosInstance(
+        `${BASE_URL}/dashboard/vehicle-brands`,
+        {
+          method: "GET",
+
+          params: params,
+        }
+      );
 
       if (!response.data?.success || !response.data?.data) {
         throw new Error(
@@ -190,10 +194,9 @@ class VehicleFamiliesService {
     active: boolean;
   }): Promise<BrandItem> {
     try {
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicle-brands`,
         method: "POST",
-        headers: this.getHeaders(),
         data,
       });
       if (!response.data?.success || !response.data?.data) {
@@ -217,10 +220,9 @@ class VehicleFamiliesService {
     data: { name?: string; country?: string; active?: boolean }
   ): Promise<BrandItem> {
     try {
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicle-brands/${id}`,
         method: "PUT",
-        headers: this.getHeaders(),
         data,
       });
       if (!response.data?.success || !response.data?.data) {
@@ -242,10 +244,9 @@ class VehicleFamiliesService {
 
   static async deleteBrand(id: string): Promise<void> {
     try {
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicle-brands/${id}`,
         method: "DELETE",
-        headers: this.getHeaders(),
       });
       if (!response.data?.success) {
         throw new Error(
@@ -263,26 +264,11 @@ class VehicleFamiliesService {
     }
   }
 
-  private static getToken(): string {
-    if (typeof window !== "undefined" && window.localStorage) {
-      return localStorage.getItem("auth_dashboard_token") || "";
-    }
-    return "";
-  }
-
-  private static getHeaders() {
-    return {
-      Authorization: `Bearer ${this.getToken()}`,
-      "Content-Type": "application/json",
-    };
-  }
-
   static async getVehicles(params: GetParams): Promise<GetVehiclesResponse> {
     try {
-      const response = await axios({
+      const response = await axiosInstance({
         url: ENDPOINTS.VEHICLES.CREATE.url,
         method: "GET",
-        headers: this.getHeaders(),
         params: params,
       });
       if (!response.data?.success || !response.data?.data) {
@@ -303,11 +289,13 @@ class VehicleFamiliesService {
 
   static async getFamilies(params: GetParams): Promise<GetFamiliesResponse> {
     try {
-      const response = await axios(`${BASE_URL}/dashboard/vehicle-families`, {
-        method: "GET",
-        headers: this.getHeaders(),
-        params: params,
-      });
+      const response = await axiosInstance(
+        `${BASE_URL}/dashboard/vehicle-families`,
+        {
+          method: "GET",
+          params: params,
+        }
+      );
       if (!response.data?.success || !response.data?.data) {
         throw new Error(
           response.data?.message || "Respuesta inválida de la API de familias"
@@ -327,10 +315,9 @@ class VehicleFamiliesService {
 
   static async getModels(params: GetParams): Promise<GetModelsResponse> {
     try {
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicles/models`,
         method: "GET",
-        headers: this.getHeaders(),
         params: params,
       });
       if (!response.data?.success || !response.data?.data) {
@@ -353,10 +340,9 @@ class VehicleFamiliesService {
     params: GetParams
   ): Promise<GetTransmissionsResponse> {
     try {
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicles/transmissions`,
         method: "GET",
-        headers: this.getHeaders(),
         params,
       });
       if (!response.data?.success || !response.data?.data) {
@@ -378,10 +364,9 @@ class VehicleFamiliesService {
 
   static async getFuels(params: GetParams): Promise<GetFuelsResponse> {
     try {
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicles/fuels`,
         method: "GET",
-        headers: this.getHeaders(),
         params,
       });
       if (!response.data?.success || !response.data?.data) {
@@ -403,10 +388,9 @@ class VehicleFamiliesService {
 
   static async getLines(params: GetParams): Promise<GetLinesResponse> {
     try {
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicles/lines`,
         method: "GET",
-        headers: this.getHeaders(),
         params,
       });
       if (!response.data?.success || !response.data?.data) {
@@ -437,10 +421,9 @@ class VehicleFamiliesService {
     }
 
     try {
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicles`,
         method: "POST",
-        headers: this.getHeaders(),
         data: vehicleData,
       });
       if (!response.data?.success || !response.data?.data) {
@@ -464,10 +447,9 @@ class VehicleFamiliesService {
     vehicleData: Partial<VehicleData>
   ): Promise<any> {
     try {
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicles/${id}`,
         method: "PUT",
-        headers: this.getHeaders(),
         data: vehicleData,
       });
       if (!response.data?.success || !response.data?.data) {
@@ -488,10 +470,9 @@ class VehicleFamiliesService {
 
   static async deleteVehicle(id: string): Promise<void> {
     try {
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicles/${id}`,
         method: "DELETE",
-        headers: this.getHeaders(),
       });
       if (!response.data?.success) {
         throw new Error(
@@ -510,10 +491,9 @@ class VehicleFamiliesService {
 
   static async createFamily(payload: CreateFamilyPayload): Promise<FamilyItem> {
     try {
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicle-families`,
         method: "POST",
-        headers: this.getHeaders(),
         data: payload,
       });
       if (!response.data?.success || !response.data?.data) {
@@ -545,10 +525,9 @@ class VehicleFamiliesService {
       throw new Error("Año inválido");
 
     try {
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicles/models`,
         method: "POST",
-        headers: this.getHeaders(),
         data: {
           name: payload.name.trim(),
           family_id: payload.familyId,
@@ -585,10 +564,9 @@ class VehicleFamiliesService {
     }
 
     try {
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicles/transmissions`,
         method: "POST",
-        headers: this.getHeaders(),
         data: {
           name: transmissionName.trim(),
           ...(gears !== undefined &&
@@ -627,10 +605,9 @@ class VehicleFamiliesService {
     }
 
     try {
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicles/fuels`,
         method: "POST",
-        headers: this.getHeaders(),
         data: {
           name: upperCaseName,
           ...(octane_rating !== undefined &&
@@ -674,10 +651,9 @@ class VehicleFamiliesService {
     }
 
     try {
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicles/lines`,
         method: "POST",
-        headers: this.getHeaders(),
         data: {
           model_id: modelId,
           name: lineName.trim(),

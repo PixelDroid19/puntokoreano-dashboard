@@ -3,7 +3,8 @@
 
 import axios from "axios";
 import { Filter } from "../api/types";
-import ENDPOINTS from "../api";
+import ENDPOINTS, { ACCESS_TOKEN_KEY } from "../api";
+import { axiosInstance } from "../utils/axios-interceptor";
 
 interface PaginatedResponse {
   filters: Filter[];
@@ -17,7 +18,7 @@ interface PaginatedResponse {
 
 class FiltersService {
   private static getToken(): string {
-    return localStorage.getItem("auth_dashboard_token") || "";
+    return localStorage.getItem(ACCESS_TOKEN_KEY) || "";
   }
 
   private static getHeaders() {
@@ -30,7 +31,7 @@ class FiltersService {
   static async getFilters(): Promise<PaginatedResponse> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.FILTERS.GET_ALL;
-      const response = await axios({
+      const response = await axiosInstance({
         url,
         method,
         headers: this.getHeaders(),
@@ -50,7 +51,7 @@ class FiltersService {
   static async getFilterById(id: string): Promise<Filter> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.FILTERS.GET_BY_ID;
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${url}/${id}`,
         method,
         headers: this.getHeaders(),
@@ -70,7 +71,7 @@ class FiltersService {
   static async createFilter(data: Omit<Filter, '_id'>): Promise<Filter> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.FILTERS.CREATE;
-      const response = await axios({
+      const response = await axiosInstance({
         url,
         method,
         headers: this.getHeaders(),
@@ -94,7 +95,7 @@ class FiltersService {
   ): Promise<Filter> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.FILTERS.UPDATE;
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${url}/${id}`,
         method,
         headers: this.getHeaders(),
@@ -115,7 +116,7 @@ class FiltersService {
   static async deleteFilter(id: string): Promise<void> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.FILTERS.DELETE;
-      await axios({
+      await axiosInstance({
         url: `${url}/${id}`,
         method,
         headers: this.getHeaders(),
@@ -145,7 +146,7 @@ class FiltersService {
   ): Promise<Filter> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.FILTERS.UPDATE_SECTION;
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${url}/${id}/${section}`,
         method,
         headers: this.getHeaders(),
@@ -170,7 +171,7 @@ class FiltersService {
   ): Promise<Record<string, any>> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.FILTERS.GET_SECTION;
-      const response = await axios({
+      const response = await axiosInstance({
         url: `${url}/${id}/${section}`,
         method,
         headers: this.getHeaders(),

@@ -1,5 +1,8 @@
 import { Endpoints } from "./types";
 
+export const ACCESS_TOKEN_KEY = "accessToken";
+export const REFRESH_TOKEN_KEY = "refreshToken";
+
 const getBaseUrl = (): string => {
   // Usar una variable más explícita para el entorno
   const isProduction = import.meta.env.PROD;
@@ -52,10 +55,19 @@ const ENDPOINTS: Endpoints = {
       url: `${BASE_URL}/auth/dashboard/login`,
       method: "POST",
     },
-    ENCRYPTION_KEY: {
-      url: `${BASE_URL}/auth/encryption-key`,
-      method: "GET",
+    CHECK_SESSION: {
+      url: `${BASE_URL}/auth/dashboard/check-session`,
+      method: "GET", 
     },
+    REFRESH_TOKEN: {
+      url: `${BASE_URL}/auth/dashboard/refresh-token`,
+      method: "POST",
+    },
+    LOGOUT: {
+      url: `${BASE_URL}/auth/dashboard/logout`,
+      method: "POST", 
+    },
+   
   },
 
   PRODUCTS: {
@@ -333,6 +345,10 @@ const ENDPOINTS: Endpoints = {
         url: `${BASE_URL}/dashboard/blog`,
         method: "GET",
       },
+      GET_ONE: {
+        url: `${BASE_URL}/dashboard/blog/:id`,
+        method: "GET",
+      },
       CREATE: {
         url: `${BASE_URL}/dashboard/blog`,
         method: "POST",
@@ -345,6 +361,7 @@ const ENDPOINTS: Endpoints = {
         url: `${BASE_URL}/dashboard/blog/:id`,
         method: "DELETE",
       },
+
       GET_STATS: {
         url: `${BASE_URL}/dashboard/blog/stats`,
         method: "GET",
@@ -352,6 +369,52 @@ const ENDPOINTS: Endpoints = {
       UPLOAD_IMAGE: {
         url: `${BASE_URL}/dashboard/blog/upload-image`,
         method: "POST",
+      },
+    },
+
+    BLOG_CATEGORIES: {
+      GET_ALL: {
+        url: `${BASE_URL}/dashboard/blog-categories`,
+        method: "GET",
+      },
+      GET_ONE: {
+        url: `${BASE_URL}/dashboard/blog-categories/:id`,
+        method: "GET",
+      },
+      CREATE: {
+        url: `${BASE_URL}/dashboard/blog-categories`,
+        method: "POST",
+      },
+      UPDATE: {
+        url: `${BASE_URL}/dashboard/blog-categories/:id`,
+        method: "PUT",
+      },
+      DELETE: {
+        url: `${BASE_URL}/dashboard/blog-categories/:id`,
+        method: "DELETE",
+      },
+    },
+
+    BLOG_TAGS: {
+      GET_ALL: {
+        url: `${BASE_URL}/dashboard/blog-tags`,
+        method: "GET",
+      },
+      GET_ONE: {
+        url: `${BASE_URL}/dashboard/blog-tags/:id`,
+        method: "GET",
+      },
+      CREATE: {
+        url: `${BASE_URL}/dashboard/blog-tags`,
+        method: "POST",
+      },
+      UPDATE: {
+        url: `${BASE_URL}/dashboard/blog-tags/:id`,
+        method: "PUT",
+      },
+      DELETE: {
+        url: `${BASE_URL}/dashboard/blog-tags/:id`,
+        method: "DELETE",
       },
     },
     FILTERS: {

@@ -1,6 +1,6 @@
-// src/services/reviews.service.ts
-import { api } from "./auth.service";
+import { axiosInstance } from "../utils/axios-interceptor";
 
+// src/services/reviews.service.ts
 export interface Review {
   _id: string;
   product: {
@@ -106,7 +106,7 @@ class DashboardReviewsService {
     sortOrder?: "asc" | "desc";
   }) {
     try {
-      const { data } = await api.get(this.BASE_URL, { params });
+      const { data } = await axiosInstance.get(this.BASE_URL, { params });
       // @ts-ignore
       return data.data;
     } catch (error: any) {
@@ -121,7 +121,7 @@ class DashboardReviewsService {
    */
   static async getReviewStats(): Promise<ReviewStats> {
     try {
-      const { data } = await api.get(`${this.BASE_URL}/stats`);
+      const { data } = await axiosInstance.get(`${this.BASE_URL}/stats`);
       // @ts-ignore
       return data.data;
     } catch (error: any) {
@@ -149,7 +149,7 @@ class DashboardReviewsService {
     }
   ) {
     try {
-      const { data } = await api.patch(
+      const { data } = await axiosInstance.patch(
         `${this.BASE_URL}/${reviewId}/moderate`,
         moderationData
       );
@@ -170,7 +170,7 @@ class DashboardReviewsService {
     }
   ) {
     try {
-      const { data } = await api.patch(
+      const { data } = await axiosInstance.patch(
         `${this.BASE_URL}/${reviewId}/status`,
         statusData
       );
@@ -193,7 +193,7 @@ class DashboardReviewsService {
     }
   ) {
     try {
-      const { data } = await api.patch(
+      const { data } = await axiosInstance.patch(
         `${this.BASE_URL}/${reviewId}/handle-report`,
         reportData
       );

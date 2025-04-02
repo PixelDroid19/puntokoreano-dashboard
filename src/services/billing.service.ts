@@ -1,11 +1,10 @@
 // src/services/billing.service.ts
 
-import { api } from "./auth.service";
 import {
-  BillingSettings,
   BillingSettingsUpdate,
   BillingSettingsResponse,
 } from "../types/billing.types";
+import { axiosInstance } from "../utils/axios-interceptor";
 
 class BillingService {
   private static readonly BASE_URL = "/dashboard/settings/billing";
@@ -15,7 +14,7 @@ class BillingService {
    */
   static async getSettings(): Promise<BillingSettingsResponse> {
     try {
-      const response = await api.get(this.BASE_URL);
+      const response = await axiosInstance.get(this.BASE_URL);
       return response.data;
     } catch (error: any) {
       throw new Error(
@@ -31,7 +30,7 @@ class BillingService {
     settings: BillingSettingsUpdate
   ): Promise<BillingSettingsResponse> {
     try {
-      const response = await api.patch(this.BASE_URL, settings);
+      const response = await axiosInstance.patch(this.BASE_URL, settings);
       return response.data;
     } catch (error: any) {
       throw new Error(
@@ -85,4 +84,4 @@ class BillingService {
   }
 }
 
-export default BillingService
+export default BillingService;

@@ -1,11 +1,10 @@
 // src/services/orders.service.ts
 import { OrderStatusUpdate } from "../types/orders";
-import { api } from "./auth.service";
-
+import { axiosInstance } from "../utils/axios-interceptor";
 class OrdersService {
   static async verifyPayment(orderId: string) {
     try {
-      const response = await api.post(
+      const response = await axiosInstance.post(
         `/dashboard/orders/${orderId}/verify-payment`
       );
       return response.data;
@@ -17,7 +16,7 @@ class OrdersService {
 
   static async verifyPendingPayments() {
     try {
-      const response = await api.post(
+      const response = await axiosInstance.post(
         "/dashboard/orders/verify-pending-payments"
       );
       return response.data;
@@ -32,7 +31,7 @@ class OrdersService {
     data: { amount: number; reason: string }
   ) {
     try {
-      const response = await api.post(
+      const response = await axiosInstance.post(
         `/dashboard/orders/${orderId}/refund`,
         data
       );
@@ -51,7 +50,7 @@ class OrdersService {
     toDate?: string;
   }) {
     try {
-      const response = await api.get("/dashboard/orders", { params });
+      const response = await axiosInstance.get("/dashboard/orders", { params });
       return response.data;
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -62,7 +61,7 @@ class OrdersService {
   // Método para generar factura
   static async generateInvoice(orderId: string) {
     try {
-      const response = await api.post(`/dashboard/orders/${orderId}/invoice`);
+      const response = await axiosInstance.post(`/dashboard/orders/${orderId}/invoice`);
       return response.data;
     } catch (error) {
       console.error("Error generating invoice:", error);
@@ -77,7 +76,7 @@ class OrdersService {
    */
   static async downloadInvoice(orderId: string): Promise<Blob> {
     try {
-      const response = await api.get(`/invoices/orders/${orderId}/download`, {
+      const response = await axiosInstance.get(`/invoices/orders/${orderId}/download`, {
         responseType: "blob",
         headers: {
           Accept: "application/pdf",
@@ -120,7 +119,7 @@ class OrdersService {
 
   static async updateOrderStatus(orderId: string, data: OrderStatusUpdate) {
     try {
-      const response = await api.patch(
+      const response = await axiosInstance.patch(
         `/dashboard/orders/${orderId}/status`,
         data
       );
@@ -133,7 +132,7 @@ class OrdersService {
 
   static async getOrderDetails(orderId: string) {
     try {
-      const response = await api.get(`/dashboard/orders/${orderId}`);
+      const response = await axiosInstance.get(`/dashboard/orders/${orderId}`);
       return response.data;
     } catch (error) {
       console.error("Error fetching order details:", error);

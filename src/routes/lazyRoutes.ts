@@ -25,6 +25,6 @@ export const lazyRoutes = {
   // Other pages
   Users: lazy(() => import("../pages/users/Users.page")),
   Orders: lazy(() => import("../pages/orders/Orders.page")),
-  Blog: lazy(() => import("../pages/blog/Blog.page")),
+  Blog: lazy(() => import("../pages/blog/blog-management")),
   Reviews: lazy(() => import("../pages/Reviews/Reviews.page")),
 };
