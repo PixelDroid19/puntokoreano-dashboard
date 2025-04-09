@@ -26,6 +26,7 @@ import MultimediaInformation from "./form/MultimediaInformation";
 import DescriptionInformation from "./form/DescriptionInformation";
 import SeoInformation from "./form/SeoInformation";
 import { axiosInstance } from "../../../utils/axios-interceptor";
+import axios from "axios";
 
 const { TabPane } = Tabs;
 
@@ -120,7 +121,7 @@ const AddProduct = () => {
     formData.append("image", file);
 
     try {
-      const response = await axiosInstance.post(
+      const response = await axios.post(
         `https://api.imgbb.com/1/upload?key=${
           import.meta.env.VITE_IMGBB_API_KEY
         }`,

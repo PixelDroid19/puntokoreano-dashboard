@@ -37,7 +37,7 @@ const menuItems = [
     label: <Link to={"/image-manager"}>Gestor de Imágenes</Link>,
     icon: <FileImageOutlined />,
     title: "Gestor de Imágenes",
-},
+  },
   {
     key: "/brands",
     label: <Link to={"/brands"}>Marcas</Link>,
@@ -79,6 +79,18 @@ const menuItems = [
     label: <Link to={"/vehicle-families"}>Familias de Vehículos</Link>,
     icon: <CarryOutOutlined />,
     title: "Familias de Vehículos",
+    children: [
+      {
+        key: "/brand-management",
+        label: <Link to="/brand-management">Marcas</Link>,
+        title: "Configuración de Marcas",
+      },
+      {
+        key: "/vehicle-management",
+        label: <Link to="/vehicle-management">Vehículos</Link>,
+        title: "Configuración de Vehículos",
+      },
+    ],
   },
   {
     key: "settings",

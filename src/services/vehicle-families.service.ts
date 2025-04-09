@@ -515,7 +515,6 @@ class VehicleFamiliesService {
 
   static async addModel(payload: CreateModel): Promise<any> {
     if (!payload.familyId) throw new Error("El ID de la familia es requerido");
-    if (!payload.name?.trim()) throw new Error("Nombre de modelo inválido");
     if (!payload.engineType?.trim()) throw new Error("Tipo de motor inválido");
     if (
       !payload.year ||

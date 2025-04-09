@@ -28,6 +28,8 @@ import CategoriesManagement from "../pages/categoriesManagement/CategoriesManage
 import DevelopmentView from "../components/DevelopmentView/DevelopmentView";
 import HighlightedServicesSettings from "../pages/settings/HighlightedServicesSettings";
 import VehicleManagerPages from "../pages/vehicle-manager/vehicle-management-page";
+import VehicleView from "../pages/vehicle-manager/vehicle-view";
+import BrandView from "../pages/vehicle-manager/brand-view";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -96,11 +98,7 @@ const router = createBrowserRouter(
         />
 
         {/* Blog */}
-        <Route
-          path="/blogs"
-          element={<Blog />} 
-          errorElement={<RouteError />}
-        />
+        <Route path="/blogs" element={<Blog />} errorElement={<RouteError />} />
 
         {/* Users */}
         <Route
@@ -145,6 +143,17 @@ const router = createBrowserRouter(
         <Route
           path="/vehicle-families"
           element={<VehicleManagerPages />}
+          errorElement={<RouteError />}
+        />
+
+        <Route
+          path="/brand-management"
+          element={<BrandView />}
+          errorElement={<RouteError />}
+        />
+          <Route
+          path="/vehicle-management"
+          element={<VehicleView />}
           errorElement={<RouteError />}
         />
       </Route>

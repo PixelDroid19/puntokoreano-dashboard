@@ -20,6 +20,7 @@ import {
   SearchOutlined,
   UploadOutlined,
   EyeOutlined,
+  LoadingOutlined,
 } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import CategoriesService, {
@@ -28,6 +29,8 @@ import CategoriesService, {
   CategoryUpdateInput,
   SubgroupStatusUpdate,
 } from "../../services/categories.service";
+import type { RcFile, UploadFile, UploadProps } from "antd/es/upload/interface";
+import FilesService from "../../services/files.service";
 
 const { TextArea } = Input;
 
@@ -41,6 +44,7 @@ const VALIDATION_RULES = {
     { required: true, message: "La descripción es requerida" },
     { max: 200, message: "La descripción no puede exceder 200 caracteres" },
   ],
+  image: [{ required: true, message: "La imagen es requerida" }],
 };
 
 const CategoriesManagement = () => {
@@ -56,6 +60,10 @@ const CategoriesManagement = () => {
   );
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [fileList, setFileList] = useState<UploadFile[]>([]);
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [uploadLoading, setUploadLoading] = useState<boolean>(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["categories", searchText, currentPage, pageSize],
@@ -110,8 +118,24 @@ const CategoriesManagement = () => {
       setSelectedCategory(category);
       if (category) {
         form.setFieldsValue(category);
+        if (category.image) {
+          setImageUrl(category.image);
+          setFileList([
+            {
+              uid: "-1",
+              name: "image.png",
+              status: "done",
+              url: category.image,
+            },
+          ]);
+        } else {
+          setFileList([]);
+          setImageUrl("");
+        }
       } else {
         form.resetFields();
+        setFileList([]);
+        setImageUrl("");
       }
       setIsModalVisible(true);
     },
@@ -122,24 +146,91 @@ const CategoriesManagement = () => {
     setIsModalVisible(false);
     setSelectedCategory(null);
     form.resetFields();
+    setFileList([]);
+    setImageUrl("");
   }, [form]);
+
+  const handleImageUpload = async (file: RcFile, type: "image" | "logo") => {
+    if (!beforeUpload(file)) {
+      return;
+    }
+
+    try {
+      setUploadLoading(true);
+      const result = await FilesService.uploadToImgBB(file);
+      const imageData = {
+        url: result.data.url,
+        display_url: result.data.display_url,
+        delete_url: result.data.delete_url,
+        alt: file.name,
+      };
+
+      if (type === "image") {
+        setImageUrl(imageData.display_url);
+        form.setFieldValue("image", imageData);
+      } else {
+        form.setFieldValue("logo", imageData);
+      }
+
+      message.success(
+        `${type === "image" ? "Imagen" : "Logo"} subido correctamente`
+      );
+    } catch (error) {
+      console.error("Error subiendo imagen:", error);
+      message.error(
+        `Error al subir ${
+          type === "image" ? "la imagen" : "el logo"
+        }. Por favor, intente nuevamente.`
+      );
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
+  const beforeUpload = (file: RcFile) => {
+    const isImage = file.type.startsWith("image/");
+    if (!isImage) {
+      message.error("Solo se permiten archivos de imagen!");
+      return false;
+    }
+
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      message.error("La imagen debe ser menor a 5MB!");
+      return false;
+    }
+
+    return true;
+  };
 
   const handleSubmit = useCallback(
     async (values: CategoryCreateInput) => {
       try {
+        // Make sure we're sending the image URL, not the file object
+        const dataToSubmit = {
+          ...values,
+          image: imageUrl, // Use the imageUrl state variable directly
+        };
+
+        // Remove any file object that might have been added by the form
+        if (dataToSubmit.image && typeof dataToSubmit.image === "object") {
+          // If somehow the image is still an object, use the URL we stored
+          console.log("Converting image object to URL string");
+        }
+
         if (modalMode === "create") {
-          await createCategory.mutateAsync(values);
+          await createCategory.mutateAsync(dataToSubmit);
         } else {
           await updateCategory.mutateAsync({
             id: selectedCategory!._id,
-            ...values,
+            ...dataToSubmit,
           });
         }
       } catch (error) {
         message.error("Error al procesar la categoría");
       }
     },
-    [modalMode, selectedCategory, createCategory, updateCategory]
+    [modalMode, selectedCategory, createCategory, updateCategory, imageUrl]
   );
 
   const handleDelete = useCallback(
@@ -245,6 +336,20 @@ const CategoriesManagement = () => {
     [handleModalOpen, handleDelete, updateSubgroupStatus]
   );
 
+  const handleImageError = (type: "image" | "logo") => {
+    if (type === "image") {
+      setImageUrl("");
+      form.setFieldValue("image", undefined);
+    } else {
+      form.setFieldValue("logo", undefined);
+    }
+    message.error(
+      `Error al cargar ${
+        type === "image" ? "la imagen" : "el logo"
+      }. Por favor, intente nuevamente.`
+    );
+  };
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -319,22 +424,34 @@ const CategoriesManagement = () => {
             <TextArea rows={4} placeholder="Descripción de la categoría" />
           </Form.Item>
 
-          <Form.Item name="image" label="Imagen">
+          <Form.Item
+            name="image"
+            label="Imagen"
+            rules={VALIDATION_RULES.image}
+            // Remove valuePropName="file" to prevent the file object from being included
+          >
             <Upload
+              name="image"
               listType="picture-card"
-              maxCount={1}
+              showUploadList={false}
               beforeUpload={(file) => {
-                const isImage = file.type.startsWith("image/");
-                if (!isImage) {
-                  message.error("Solo se permiten archivos de imagen!");
-                }
-                return isImage ? true : Upload.LIST_IGNORE;
+                handleImageUpload(file, "image");
+                return false;
               }}
             >
-              <div>
-                <UploadOutlined />
-                <div style={{ marginTop: 8 }}>Subir</div>
-              </div>
+              {imageUrl ? (
+                <img
+                  src={imageUrl}
+                  alt="imagen"
+                  className="w-full h-full object-cover"
+                  onError={() => handleImageError("image")}
+                />
+              ) : (
+                <div>
+                  {uploadLoading ? <LoadingOutlined /> : <PlusOutlined />}
+                  <div className="mt-2">Subir</div>
+                </div>
+              )}
             </Upload>
           </Form.Item>
 
@@ -345,7 +462,7 @@ const CategoriesManagement = () => {
                   <Space key={field.key} align="baseline">
                     <Form.Item
                       {...field}
-                      name={[field.name, "name"]} // Cambiar para acceder al campo 'name'
+                      name={[field.name, "name"]}
                       label={index === 0 ? "Subgrupos" : ""}
                       rules={[{ required: true, message: "Nombre requerido" }]}
                     >
@@ -386,7 +503,12 @@ const CategoriesManagement = () => {
               <Button
                 type="primary"
                 htmlType="submit"
-                loading={createCategory.isPending || updateCategory.isPending}
+                loading={
+                  createCategory.isPending ||
+                  updateCategory.isPending ||
+                  imageUploading
+                }
+                disabled={imageUploading}
               >
                 {modalMode === "create" ? "Crear" : "Actualizar"}
               </Button>

@@ -43,7 +43,7 @@ export default function ModelForm() {
   const { mutate, isPending: isSubmitting } = useMutation({
     mutationFn: (data: ModelFormData) =>
       VehicleFamiliesService.addModel({
-        name: data.name!,
+        name: data.name,
         engineType: data.engineType!,
         year: data.year!,
         familyId: data.family_id!,
@@ -98,7 +98,7 @@ export default function ModelForm() {
         />
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        
+
 
           <div className="space-y-2">
             <label className="block text-sm font-medium mb-1">Familia</label>
@@ -108,20 +108,21 @@ export default function ModelForm() {
             />
           </div>
 
+
           <div className="space-y-2">
-            <label className="block text-sm font-medium mb-1">
-              Nombre del Modelo
-            </label>
+            <label className="block text-sm font-medium mb-1">Año <span className="text-red-500">*</span></label>
             <Input
-              placeholder="Ingrese el nombre del modelo (Ej: Corolla)"
-              {...register("name", {
-                required: "El nombre del modelo es requerido",
+              placeholder="Ingrese el año del modelo (Ej: 2023)"
+              {...register("year", {
+                required: "El año es requerido",
               })}
             />
-            {errors.name && (
-              <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>
+            {errors.year && (
+              <p className="text-sm text-red-500 mt-1">{errors.year.message}</p>
             )}
           </div>
+
+
 
           <div className="space-y-2">
             <label className="block text-sm font-medium mb-1">
@@ -141,17 +142,19 @@ export default function ModelForm() {
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium mb-1">Año</label>
+            <label className="block text-sm font-medium mb-1">
+              Nombre del Modelo
+            </label>
             <Input
-              placeholder="Ingrese el año del modelo (Ej: 2023)"
-              {...register("year", {
-                required: "El año es requerido",
-              })}
+              required={false}
+              placeholder="Ingrese el nombre del modelo (Ej: Corolla)"
+
             />
-            {errors.year && (
-              <p className="text-sm text-red-500 mt-1">{errors.year.message}</p>
+            {errors.name && (
+              <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>
             )}
           </div>
+
 
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Button

@@ -18,11 +18,13 @@ import {
   Spin,
   Alert,
   Divider,
+  Tag,
 } from "antd";
 import {
   InfoCircleOutlined,
   DeleteOutlined,
   PlusOutlined,
+  CarOutlined,
 } from "@ant-design/icons";
 import type { Product } from "../../../api/types";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
@@ -31,6 +33,7 @@ import { getGroups } from "../../../helpers/queries.helper";
 import FilesService from "../../../services/files.service";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
+import VehicleSelector from "../../vehicle-manager/selectors/vehicle-selector";
 
 interface ProductEditProps {
   open: boolean;
@@ -135,25 +138,28 @@ export const ProductEdit: React.FC<ProductEditProps> = ({
       setSubgroups(currentGroup?.subgroups || []);
       setUseGroupImages(productData.useGroupImages || false);
 
+      // Transformar compatible_vehicles para el selector de vehículos múltiple
+      const vehicleOptions = productData.compatible_vehicles?.map(vehicle => {
+        // Crear un nombre completo del vehículo usando la información de línea y modelo
+        const modelName = vehicle.line?.model?.name || "";
+        const lineName = vehicle.line?.name || "";
+        const label = modelName && lineName 
+          ? `${modelName} ${lineName}` 
+          : vehicle.tag_id || "Vehículo";
+        
+        return {
+          label,
+          value: vehicle.id || vehicle._id,
+        };
+      }) || [];
+
       form.setFieldsValue({
         ...productData,
         seoTitle: productData.seo?.title || "",
         seoDescription: productData.seo?.description || "",
         seoKeywords: productData.seo?.keywords?.join(", ") || "",
         imageGroup: productData.imageGroup || undefined,
-        model: productData.model || undefined,
-        brand: productData.brand || undefined,
-        line: productData.line || undefined,
-        transmission: productData.transmission || undefined,
-        fuel: productData.fuel || undefined,
-        maintenance_type: productData.maintenance_type || undefined,
-        difficulty_level: productData.difficulty_level || undefined,
-        estimated_time: productData.estimated_time || {
-          value: undefined,
-          unit: "minutes",
-        },
-        parts_required: productData.parts_required || [],
-
+        compatible_vehicles: vehicleOptions,
         active: productData.active !== undefined ? productData.active : true,
       });
     } else if (!open) {
@@ -172,6 +178,17 @@ export const ProductEdit: React.FC<ProductEditProps> = ({
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+      
+      // Verificación adicional de stock vs reservedStock
+      if (values.reservedStock > values.stock) {
+        message.error("El stock reservado no puede exceder el stock total disponible");
+        return;
+      }
+      
+      // Extraer IDs de vehículos seleccionados
+      const compatibleVehicleIds = values.compatible_vehicles?.map(
+        vehicle => vehicle.value
+      ) || [];
 
       const updatePayload: Partial<Product> = {
         name: values.name,
@@ -189,6 +206,7 @@ export const ProductEdit: React.FC<ProductEditProps> = ({
         imageGroup: useGroupImages ? values.imageGroup : null,
         videoUrl: values.videoUrl,
         warranty: values.warranty,
+        compatible_vehicles: compatibleVehicleIds,
         seo: {
           title: values.seoTitle || productData?.name || values.name,
           description:
@@ -202,15 +220,6 @@ export const ProductEdit: React.FC<ProductEditProps> = ({
                 .filter(Boolean)
             : [],
         },
-        model: values.model,
-        brand: values.brand,
-        line: values.line,
-        transmission: values.transmission,
-        fuel: values.fuel,
-        maintenance_type: values.maintenance_type,
-        difficulty_level: values.difficulty_level,
-        estimated_time: values.estimated_time,
-        parts_required: values.parts_required,
       };
 
       updateMutation.mutate(updatePayload);
@@ -332,7 +341,20 @@ export const ProductEdit: React.FC<ProductEditProps> = ({
                     name="reservedStock"
                     label="Stock Reservado"
                     tooltip="Cantidad no disponible para venta directa."
-                    rules={[{ type: "number", min: 0 }]}
+                    rules={[
+                      { type: "number", min: 0 },
+                      ({ getFieldValue }) => ({
+                        validator(_, value) {
+                          const totalStock = getFieldValue('stock');
+                          if (!value || !totalStock || value <= totalStock) {
+                            return Promise.resolve();
+                          }
+                          return Promise.reject(
+                            new Error('El stock reservado no puede exceder el stock total')
+                          );
+                        },
+                      }),
+                    ]}
                   >
                     <InputNumber
                       className="w-full"
@@ -410,61 +432,54 @@ export const ProductEdit: React.FC<ProductEditProps> = ({
             </Row>
           </TabPane>
 
-          {/* --- Tab: Detalles Técnicos --- */}
-          <TabPane tab="Detalles Técnicos" key="3">
-            <Card
-              title="Especificaciones Técnicas (Opcional)"
-              size="small"
-              bordered={false}
-            >
-              {/* ... (Mantener o añadir campos técnicos como maintenance_type, etc.) ... */}
-              {/* Ejemplo Form.List para 'parts_required' */}
-              <Divider>Piezas Requeridas (Opcional)</Divider>
-              <Form.List name="parts_required">
-                {(fields, { add, remove }) => (
-                  <>
-                    {fields.map(({ key, name, ...restField }) => (
-                      <Space
-                        key={key}
-                        style={{ display: "flex", marginBottom: 8 }}
-                        align="baseline"
-                      >
-                        <Form.Item
-                          {...restField}
-                          name={[name, "name"]}
-                          rules={[
-                            { required: true, message: "Nombre requerido" },
-                          ]}
-                          style={{ flexGrow: 1 }}
+          {/* --- Tab: Vehículos Compatibles --- */}
+          <TabPane tab={<span><CarOutlined /> Vehículos Compatibles</span>} key="vehicles">
+            <Card title="Compatibilidad de Vehículos" size="small" bordered={false}>
+              <Form.Item 
+                name="compatible_vehicles"
+                label="Seleccionar Vehículos Compatibles"
+                extra="Seleccione todos los vehículos con los que este producto es compatible"
+              >
+                <VehicleSelector 
+                  isMulti={true}
+                  placeholder="Buscar vehículos..."
+                />
+              </Form.Item>
+              
+              {productData?.compatible_vehicles && productData.compatible_vehicles.length > 0 && (
+                <div className="mt-4">
+                  <Divider orientation="left">Vehículos Asociados Actualmente</Divider>
+                  <div className="flex flex-wrap gap-2">
+                    {productData.compatible_vehicles.map((vehicle, index) => {
+                      // Obtener los nombres del modelo y línea del vehículo
+                      const modelName = vehicle.line?.model?.name || "";
+                      const lineName = vehicle.line?.name || "";
+                      const displayName = modelName && lineName 
+                        ? `${modelName} ${lineName}` 
+                        : vehicle.tag_id || `Vehículo ${index + 1}`;
+                      
+                      return (
+                        <Tag
+                          key={String(vehicle.id || vehicle._id || index)}
+                          color="blue"
+                          className="mb-2 py-1 px-2"
+                          icon={<CarOutlined />}
                         >
-                          <Input placeholder="Nombre de la pieza" />
-                        </Form.Item>
-                        <Form.Item
-                          {...restField}
-                          name={[name, "part_number"]}
-                          style={{ flexGrow: 1 }}
-                        >
-                          <Input placeholder="Número de parte (Opcional)" />
-                        </Form.Item>
-                        <Button
-                          onClick={() => remove(name)}
-                          type="link"
-                          danger
-                          icon={<DeleteOutlined />}
-                        />
-                      </Space>
-                    ))}
-                    <Button
-                      type="dashed"
-                      onClick={() => add()}
-                      block
-                      icon={<PlusOutlined />}
-                    >
-                      Añadir Pieza
-                    </Button>
-                  </>
-                )}
-              </Form.List>
+                          {displayName}
+                        </Tag>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              
+              <Alert
+                type="info"
+                message="Información de Compatibilidad"
+                description="La asociación correcta con vehículos mejora la experiencia de búsqueda y ayuda a los clientes a encontrar productos compatibles con sus vehículos específicos."
+                showIcon
+                className="mt-4"
+              />
             </Card>
           </TabPane>
 

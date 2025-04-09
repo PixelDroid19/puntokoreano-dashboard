@@ -32,6 +32,7 @@ import VehicleFamiliesService from "../../../services/vehicle-families.service";
 interface VehicleFormData {
   line_id: string;
   transmission_id: string;
+  tag_id: string;
   fuel_id: string;
   color?: string; // Optional string
   precio?: number | null; // Optional number or null
@@ -64,6 +65,7 @@ export default function VehicleForm() {
       color: "",
       precio: null,
       active: true,
+      tag_id: "",
     },
   });
 
@@ -82,6 +84,7 @@ export default function VehicleForm() {
         price: data.precio,
         // Default active to true if not provided
         active: data.active !== undefined ? data.active : true,
+        tag_id: data.tag_id,
       };
       console.log("Submitting payload:", payload); // Log payload for debugging
       return VehicleFamiliesService.addVehicle(payload);
@@ -289,7 +292,7 @@ export default function VehicleForm() {
                       </div>
                     </div>
                     {/* --- Optional Fields Row --- */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {/* Color Input */}
                       <div>
                         <label
@@ -419,6 +422,60 @@ export default function VehicleForm() {
                           </motion.p>
                         )}
                       </div>
+
+                                {/* Tag ID Input */}
+                    <div>
+                      <label
+                        htmlFor="tag_id"
+                        className="block text-sm font-medium mb-1 text-gray-700"
+                      >
+                        Identificador Único{" "}
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <Input
+                          id="tag_id"
+                          placeholder="Ingrese el identificador único del vehículo"
+                          {...register("tag_id", {
+                            required: "El identificador único es requerido",
+                            pattern: {
+                              value: /^[a-zA-Z0-9-_]+$/,
+                              message:
+                                "Solo se permiten letras, números, guiones y guiones bajos",
+                            },
+                          })}
+                          className={`${
+                            errors.tag_id
+                              ? "border-red-300 focus:border-red-500 pr-10"
+                              : "border-gray-300"
+                          }`}
+                        />
+                        {errors.tag_id && (
+                          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{
+                                type: "spring",
+                                stiffness: 500,
+                                damping: 15,
+                              }}
+                            >
+                              <AlertCircle className="h-5 w-5 text-red-500" />
+                            </motion.div>
+                          </div>
+                        )}
+                      </div>
+                      {errors.tag_id && (
+                        <motion.p
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-sm text-red-500 mt-1"
+                        >
+                          {errors.tag_id.message}
+                        </motion.p>
+                      )}
+                    </div>
                     </div>
                     {/* --- Active Status --- */}
                     <div>

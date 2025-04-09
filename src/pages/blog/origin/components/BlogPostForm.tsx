@@ -24,6 +24,7 @@ import type { RcFile, UploadFile } from "antd/es/upload";
 import type { SelectProps } from "antd";
 import type { BlogPost, Brand } from "../../../types/blog.types";
 import { axiosInstance } from "../../../../utils/axios-interceptor";
+import axios from "axios";
 
 interface BlogPostFormProps {
   initialValues?: Partial<BlogPost>;
@@ -128,7 +129,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
 
     try {
       setUploadLoading(true);
-      const response = await axiosInstance.post(
+      const response = await axios.post(
         `https://api.imgbb.com/1/upload?key=${
           import.meta.env.VITE_IMGBB_API_KEY
         }`,

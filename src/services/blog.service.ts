@@ -10,6 +10,7 @@ import {
 } from "../types/blog.types";
 import { ApiResponse } from "../api/types";
 import { axiosInstance } from "../utils/axios-interceptor";
+import axios from "axios";
 
 // --- Helper Function for URL Replacement ---
 function replaceIdInUrl(url: string, id: string): string {
@@ -28,7 +29,7 @@ class BlogService {
       const formData = new FormData();
       formData.append("image", file);
 
-      const response = await axiosInstance.post(
+      const response = await axios.post(
         `${this.IMGBB_API_URL}?key=${this.IMGBB_API_KEY}`,
         formData,
         {

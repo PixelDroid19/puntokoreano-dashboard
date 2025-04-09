@@ -1,5 +1,6 @@
 // services/files.service.ts
 // @ts-nocheck
+import axios from "axios";
 import ENDPOINTS from "../api";
 import { axiosInstance } from "../utils/axios-interceptor";
 
@@ -63,7 +64,7 @@ class FilesService {
       const formData = new FormData();
       formData.append("image", file);
 
-      const response = await axiosInstance.post(
+      const response = await axios.post(
         `https://api.imgbb.com/1/upload?key=${
           import.meta.env.VITE_IMGBB_API_KEY
         }`,
