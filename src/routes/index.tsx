@@ -30,6 +30,11 @@ import HighlightedServicesSettings from "../pages/settings/HighlightedServicesSe
 import VehicleManagerPages from "../pages/vehicle-manager/vehicle-management-page";
 import VehicleView from "../pages/vehicle-manager/vehicle-view";
 import BrandView from "../pages/vehicle-manager/brand-view";
+import FamilyView from "../pages/vehicle-manager/family-view";
+import ModelView from "../pages/vehicle-manager/model-view";
+import LineView from "../pages/vehicle-manager/line-view";
+import TransmissionView from "../pages/vehicle-manager/transmission-view";
+import FuelView from "../pages/vehicle-manager/fuel-view";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -146,12 +151,38 @@ const router = createBrowserRouter(
           errorElement={<RouteError />}
         />
 
+        {/* Vehicle Management Routes */}
         <Route
           path="/brand-management"
           element={<BrandView />}
           errorElement={<RouteError />}
         />
-          <Route
+        <Route
+          path="/family-management"
+          element={<FamilyView />}
+          errorElement={<RouteError />}
+        />
+        <Route
+          path="/model-management"
+          element={<ModelView />}
+          errorElement={<RouteError />}
+        />
+        <Route
+          path="/line-management"
+          element={<LineView />}
+          errorElement={<RouteError />}
+        />
+        <Route
+          path="/transmission-management"
+          element={<TransmissionView />}
+          errorElement={<RouteError />}
+        />
+        <Route
+          path="/fuel-management"
+          element={<FuelView />}
+          errorElement={<RouteError />}
+        />
+        <Route
           path="/vehicle-management"
           element={<VehicleView />}
           errorElement={<RouteError />}

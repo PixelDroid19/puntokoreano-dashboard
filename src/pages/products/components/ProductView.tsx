@@ -75,13 +75,15 @@ const ProductDetails: React.FC<{ product: Product }> = ({ product }) => {
     });
   };
 
-  const hasDiscount = product.discount?.isActive === true;
-  const calculatedOriginalPrice =
-    hasDiscount &&
-    product.discount.percentage > 0 &&
-    product.discount.percentage < 100
-      ? product.price / (1 - product.discount.percentage / 100)
-      : product.price;
+  const hasDiscount = product.discount?.isActive === true && product.discount?.percentage > 0;
+  let finalPrice = product.price;
+  
+  if (hasDiscount && product.discount?.percentage) {
+    // Calcularlo manualmente 
+    finalPrice = Math.round(product.price * (1 - product.discount.percentage / 100));
+  }
+  
+
 
   const toggleFavorite = () => {
     setIsFavorite(!isFavorite);
@@ -258,19 +260,28 @@ const ProductDetails: React.FC<{ product: Product }> = ({ product }) => {
                     <Title level={5} className="flex items-center text-gray-700 m-0 mb-2">
                       <TagOutlined className="mr-2 text-blue-500" /> Precio 
                     </Title>
-                    <div className="flex items-baseline flex-wrap">
-                      <Title level={1} className="text-blue-700 m-0 mr-3 font-bold">
-                        {formatPrice(product.price)}
-                      </Title>
-                      {hasDiscount && (
-                        <div className="flex flex-col">
-                          <Text delete type="secondary" className="text-lg">
-                            {formatPrice(calculatedOriginalPrice)}
+                    <div className="flex flex-col">
+                      {hasDiscount ? (
+                        <>
+                          <Text delete className="text-gray-400 text-lg">
+                            {formatPrice(product.price)}
                           </Text>
-                          <Text type="success" className="text-sm font-medium">
-                            Ahorras: {formatPrice(calculatedOriginalPrice - product.price)}
-                          </Text>
-                        </div>
+                          <div className="flex items-center">
+                            <Title level={2} className="text-red-500 m-0 mr-3 font-bold">
+                              {formatPrice(finalPrice)}
+                            </Title>
+                            <Badge 
+                              count={`-${product.discount.percentage}%`}
+                              style={{ backgroundColor: '#ff4d4f', fontSize: '11px', fontWeight: 'bold' }}
+                              className="ml-1"
+                            />
+                          </div>
+                        
+                        </>
+                      ) : (
+                        <Title level={2} className="text-blue-700 m-0 mr-3 font-bold">
+                          {formatPrice(product.price)}
+                        </Title>
                       )}
                     </div>
                   </div>

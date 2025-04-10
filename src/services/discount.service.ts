@@ -15,39 +15,51 @@ export interface DiscountData {
 
 export interface DiscountHistoryItem {
   _id: string;
-  product: string;
-  previous: Record<string, any>;
-  current: Record<string, any>;
-  reason?: string;
-  changeType: string;
-  createdAt: string;
-  updatedAt: string;
-  changedBy: {
+  productId: string;
+  user: {
     _id: string;
     name: string;
     email: string;
   };
+  previousState: {
+    discountType: string | null;
+    discountValue: number;
+    discountStartDate: string | null;
+    discountEndDate: string | null;
+    finalPrice: number;
+    hasDiscount: boolean;
+  };
+  currentState: {
+    discountType: string | null;
+    discountValue: number;
+    discountStartDate: string | null;
+    discountEndDate: string | null;
+    finalPrice: number;
+    hasDiscount: boolean;
+  };
+  action: "apply" | "remove" | "update";
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DiscountAnalytics {
-  totalDiscountedProducts: number;
-  averageDiscountPercentage: number;
-  totalSavings: number;
+  totalProducts: number;
+  productsWithDiscount: number;
+  productsWithoutDiscount: number;
+  discountPercentage: number;
   discountsByType: {
-    permanent: number;
-    temporary: number;
+    [key: string]: {
+      count: number;
+      averageValue: number;
+    };
   };
-  topDiscountedProducts: {
-    id: string;
-    name: string;
-    percentage: number;
-    savings: number;
-  }[];
-  discountTrend: {
-    date: string;
-    count: number;
-    averagePercentage: number;
-  }[];
+  historyByDay: Array<{
+    _id: string;
+    applied: number;
+    updated: number;
+    removed: number;
+    total: number;
+  }>;
 }
 
 class DiscountService {
@@ -68,9 +80,8 @@ class DiscountService {
   static async applyDiscount(productId: string, discountData: DiscountData): Promise<any> {
     try {
       const response = await axiosInstance({
-        url: `${BASE_URL}/dashboard/discounts/products/${productId}/discount`,
+        url: `${BASE_URL}/dashboard/discounts/${productId}`,
         method: "POST",
-        headers: this.getHeaders(),
         data: discountData,
       });
 
@@ -91,9 +102,8 @@ class DiscountService {
   static async removeDiscount(productId: string, reason?: string): Promise<any> {
     try {
       const response = await axiosInstance({
-        url: `${BASE_URL}/dashboard/discounts/products/${productId}/discount`,
+        url: `${BASE_URL}/dashboard/discounts/${productId}`,
         method: "DELETE",
-        headers: this.getHeaders(),
         data: reason ? { reason } : {},
       });
 
@@ -118,9 +128,8 @@ class DiscountService {
   ): Promise<{ history: DiscountHistoryItem[]; pagination: any }> {
     try {
       const response = await axiosInstance({
-        url: `${BASE_URL}/dashboard/discounts/products/${productId}/discount/history`,
+        url: `${BASE_URL}/dashboard/discounts/${productId}/history`,
         method: "GET",
-        headers: this.getHeaders(),
         params: { page, limit },
       });
 
@@ -140,18 +149,15 @@ class DiscountService {
    */
   static async applyBulkDiscounts(
     productIds: string[],
-    discountData: DiscountData,
-    reason?: string
+    discountData: DiscountData
   ): Promise<any> {
     try {
       const response = await axiosInstance({
-        url: `${BASE_URL}/dashboard/discounts/bulk-discounts`,
+        url: `${BASE_URL}/dashboard/discounts/bulk`,
         method: "POST",
-        headers: this.getHeaders(),
         data: {
           productIds,
-          discountData,
-          reason,
+          ...discountData
         },
       });
 
@@ -169,20 +175,11 @@ class DiscountService {
   /**
    * Get discount analytics
    */
-  static async getDiscountAnalytics(
-    startDate?: string | Date,
-    endDate?: string | Date
-  ): Promise<DiscountAnalytics> {
+  static async getDiscountAnalytics(): Promise<DiscountAnalytics> {
     try {
-      const params: Record<string, string> = {};
-      if (startDate) params.startDate = new Date(startDate).toISOString().split('T')[0];
-      if (endDate) params.endDate = new Date(endDate).toISOString().split('T')[0];
-
       const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/discounts/analytics`,
-        method: "GET",
-        headers: this.getHeaders(),
-        params,
+        method: "GET"
       });
 
       return response.data.data;

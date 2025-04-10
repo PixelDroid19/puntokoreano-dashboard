@@ -144,30 +144,56 @@ const Products = () => {
       dataIndex: "price",
       key: "price",
       ellipsis: true,
-      render: (price: number, record: Product) => (
-        <div>
-          <Text
-            className={
-              record.discount?.isActive ? "text-red-500 font-medium" : ""
-            }
-          >
-            {price?.toLocaleString("es-CO", {
-              style: "currency",
-              currency: "COP",
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0,
-            })}
-          </Text>
+      render: (price: number, record: Product) => {
+        // Calcular precio con descuento si hay descuento activo
+        const hasDiscount = record.discount?.isActive === true && record.discount?.percentage > 0;
+        let finalPrice = price;
+        
+        if (hasDiscount && record.discount?.percentage) {
+          // Calcularlo manualmente 
+          finalPrice = Math.round(price * (1 - record.discount.percentage / 100));
+        }
+        
+        return (
+          <div className="flex flex-row gap-1">
+            {hasDiscount ? (
+              <>
+               <Text delete className="text-gray-400 text-xs">
+                  {price.toLocaleString("es-CO", {
+                    style: "currency",
+                    currency: "COP",
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                  })}
+                </Text>
+                <Text className="text-red-500 font-medium">
+                  {finalPrice.toLocaleString("es-CO", {
+                    style: "currency",
+                    currency: "COP",
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                  })}
+                </Text>
 
-          {record.discount?.isActive && record.discount?.percentage > 0 && (
-            <Badge
-              count={`-${record.discount.percentage}%`}
-              style={{ backgroundColor: "#ff4d4f", fontSize: "10px" }}
-              className="ml-1 align-middle"
-            />
-          )}
-        </div>
-      ),
+                <Badge
+                  count={`-${record.discount.percentage}%`}
+                  style={{ backgroundColor: "#ff4d4f", fontSize: "10px" }}
+                  className="mt-1"
+                />
+              </>
+            ) : (
+              <Text>
+                {price.toLocaleString("es-CO", {
+                  style: "currency",
+                  currency: "COP",
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                })}
+              </Text>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: "Stock",
@@ -207,7 +233,7 @@ const Products = () => {
       title: "Acciones",
       key: "action",
       width: 150,
-      fixed: !isTabletOrMobile ? "right" : undefined,
+      fixed: !isTabletOrMobile ? "right" as const : undefined,
 
       render: (_: any, record: Product) => (
         <Space>

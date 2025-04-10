@@ -25,33 +25,31 @@ const DiscountModal: React.FC<DiscountModalProps> = ({ open, onClose, product })
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("1");
 
-  // --- AJUSTE 1: Determinar si hay descuento y calcular precio original ---
+  // Determinar si hay descuento y calcular precio original
   const hasDiscount = product.discount?.isActive === true;
   // Calcular precio original (base) a partir del precio actual y el porcentaje
-  // Nota: Esto es un cálculo y puede tener ligeras diferencias con el backend si hubo redondeos.
-  const calculatedOldPrice = hasDiscount && product.discount.percentage > 0 && product.discount.percentage < 100
-    ? product.price / (1 - product.discount.percentage / 100)
-    : hasDiscount && product.discount.percentage === 100 // Caso especial descuento 100%
-    ? undefined // No se puede calcular el original si el precio actual es 0
-    : product.price; // Si no hay descuento, el "original" es el actual
+  const calculatedOldPrice = hasDiscount && product.discount.percentage > 0 
+    ? Math.round(product.price / (1 - product.discount.percentage / 100))
+    : product.price;
 
-  // --- AJUSTE 2: Preparar datos iniciales para el formulario ---
-  const initialDiscountData: DiscountData | undefined = hasDiscount
+  // Preparar datos iniciales para el formulario
+  const initialDiscountData: DiscountData = hasDiscount
     ? {
         isActive: true,
-        // Usar el tipo del producto si existe, si no, default (ej. 'permanent')
         type: product.discount.type || "permanent",
-        // Usar el porcentaje del producto
         percentage: product.discount.percentage,
-        // Fechas si existen y son del tipo correcto
         startDate: product.discount.startDate ? new Date(product.discount.startDate) : undefined,
         endDate: product.discount.endDate ? new Date(product.discount.endDate) : undefined,
-        // 'old_price' y 'reason' no suelen formar parte de los datos iniciales del *formulario*
-        // Se pasan como props separadas si el form las necesita para cálculo/display
+        old_price: calculatedOldPrice
       }
-    : undefined; // Sin datos iniciales si no hay descuento
+    : {
+        isActive: false,
+        type: "permanent",
+        percentage: 0,
+        old_price: product.price
+      };
 
-  // --- Mutaciones (Sin cambios necesarios si DiscountService usa la nueva estructura) ---
+  // Mutación para aplicar descuento
   const applyDiscountMutation = useMutation({
     mutationFn: (discountData: DiscountData) => DiscountService.applyDiscount(product.id, discountData),
     onSuccess: () => {
@@ -61,11 +59,12 @@ const DiscountModal: React.FC<DiscountModalProps> = ({ open, onClose, product })
       queryClient.invalidateQueries({ queryKey: ["product", product.id] }); // Para detalles si existe
       onClose();
     },
-    onError: (error: any) => { // Tipar error como any o unknown
+    onError: (error: any) => {
       message.error(`Error al aplicar descuento: ${error?.response?.data?.message || error.message}`);
     },
   });
 
+  // Mutación para eliminar descuento
   const removeDiscountMutation = useMutation({
     mutationFn: () => DiscountService.removeDiscount(product.id),
     onSuccess: () => {
@@ -80,9 +79,16 @@ const DiscountModal: React.FC<DiscountModalProps> = ({ open, onClose, product })
   });
 
   const handleSubmit = (values: DiscountData) => {
-    // Asegúrate que 'values' tenga la estructura correcta que espera applyDiscount
-    // Puede necesitar transformación si el form devuelve algo diferente
-    applyDiscountMutation.mutate(values);
+    // Asegurarse de que los datos tienen el formato correcto para el backend
+    const dataToSubmit: DiscountData = {
+      isActive: values.isActive,
+      type: values.type || "permanent",
+      percentage: values.percentage,
+      startDate: values.type === "temporary" ? values.startDate : undefined,
+      endDate: values.type === "temporary" ? values.endDate : undefined
+    };
+    
+    applyDiscountMutation.mutate(dataToSubmit);
   };
 
   const handleRemoveDiscount = () => {
@@ -95,7 +101,7 @@ const DiscountModal: React.FC<DiscountModalProps> = ({ open, onClose, product })
       style: "currency",
       currency: "COP",
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0, // Ajustado para mostrar sin decimales
+      maximumFractionDigits: 0,
     });
   };
 
@@ -150,8 +156,8 @@ const DiscountModal: React.FC<DiscountModalProps> = ({ open, onClose, product })
                   {formatPrice(product.price)}
                 </Text>
 
-                {/* --- AJUSTE 3: Mostrar precio original calculado --- */}
-                {hasDiscount && calculatedOldPrice !== undefined && (
+                {/* Mostrar precio original calculado si hay descuento */}
+                {hasDiscount && (
                   <>
                     <Divider type="vertical" className="hidden sm:block" />
                     <Text className="text-gray-500">Precio original:</Text>
@@ -163,11 +169,10 @@ const DiscountModal: React.FC<DiscountModalProps> = ({ open, onClose, product })
               </div>
             </div>
 
-            {/* --- AJUSTE 4: Mostrar porcentaje del objeto discount --- */}
+            {/* Mostrar tarjeta de porcentaje de descuento */}
             {hasDiscount && (
               <div className="mt-3 sm:mt-0">
                 <Badge.Ribbon text="OFERTA" color="red">
-                  {/* Asegúrate que la tarjeta muestre el porcentaje correcto */}
                   <Card className="bg-red-50 border border-red-100 w-32 h-20 flex items-center justify-center flex-col">
                     <Text className="text-2xl font-bold text-red-500">{product.discount.percentage}%</Text>
                     <Text className="text-red-500 text-xs">descuento</Text>
@@ -207,14 +212,10 @@ const DiscountModal: React.FC<DiscountModalProps> = ({ open, onClose, product })
                   </div>
                 )}
 
-                {/* --- AJUSTE 5: Pasar props correctas a DiscountForm --- */}
                 <DiscountForm
-                  // Pasar los datos iniciales correctos (puede necesitar ajuste en DiscountForm)
                   initialValues={initialDiscountData}
-                  // Pasar el precio *original* calculado si el form lo necesita para calcular el nuevo precio
-                  // O pasar el precio *actual* si el form solo necesita el %
-                  originalPrice={calculatedOldPrice ?? product.price} // Pasa el original si se calculó, si no el actual
-                  currentPrice={product.price} // Pasar también el actual puede ser útil
+                  originalPrice={product.price}
+                  currentPrice={product.price}
                   onSubmit={handleSubmit}
                   onCancel={onClose}
                   loading={applyDiscountMutation.isPending}
@@ -232,7 +233,6 @@ const DiscountModal: React.FC<DiscountModalProps> = ({ open, onClose, product })
             ),
             children: (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
-                {/* DiscountHistory no necesita cambios si solo usa productId */}
                 <DiscountHistory productId={product.id} />
               </motion.div>
             ),

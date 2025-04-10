@@ -447,24 +447,24 @@ class VehicleFamiliesService {
     vehicleData: Partial<VehicleData>
   ): Promise<any> {
     try {
+      if (!id) {
+        throw new Error('El ID del vehículo es obligatorio');
+      }
+      
       const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicles/${id}`,
         method: "PUT",
         data: vehicleData,
       });
-      if (!response.data?.success || !response.data?.data) {
-        throw new Error(
-          response.data?.message || "Respuesta inválida al actualizar vehículo"
-        );
+      
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || 'Error al actualizar vehículo');
       }
+      
       return response.data.data;
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        throw new Error(
-          error.response?.data?.message || "Error al actualizar el vehículo"
-        );
-      }
-      throw error;
+    } catch (error: any) {
+      console.error('Error en updateVehicle:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Error al actualizar vehículo');
     }
   }
 
@@ -591,43 +591,28 @@ class VehicleFamiliesService {
   }
 
   static async addFuel(name: string, octane_rating?: number): Promise<any> {
-    if (!name?.trim()) {
-      throw new Error("Nombre de combustible inválido");
-    }
-
-    const upperCaseName = name.trim().toUpperCase();
-    if (
-      octane_rating !== undefined &&
-      (isNaN(octane_rating) || octane_rating < 0)
-    ) {
-      throw new Error("Octanaje inválido");
-    }
-
     try {
+      if (!name || name.trim() === '') {
+        throw new Error('El nombre del combustible es obligatorio');
+      }
+      
       const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicles/fuels`,
         method: "POST",
         data: {
-          name: upperCaseName,
-          ...(octane_rating !== undefined &&
-            octane_rating !== null &&
-            !isNaN(octane_rating) && { octane_rating: octane_rating }),
-          active: true,
+          name: name.toUpperCase(),
+          octane_rating
         },
       });
-      if (!response.data?.success || !response.data?.data) {
-        throw new Error(
-          response.data?.message || "Respuesta inválida al crear combustible"
-        );
+      
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || 'Error al crear combustible');
       }
+      
       return response.data.data;
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        throw new Error(
-          error.response?.data?.message || "Error al crear el combustible"
-        );
-      }
-      throw error;
+    } catch (error: any) {
+      console.error('Error en addFuel:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Error al crear combustible');
     }
   }
 

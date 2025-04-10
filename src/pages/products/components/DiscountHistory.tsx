@@ -1,9 +1,10 @@
 // src/pages/products/components/DiscountHistory.tsx
-import React from 'react';
-import { Table, Typography, Tag, Spin, Empty, Alert, Card, Divider } from 'antd';
+import React, { useState } from 'react';
+import { Table, Typography, Tag, Empty, Spin, Button } from 'antd';
+import { DiscountHistoryItem } from '../../../services/discount.service';
 import { useQuery } from '@tanstack/react-query';
-import dayjs from 'dayjs';
 import DiscountService from '../../../services/discount.service';
+import dayjs from 'dayjs';
 
 const { Text } = Typography;
 
@@ -12,231 +13,162 @@ interface DiscountHistoryProps {
 }
 
 const DiscountHistory: React.FC<DiscountHistoryProps> = ({ productId }) => {
-  const [pagination, setPagination] = React.useState({
-    current: 1,
-    pageSize: 10,
-    total: 0,
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['discountHistory', productId, page, pageSize],
+    queryFn: () => DiscountService.getDiscountHistory(productId, page, pageSize),
+    enabled: !!productId, // Solo ejecutar cuando hay un productId
   });
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['discountHistory', productId, pagination.current],
-    queryFn: () => DiscountService.getDiscountHistory(
-      productId, 
-      pagination.current, 
-      pagination.pageSize
-    ),
-    enabled: !!productId,
-  });
-
-  const handleTableChange = (pagination: any) => {
-    setPagination((prev) => ({
-      ...prev,
-      current: pagination.current,
-    }));
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '-';
+    return dayjs(dateString).format('DD/MM/YYYY HH:mm');
   };
 
-  React.useEffect(() => {
-    if (data?.pagination) {
-      setPagination((prev) => ({
-        ...prev,
-        total: data.pagination.total,
-      }));
-    }
-  }, [data]);
+  const formatAction = (action: string) => {
+    const actions: Record<string, { text: string; color: string }> = {
+      apply: { text: 'Aplicado', color: 'green' },
+      remove: { text: 'Eliminado', color: 'red' },
+      update: { text: 'Actualizado', color: 'blue' },
+    };
+
+    const info = actions[action] || { text: action, color: 'default' };
+    return <Tag color={info.color}>{info.text}</Tag>;
+  };
+
+  const formatPercentage = (value?: number) => {
+    if (value === undefined || value === null) return '-';
+    return `${value}%`;
+  };
+
+  const formatPrice = (price?: number) => {
+    if (price === undefined || price === null) return '-';
+    return price.toLocaleString('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
+  };
 
   const columns = [
     {
       title: 'Fecha',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (date: string) => dayjs(date).format('DD/MM/YYYY HH:mm'),
+      render: (date: string) => formatDate(date),
     },
     {
-      title: 'Cambios',
-      dataIndex: 'changes',
-      key: 'changes',
-      render: (_, record) => {
-        // If there's no previous or current data, return empty
-        if (!record.previous && !record.current) {
-          return <Text type="secondary">No hay cambios disponibles</Text>;
-        }
-
-        // We'll use current data for display, falling back to previous if needed
-        const discountData = record.current || record.previous || {};
-        
-        // Always show important discount information, even if it didn't change
-        const discountInfo = [];
-        
-        // Show discount type
-        if (discountData.discountType) {
-          const typeLabel = discountData.discountType === 'permanent' ? 'Permanente' : 'Temporal';
-          discountInfo.push(
-            <div key="type">
-              <Text strong>Tipo de descuento: </Text>
-              <Tag color="blue">{typeLabel}</Tag>
-            </div>
-          );
-        }
-        
-        // Show active status
-        if (discountData.isActive !== undefined) {
-          discountInfo.push(
-            <div key="active">
-              <Text strong>Estado: </Text>
-              <Tag color={discountData.isActive ? "green" : "red"}>
-                {discountData.isActive ? 'Activo' : 'Inactivo'}
-              </Tag>
-            </div>
-          );
-        }
-        
-        // Show percentage
-        if (discountData.percentage !== undefined) {
-          discountInfo.push(
-            <div key="percentage">
-              <Text strong>Porcentaje: </Text>
-              <Tag color="orange">{discountData.percentage}%</Tag>
-            </div>
-          );
-        }
-        
-        // Show date range for temporary discounts
-        if (discountData.discountType === 'temporary' && discountData.startDate && discountData.endDate) {
-          const startDate = dayjs(discountData.startDate).format('DD/MM/YYYY');
-          const endDate = dayjs(discountData.endDate).format('DD/MM/YYYY');
-          discountInfo.push(
-            <div key="dateRange">
-              <Text strong>Período: </Text>
-              <Tag color="cyan">{startDate} - {endDate}</Tag>
-            </div>
-          );
-        }
-        
-        // Generate changes by comparing previous and current objects
-        const changes = [];
-        const previous = record.previous || {};
-        const current = record.current || {};
-        
-        // Get all unique keys from both objects
-        const allKeys = [...new Set([...Object.keys(previous), ...Object.keys(current)])];
-        
-        // For each key, check if there's a difference
-        allKeys.forEach(field => {
-          if (JSON.stringify(previous[field]) !== JSON.stringify(current[field])) {
-            changes.push({
-              field,
-              oldValue: previous[field],
-              newValue: current[field]
-            });
-          }
-        });
-        
-        return (
-          <div className="space-y-2">
-            {/* Always show discount information section */}
-            {discountInfo.length > 0 && (
-              <Card size="small" title="Información del descuento" className="mb-2">
-                <div className="space-y-1">
-                  {discountInfo}
-                </div>
-              </Card>
-            )}
-            
-            {/* Show changes if there are any */}
-            {changes.length > 0 && (
-              <>
-                <Divider orientation="left" plain style={{ margin: '12px 0' }}>
-                  <Text type="secondary">Cambios realizados</Text>
-                </Divider>
-                <div className="space-y-1">
-                  {changes.map((change, index) => {
-                    let oldValue = change.oldValue;
-                    let newValue = change.newValue;
-                    
-                    // Format values based on field type
-                    if (change.field === 'percentage' || change.field === 'discount_percentage') {
-                      oldValue = oldValue ? `${oldValue}%` : 'N/A';
-                      newValue = newValue ? `${newValue}%` : 'N/A';
-                    } else if (change.field === 'price' || change.field === 'old_price') {
-                      oldValue = oldValue ? `$${Number(oldValue).toLocaleString('es-CO')}` : 'N/A';
-                      newValue = newValue ? `$${Number(newValue).toLocaleString('es-CO')}` : 'N/A';
-                    } else if (change.field === 'startDate' || change.field === 'endDate') {
-                      oldValue = oldValue ? dayjs(oldValue).format('DD/MM/YYYY') : 'N/A';
-                      newValue = newValue ? dayjs(newValue).format('DD/MM/YYYY') : 'N/A';
-                    } else if (change.field === 'isActive' || change.field === 'active') {
-                      oldValue = oldValue ? 'Activo' : 'Inactivo';
-                      newValue = newValue ? 'Activo' : 'Inactivo';
-                    } else if (change.field === 'discountType') {
-                      oldValue = oldValue === 'permanent' ? 'Permanente' : oldValue === 'temporary' ? 'Temporal' : 'N/A';
-                      newValue = newValue === 'permanent' ? 'Permanente' : newValue === 'temporary' ? 'Temporal' : 'N/A';
-                    }
-                    
-                    return (
-                      <div key={index}>
-                        <Text strong>{change.field}: </Text>
-                        <Tag color="red">{oldValue}</Tag>
-                        <span>→</span>
-                        <Tag color="green">{newValue}</Tag>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
-        );
-      },
+      title: 'Acción',
+      dataIndex: 'action',
+      key: 'action',
+      render: (action: string) => formatAction(action),
     },
     {
-      title: 'Razón',
-      dataIndex: 'reason',
-      key: 'reason',
-      render: (reason: string) => reason || <Text type="secondary">No especificada</Text>,
+      title: 'Estado Anterior',
+      dataIndex: 'previousState',
+      key: 'previousState',
+      render: (previousState: DiscountHistoryItem['previousState']) => (
+        <div>
+          <Text>{previousState.hasDiscount ? 'Activo' : 'Inactivo'}</Text>
+          <br />
+          {previousState.hasDiscount && (
+            <Text type="secondary">
+              {formatPercentage(previousState.discountValue)} / {previousState.discountType === 'percentage' ? 'Porcentaje' : 'Fijo'}
+            </Text>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: 'Estado Nuevo',
+      dataIndex: 'currentState',
+      key: 'currentState',
+      render: (currentState: DiscountHistoryItem['currentState']) => (
+        <div>
+          <Text>{currentState.hasDiscount ? 'Activo' : 'Inactivo'}</Text>
+          <br />
+          {currentState.hasDiscount && (
+            <Text type="secondary">
+              {formatPercentage(currentState.discountValue)} / {currentState.discountType === 'percentage' ? 'Porcentaje' : 'Fijo'}
+            </Text>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: 'Precio Final',
+      dataIndex: ['currentState', 'finalPrice'],
+      key: 'finalPrice',
+      render: (finalPrice: number) => formatPrice(finalPrice),
     },
     {
       title: 'Usuario',
-      dataIndex: ['changedBy', 'name'],
+      dataIndex: ['user', 'name'],
       key: 'user',
-    },
+      render: (_, record: DiscountHistoryItem) => record.user?.name || '-',
+    }
   ];
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-8">
-        <Spin size="large" />
+      <div className="flex justify-center my-8">
+        <Spin tip="Cargando historial..." />
       </div>
     );
   }
 
-  if (error) {
+  if (isError) {
     return (
-      <Alert
-        message="Error"
-        description="No se pudo cargar el historial de descuentos"
-        type="error"
-        showIcon
+      <div className="text-center my-8">
+        <Text type="danger">Error al cargar el historial de descuentos</Text>
+        <br />
+        <Button
+          type="primary"
+          onClick={() => {
+            // Reintentar la consulta
+            window.location.reload();
+          }}
+          className="mt-4"
+        >
+          Reintentar
+        </Button>
+      </div>
+    );
+  }
+
+  if (!data?.history || data.history.length === 0) {
+    return (
+      <Empty
+        description="No hay historial de descuentos para este producto"
+        image={Empty.PRESENTED_IMAGE_SIMPLE}
+        className="my-8"
       />
     );
   }
 
-  if (!data?.history?.length) {
-    return <Empty description="No hay historial de descuentos disponible" />;
-  }
-
   return (
-    <Table
-      columns={columns}
-      dataSource={data.history}
-      rowKey="_id"
-      pagination={{
-        current: pagination.current,
-        pageSize: pagination.pageSize,
-        total: pagination.total,
-        showSizeChanger: false,
-      }}
-      onChange={handleTableChange}
-      size="small"
-    />
+    <div className="discount-history">
+      <Table
+        columns={columns}
+        dataSource={data.history}
+        rowKey="_id"
+        pagination={{
+          current: page,
+          pageSize: pageSize,
+          total: data.pagination.total,
+          onChange: (newPage, newPageSize) => {
+            setPage(newPage);
+            if (newPageSize) setPageSize(newPageSize);
+          },
+          showSizeChanger: true,
+        }}
+        scroll={{ x: 'max-content' }}
+        size="small"
+      />
+    </div>
   );
 };
 

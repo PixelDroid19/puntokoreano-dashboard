@@ -86,6 +86,31 @@ const menuItems = [
         title: "Configuración de Marcas",
       },
       {
+        key: "/family-management",
+        label: <Link to="/family-management">Familias</Link>,
+        title: "Configuración de Familias",
+      },
+      {
+        key: "/model-management",
+        label: <Link to="/model-management">Modelos</Link>,
+        title: "Configuración de Modelos",
+      },
+      {
+        key: "/line-management",
+        label: <Link to="/line-management">Líneas</Link>,
+        title: "Configuración de Líneas",
+      },
+      {
+        key: "/transmission-management",
+        label: <Link to="/transmission-management">Transmisiones</Link>,
+        title: "Configuración de Transmisiones",
+      },
+      {
+        key: "/fuel-management",
+        label: <Link to="/fuel-management">Combustibles</Link>,
+        title: "Configuración de Combustibles",
+      },
+      {
         key: "/vehicle-management",
         label: <Link to="/vehicle-management">Vehículos</Link>,
         title: "Configuración de Vehículos",
