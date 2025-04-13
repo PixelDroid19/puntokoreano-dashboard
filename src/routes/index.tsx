@@ -48,14 +48,6 @@ const router = createBrowserRouter(
         />
       </Route>
 
-      {/* Brands */}
-      <Route element={<ProtectedRoutes />} errorElement={<RouteError />}>
-        <Route
-          path="/brands"
-          element={<DevelopmentView />} // element={<BrandManagement />}
-          errorElement={<RouteError />}
-        />
-      </Route>
 
       {/* Brands */}
       <Route element={<ProtectedRoutes />} errorElement={<RouteError />}>

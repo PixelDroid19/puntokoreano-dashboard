@@ -31,10 +31,6 @@ const navSlice = createSlice({
           state.item = "Imagenes";
           state.pathname = "/image-manager";
           break;
-        case "/brands":
-          state.item = "Marcas";
-          state.pathname = "/brands";
-          break;
         case "/orders":
           state.item = "Pedidos";
           state.pathname = "/orders";

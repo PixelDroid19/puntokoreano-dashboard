@@ -39,12 +39,6 @@ const menuItems = [
     title: "Gestor de Imágenes",
   },
   {
-    key: "/brands",
-    label: <Link to={"/brands"}>Marcas</Link>,
-    icon: <TagsOutlined />,
-    title: "Marcas",
-  },
-  {
     key: "/categoriesManagement",
     label: <Link to={"/categoriesManagement"}>Gestión de categorías</Link>,
     icon: <UnorderedListOutlined />,
