@@ -11,15 +11,21 @@ import FormError from "./FormError";
 
 interface ModelFormData {
   name: string;
-  active: boolean;
+  year: number;
+  engine_type: string;
   family_id: string;
-  engineType: string;
-  year: string;
+  active: boolean;
 }
 
-export default function ModelForm() {
+interface ModelFormProps {
+  initialValues?: Partial<ModelFormData>;
+  mode?: "create" | "edit";
+  onSubmit?: (data: ModelFormData) => void;
+}
+
+export default function ModelForm({ initialValues, mode = "create", onSubmit }: ModelFormProps) {
   const [formSuccess, setFormSuccess] = useState(false);
-  const [selectedFamilyValue, setSelectedFamilyValue] = useState<string>("");
+  const [selectedFamilyValue, setSelectedFamilyValue] = useState<any>(initialValues?.family_id_obj || null);
   const [formError, setFormError] = useState<{ message: string; errors?: string[] } | null>(null);
 
   const {
@@ -30,30 +36,39 @@ export default function ModelForm() {
     formState: { errors },
   } = useForm<ModelFormData>({
     defaultValues: {
-      active: true,
-      family_id: "",
-      engineType: "",
-      year: "",
+      name: initialValues?.name || "",
+      year: initialValues?.year ?? new Date().getFullYear(),
+      engine_type: initialValues?.engine_type || "",
+      family_id: initialValues?.family_id || "",
+      active: initialValues?.active ?? true,
     },
   });
   const queryClient = useQueryClient();
 
+  useEffect(() => {
+    if (mode === "edit" && initialValues) {
+      setValue("name", initialValues.name || "");
+      setValue("year", initialValues.year ?? new Date().getFullYear());
+      setValue("engine_type", initialValues.engine_type || "");
+      setValue("family_id", initialValues.family_id || "");
+      setValue("active", initialValues.active ?? true);
+      if (initialValues.family_id && initialValues.family_label) {
+        setSelectedFamilyValue({ value: initialValues.family_id, label: initialValues.family_label, brand_id: initialValues.brand_id });
+      } else {
+        setSelectedFamilyValue(null);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialValues, mode]);
+
   const { mutate, isPending: isSubmitting } = useMutation({
     mutationFn: (data: ModelFormData) =>
-      VehicleFamiliesService.addModel({
-        name: data.name,
-        engineType: data.engineType!,
-        year: data.year!,
-        familyId: data.family_id!,
-        active: true,
-      }),
+      VehicleFamiliesService.addModel(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["models"] });
       queryClient.invalidateQueries({ queryKey: ["dashboardAnalytics"] });
       setFormSuccess(true);
       setFormError(null);
-
-   
       setTimeout(() => {
         reset();
         setFormSuccess(false);
@@ -78,40 +93,20 @@ export default function ModelForm() {
     },
   });
 
-  const onSubmit = (data: ModelFormData) => {
-    const isValidObjectId = (id: string) => /^[a-f\d]{24}$/i.test(id);
-    if (!data.family_id || typeof data.family_id !== "string" || !isValidObjectId(data.family_id)) {
-      setFormError({ message: "Debe seleccionar una familia válida." });
-      return;
+  const handleFormSubmit = (data: ModelFormData) => {
+    setFormError(null);
+    console.log('handleFormSubmit',data);
+    if (onSubmit) {
+      onSubmit(data);
+    } else {
+      mutate(data);
     }
-
-    const currentYear = new Date().getFullYear();
-    const yearNum = Number(data.year);
-    if (
-      !/^[0-9]{4}$/.test(data.year) ||
-      isNaN(yearNum) ||
-      yearNum < 1900 ||
-      yearNum > currentYear + 1 // Permite hasta el próximo año
-    ) {
-      setFormError({ message: `Ingrese un año válido entre 1900 y ${currentYear + 1}.` });
-      return;
-    }
-    mutate({
-      ...data,
-      family_id: data.family_id,
-    });
   };
 
   const handleFamilyChange = (option: any) => {
-    // Permite tanto string como objeto, pero siempre guarda el ID string
-    let id = "";
-    if (typeof option === "object" && option !== null && typeof option.value === "string") {
-      id = option.value;
-    } else if (typeof option === "string") {
-      id = option;
-    }
-    setSelectedFamilyValue(id);
-    setValue("family_id", id, { shouldValidate: true });
+   
+    setSelectedFamilyValue(option);
+    setValue("family_id", option?.value || "");
   };
 
   useEffect(() => {
@@ -120,7 +115,7 @@ export default function ModelForm() {
     errors.name,
     errors.family_id,
     errors.year,
-    errors.engineType
+    errors.engine_type
   ]);
 
   return (
@@ -131,11 +126,11 @@ export default function ModelForm() {
     >
       {formSuccess ? (
         <FormSuccess
-          title="Modelo creado con éxito!"
-          description="El Modelo ha sido registrada correctamente"
+          title={mode === "edit" ? "¡Modelo actualizado con éxito!" : "Modelo creado con éxito!"}
+          description={mode === "edit" ? "El modelo ha sido actualizado correctamente" : "El Modelo ha sido registrado correctamente"}
         />
       ) : (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           {formError && (
             <FormError title="Error" description={formError.message} errors={formError.errors} />
           )}
@@ -179,13 +174,13 @@ export default function ModelForm() {
             </label>
             <Input
               placeholder="Ingrese el tipo de motor (Ej: 1.8L Híbrido)"
-              {...register("engineType", {
+              {...register("engine_type", {
                 required: "El tipo de motor es requerido",
               })}
             />
-            {errors.engineType && (
+            {errors.engine_type && (
               <p className="text-sm text-red-500 mt-1">
-                {errors.engineType.message}
+                {errors.engine_type.message}
               </p>
             )}
           </div>
@@ -206,11 +201,17 @@ export default function ModelForm() {
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Button
               type="submit"
-              className="w-full bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-md"
+              className="w-full bg-indigo-500 hover:bg-indigo-600 text-white py-2 rounded-md"
               disabled={isSubmitting}
-              isLoading={isSubmitting}
             >
-              {isSubmitting ? "Creando Modelo..." : "Crear Modelo"}
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                  {mode === "edit" ? "Actualizando Modelo..." : "Creando Modelo..."}
+                </>
+              ) : (
+                mode === "edit" ? "Actualizar Modelo" : "Crear Modelo"
+              )}
             </Button>
           </motion.div>
         </form>

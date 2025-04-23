@@ -15,11 +15,15 @@ interface FamilyFormData {
   brand_id: string;
 }
 
-export default function FamilyForm() {
+interface FamilyFormProps {
+  initialValues?: Partial<FamilyFormData>;
+  mode?: "create" | "edit";
+  onSubmit?: (data: FamilyFormData) => void;
+}
+
+export default function FamilyForm({ initialValues, mode = "create", onSubmit }: FamilyFormProps) {
   const [formSuccess, setFormSuccess] = useState(false);
-  const [selectedBrandValue, setSelectedBrandValue] = useState<string | null>(
-    null
-  );
+  const [selectedBrandValue, setSelectedBrandValue] = useState<string | null>(initialValues?.brand_id || null);
   const [formError, setFormError] = useState<{ message: string; errors?: string[] } | null>(null);
   const {
     register,
@@ -29,12 +33,23 @@ export default function FamilyForm() {
     formState: { errors },
   } = useForm<FamilyFormData>({
     defaultValues: {
-      active: true,
-      brand_id: "",
+      name: initialValues?.name || "",
+      active: initialValues?.active ?? true,
+      brand_id: initialValues?.brand_id || "",
     },
   });
 
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (mode === "edit" && initialValues) {
+      setValue("name", initialValues.name || "");
+      setValue("brand_id", initialValues.brand_id || "");
+      setValue("active", initialValues.active ?? true);
+      setSelectedBrandValue(initialValues.brand_id || null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialValues, mode]);
 
   const { mutate, isPending: isSubmitting } = useMutation({
     mutationFn: (data: FamilyFormData) =>
@@ -72,7 +87,8 @@ export default function FamilyForm() {
     },
   });
 
-  const onSubmit = (data: FamilyFormData) => {
+  const handleFormSubmit = (data: FamilyFormData) => {
+    setFormError(null);
     const payload = {
       ...data,
       brand_id:
@@ -80,9 +96,11 @@ export default function FamilyForm() {
           ? data.brand_id.value
           : data.brand_id,
     };
-
-    console.log("Payload a enviar:", payload);
-    mutate(payload);
+    if (onSubmit) {
+      onSubmit(payload);
+    } else {
+      mutate(payload);
+    }
   };
 
   const handleBrandChange = (value: string | null) => {
@@ -105,11 +123,11 @@ export default function FamilyForm() {
     >
       {formSuccess ? (
         <FormSuccess
-          title="Familia creada con éxito!"
-          description="La Familia ha sido registrada correctamente"
+          title={mode === "edit" ? "¡Familia actualizada con éxito!" : "Familia creada con éxito!"}
+          description={mode === "edit" ? "La familia ha sido actualizada correctamente" : "La Familia ha sido registrada correctamente"}
         />
       ) : (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           {formError && (
             <FormError title="Error" description={formError.message} errors={formError.errors} />
           )}
@@ -148,10 +166,10 @@ export default function FamilyForm() {
               {isSubmitting ? (
                 <>
                   <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                  Creando Familia...
+                  {mode === "edit" ? "Actualizando Familia..." : "Creando Familia..."}
                 </>
               ) : (
-                "Crear Familia"
+                mode === "edit" ? "Actualizar Familia" : "Crear Familia"
               )}
             </Button>
           </motion.div>

@@ -14,23 +14,40 @@ interface FuelFormData {
   active: boolean;
 }
 
-export default function FuelForm() {
+interface FuelFormProps {
+  initialValues?: Partial<FuelFormData>;
+  mode?: "create" | "edit";
+  onSubmit?: (data: FuelFormData) => void;
+}
+
+export default function FuelForm({ initialValues, mode = "create", onSubmit }: FuelFormProps) {
   const [formSuccess, setFormSuccess] = useState(false);
   const [formError, setFormError] = useState<{ message: string; errors?: string[] } | null>(null);
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<FuelFormData>({
     defaultValues: {
-      active: true,
-      octane_rating: 87,
+      name: initialValues?.name || "",
+      octane_rating: initialValues?.octane_rating ?? 87,
+      active: initialValues?.active ?? true,
     },
   });
 
   // const addActivity = useVehicleStore((state) => state.addActivity);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (mode === "edit" && initialValues) {
+      setValue("name", initialValues.name || "");
+      setValue("octane_rating", initialValues.octane_rating ?? 87);
+      setValue("active", initialValues.active ?? true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialValues, mode]);
 
   const { mutate, isPending: isSubmitting } = useMutation({
     mutationFn: (data: FuelFormData) =>
@@ -66,13 +83,15 @@ export default function FuelForm() {
 
   useEffect(() => {
     setFormError(null);
-  }, [
-    errors.name,
-    errors.octane_rating
-  ]);
+  }, [errors.name, errors.octane_rating]);
 
-  const onSubmit = (data: FuelFormData) => {
-    mutate(data);
+  const handleFormSubmit = (data: FuelFormData) => {
+    setFormError(null);
+    if (onSubmit) {
+      onSubmit(data);
+    } else {
+      mutate(data);
+    }
   };
 
   return (
@@ -83,11 +102,11 @@ export default function FuelForm() {
     >
       {formSuccess ? (
         <FormSuccess
-          title="Combustible creado con éxito!"
-          description="El Combustible ha sido registrada correctamente"
+          title={mode === "edit" ? "¡Combustible actualizado con éxito!" : "Combustible creado con éxito!"}
+          description={mode === "edit" ? "El combustible ha sido actualizado correctamente" : "El Combustible ha sido registrado correctamente"}
         />
       ) : (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           {formError && (
             <FormError title="Error" description={formError.message} errors={formError.errors} />
           )}
@@ -130,7 +149,7 @@ export default function FuelForm() {
               disabled={isSubmitting}
               isLoading={isSubmitting}
             >
-              {isSubmitting ? " Creando Combustible..." : "Crear Combustible"}
+              {isSubmitting ? (mode === "edit" ? " Actualizando Combustible..." : " Creando Combustible...") : (mode === "edit" ? "Actualizar Combustible" : "Crear Combustible")}
             </Button>
           </motion.div>
         </form>

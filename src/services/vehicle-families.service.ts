@@ -153,9 +153,9 @@ interface CreateFamilyPayload {
 
 interface CreateModel {
   name?: string;
-  familyId: string;
+  family_id: string;
   year: string;
-  engineType: string;
+  engine_type: string;
   active: boolean;
 }
 
@@ -514,18 +514,20 @@ class VehicleFamiliesService {
   }
 
   static async addModel(payload: CreateModel): Promise<any> {
-    if (!payload.familyId) throw new Error("El ID de la familia es requerido");
-    if (!payload.engineType || typeof payload.engineType !== 'string' || !payload.engineType.trim()) {
+    if (!payload.family_id) throw new Error("El ID de la familia es requerido");
+    if (!payload.engine_type || typeof payload.engine_type !== 'string' || !payload.engine_type.trim()) {
       throw new Error("Tipo de motor inválido");
     }
-    if (!payload.year || isNaN(parseInt(payload.year)) || payload.year.length !== 4) {
+    console.log(!payload.year || isNaN(parseInt(payload.year)) || payload.year.length !== 4);
+  
+    if (!payload.year || isNaN(parseInt(payload.year)) || payload.year.toString().length !== 4) {
       throw new Error("Año inválido");
     }
 
     const data: any = {
-      family_id: payload.familyId,
+      family_id: payload.family_id,
       year: parseInt(payload.year),
-      engine_type: payload.engineType.trim(),
+      engine_type: payload.engine_type.trim(),
       active: payload.active !== undefined ? payload.active : true,
     };
     if (typeof payload.name === 'string' && payload.name.trim() !== '') {
@@ -659,6 +661,224 @@ class VehicleFamiliesService {
       if (axios.isAxiosError(error)) {
         throw new Error(
           error.response?.data?.message || "Error al añadir la línea"
+        );
+      }
+      throw error;
+    }
+  }
+
+  static async deleteFamily(id: string): Promise<void> {
+    try {
+      const response = await axiosInstance({
+        url: `${BASE_URL}/dashboard/vehicle-families/${id}`,
+        method: "DELETE",
+      });
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || "Error al eliminar la familia");
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || "Error al eliminar la familia"
+        );
+      }
+      throw error;
+    }
+  }
+
+  static async updateFamily(id: string, data: { name?: string; brand_id?: string; active?: boolean }): Promise<any> {
+    try {
+      const response = await axiosInstance({
+        url: `${BASE_URL}/dashboard/vehicle-families/${id}`,
+        method: "PUT",
+        data,
+      });
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida al actualizar familia"
+        );
+      }
+      return response.data.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || "Error al actualizar la familia"
+        );
+      }
+      throw error;
+    }
+  }
+
+  static async updateFuel(id: string, data: { name?: string; octane_rating?: number; active?: boolean }): Promise<any> {
+    try {
+      const response = await axiosInstance({
+        url: `${BASE_URL}/dashboard/vehicles/fuels/${id}`,
+        method: "PUT",
+        data,
+      });
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida al actualizar combustible"
+        );
+      }
+      return response.data.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || "Error al actualizar el combustible"
+        );
+      }
+      throw error;
+    }
+  }
+
+  static async deleteFuel(id: string): Promise<void> {
+    try {
+      const response = await axiosInstance({
+        url: `${BASE_URL}/dashboard/vehicles/fuels/${id}`,
+        method: "DELETE",
+      });
+      if (!response.data?.success) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida al eliminar combustible"
+        );
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || "Error al eliminar el combustible"
+        );
+      }
+      throw error;
+    }
+  }
+
+  static async updateLine(id: string, data: { model_id?: string; name?: string; features?: string; price?: number; active?: boolean }): Promise<any> {
+    try {
+      const response = await axiosInstance({
+        url: `${BASE_URL}/dashboard/vehicles/lines/${id}`,
+        method: "PUT",
+        data,
+      });
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida al actualizar línea"
+        );
+      }
+      return response.data.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || "Error al actualizar la línea"
+        );
+      }
+      throw error;
+    }
+  }
+
+  static async deleteLine(id: string): Promise<void> {
+    try {
+      const response = await axiosInstance({
+        url: `${BASE_URL}/dashboard/vehicles/lines/${id}`,
+        method: "DELETE",
+      });
+      if (!response.data?.success) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida al eliminar línea"
+        );
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || "Error al eliminar la línea"
+        );
+      }
+      throw error;
+    }
+  }
+
+  static async updateModel(id: string, data: { name?: string; family_id?: string; year?: number; engine_type?: string; active?: boolean }): Promise<any> {
+    try {
+      const response = await axiosInstance({
+        url: `${BASE_URL}/dashboard/vehicles/models/${id}`,
+        method: "PUT",
+        data,
+      });
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida al actualizar modelo"
+        );
+      }
+      return response.data.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || "Error al actualizar el modelo"
+        );
+      }
+      throw error;
+    }
+  }
+
+  static async deleteModel(id: string): Promise<void> {
+    try {
+      const response = await axiosInstance({
+        url: `${BASE_URL}/dashboard/vehicles/models/${id}`,
+        method: "DELETE",
+      });
+      if (!response.data?.success) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida al eliminar modelo"
+        );
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || "Error al eliminar el modelo"
+        );
+      }
+      throw error;
+    }
+  }
+
+  static async updateTransmission(id: string, data: { name?: string; gears?: number; active?: boolean }): Promise<any> {
+    try {
+      const response = await axiosInstance({
+        url: `${BASE_URL}/dashboard/vehicles/transmissions/${id}`,
+        method: "PUT",
+        data,
+      });
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida al actualizar transmisión"
+        );
+      }
+      return response.data.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || "Error al actualizar la transmisión"
+        );
+      }
+      throw error;
+    }
+  }
+
+  static async deleteTransmission(id: string): Promise<void> {
+    try {
+      const response = await axiosInstance({
+        url: `${BASE_URL}/dashboard/vehicles/transmissions/${id}`,
+        method: "DELETE",
+      });
+      if (!response.data?.success) {
+        throw new Error(
+          response.data?.message || "Respuesta inválida al eliminar transmisión"
+        );
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || "Error al eliminar la transmisión"
         );
       }
       throw error;

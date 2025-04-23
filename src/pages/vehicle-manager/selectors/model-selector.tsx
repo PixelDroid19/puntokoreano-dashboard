@@ -112,7 +112,11 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
       const { models, pagination } = responseData;
 
       const newOptions: ModelsOption[] = models.map((model: ApiModel) => {
-        const modelName = model.name || "Modelo sin nombre";
+        const modelName =
+          (model.name && model.name.trim()) ||
+          (((model.engineType || model.engine_type) && model.year)
+            ? `${model.engineType || model.engine_type} ${model.year}`
+            : "Modelo sin nombre");
         return {
           value: model._id,
           label: modelName,

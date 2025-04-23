@@ -13,19 +13,23 @@ import { NumericFormat } from "react-number-format"; // Import NumericFormat
 import { AlertCircle } from "lucide-react"; // For error icons
 import FormError from "./FormError";
 
-// Interface ajustada: price es number | null | undefined
 interface LineFormData {
   name: string;
+  features: string;
+  price?: number;
   model_id: string;
-  features?: string; // Ya era opcional
-  price?: number | null; // Tipo numérico opcional
   active: boolean;
 }
 
-export default function LineForm() {
+interface LineFormProps {
+  initialValues?: Partial<LineFormData>;
+  mode?: "create" | "edit";
+  onSubmit?: (data: LineFormData) => void;
+}
+
+export default function LineForm({ initialValues, mode = "create", onSubmit }: LineFormProps) {
   const [formSuccess, setFormSuccess] = useState(false);
-  const [selectedModelValue, setSelectedModelValue] =
-    useState<ModelsOption | null>(null);
+  const [selectedModelValue, setSelectedModelValue] = useState<string | null>(initialValues?.model_id || null);
   const [apiError, setApiError] = useState<string | null>(null); // State for API errors
   const [formError, setFormError] = useState<{ message: string; errors?: string[] } | null>(null);
 
@@ -38,24 +42,35 @@ export default function LineForm() {
     formState: { errors },
   } = useForm<LineFormData>({
     defaultValues: {
-      active: true,
-      model_id: "",
-      name: "",
-      features: "",
-      price: null, // Default price a null o undefined
+      name: initialValues?.name || "",
+      features: initialValues?.features || "",
+      price: initialValues?.price ?? undefined,
+      model_id: initialValues?.model_id || "",
+      active: initialValues?.active ?? true,
     },
   });
 
   const queryClient = useQueryClient();
 
+  useEffect(() => {
+    if (mode === "edit" && initialValues) {
+      setValue("name", initialValues.name || "");
+      setValue("features", initialValues.features || "");
+      setValue("price", initialValues.price ?? undefined);
+      setValue("model_id", initialValues.model_id || "");
+      setValue("active", initialValues.active ?? true);
+      setSelectedModelValue(initialValues.model_id || null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialValues, mode]);
+
   const { mutate, isPending: isSubmitting } = useMutation({
-    // La función del servicio ahora debe esperar 'price' como número o undefined
     mutationFn: (data: LineFormData) =>
       VehicleFamiliesService.addLine(
-        data.model_id,
-        data.name,
-        data.features,
-        data.price, // Pasa el número directamente (o null/undefined)
+        data.model_id!,
+        data.name!,
+        data.features!,
+        data.price,
         data.active
       ),
     onSuccess: () => {
@@ -66,7 +81,6 @@ export default function LineForm() {
       setFormError(null); // Limpia el error tras éxito
       setTimeout(() => {
         reset();
-        setSelectedModelValue(null);
         setFormSuccess(false);
       }, 1500);
     },
@@ -89,45 +103,25 @@ export default function LineForm() {
     },
   });
 
-  const onSubmit = async (data: LineFormData) => {
-    setApiError(null); // Clear errors before submitting
+  const handleFormSubmit = (data: LineFormData) => {
     setFormError(null);
-    if (!data.model_id) {
-       // react-hook-form debería manejar esto si model_id es required
-       console.error("Modelo no seleccionado");
-       return;
+    const payload = {
+      ...data,
+      model_id:
+        typeof data.model_id === "object" && data.model_id !== null
+          ? data.model_id.value
+          : data.model_id,
+    };
+    if (onSubmit) {
+      onSubmit(payload);
+    } else {
+      mutate(payload);
     }
-    // Validación: no permitir duplicados de nombre de línea por modelo
-    try {
-      const response = await VehicleFamiliesService.getLines({
-        page: 1,
-        limit: 100,
-        sortBy: "name",
-        sortOrder: "asc",
-        ...(data.model_id && { model_id: data.model_id }),
-      });
-      const lines = response.lines || [];
-      const normalizedNewName = data.name.trim().toUpperCase();
-      const exists = lines.some((line: any) =>
-        line.name && line.name.trim().toUpperCase() === normalizedNewName
-      );
-      if (exists) {
-        setFormError({ message: "Ya existe una línea con ese nombre para este modelo." });
-        return;
-      }
-    } catch (err) {
-      // Si falla la validación, permitimos el submit y dejamos que el backend lo rechace si corresponde
-      console.error("Error validando líneas existentes:", err);
-    }
-    // Price ya es un número (o null/undefined) gracias a NumericFormat
-    console.log("Enviando datos de línea:", data);
-    mutate(data);
   };
 
-  const handleModelChange = (value: ModelsOption | null) => {
+  const handleModelChange = (value: string | null) => {
     setSelectedModelValue(value);
-    // Registrar model_id como requerido si es necesario en useForm
-    setValue("model_id", value?.value || "", { shouldValidate: true });
+    setValue("model_id", value || "");
   };
 
   // Limpia el error si el usuario cambia los campos relevantes
@@ -148,11 +142,11 @@ export default function LineForm() {
     >
       {formSuccess ? (
         <FormSuccess
-          title="Línea creada con éxito!"
-          description="La Línea ha sido registrada correctamente"
+          title={mode === "edit" ? "¡Línea actualizada con éxito!" : "Línea creada con éxito!"}
+          description={mode === "edit" ? "La línea ha sido actualizada correctamente" : "La Línea ha sido registrada correctamente"}
         />
       ) : (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           {/* Mostrar error de API */}
           {apiError && (
              <div className="bg-destructive/15 border border-destructive text-destructive px-3 py-2 rounded-md flex items-center text-sm">
@@ -179,7 +173,7 @@ export default function LineForm() {
                         value={selectedModelValue} // Keep local state for the selector component itself
                         onChange={(selectedOption) => {
                            field.onChange(selectedOption?.value || ""); // Update RHF state with the ID
-                           handleModelChange(selectedOption); // Update local state for selector display
+                           handleModelChange(selectedOption?.value || null); // Update local state for selector display
                         }}
                         // Add aria-invalid for accessibility
                          aria-invalid={errors.model_id ? "true" : "false"}
@@ -253,16 +247,16 @@ export default function LineForm() {
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Button
               type="submit"
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white" // Removido py-2 rounded-md si tu Button UI ya lo maneja
+              className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md"
               disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <>
-                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2 inline-block"></div>
-                  Creando Línea...
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                  {mode === "edit" ? "Actualizando Línea..." : "Creando Línea..."}
                 </>
               ) : (
-                "Crear Línea"
+                mode === "edit" ? "Actualizar Línea" : "Crear Línea"
               )}
             </Button>
           </motion.div>

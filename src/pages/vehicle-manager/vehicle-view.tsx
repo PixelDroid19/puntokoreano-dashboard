@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Table,
@@ -7,7 +7,6 @@ import {
   Input,
   Modal,
   Form,
-  InputNumber,
   Popconfirm,
   Switch,
   message,
@@ -17,11 +16,10 @@ import {
   EditOutlined,
   DeleteOutlined,
   SearchOutlined,
+  PlusOutlined,
 } from "@ant-design/icons";
 import VehicleFamiliesService from "../../services/vehicle-families.service";
-import TransmissionSelector from "./selectors/transmission-selector";
-import FuelSelector from "./selectors/fuel-selector";
-import LineSelector from "./selectors/line-selector";
+import VehicleMainForm from "./forms/VehicleMainForm";
 
 interface Vehicle {
   _id: string;
@@ -120,24 +118,6 @@ const VehicleView: React.FC = () => {
 
   const handleEdit = (record: Vehicle) => {
     setEditingVehicle(record);
-
-    form.setFieldsValue({
-      transmission_id: {
-        label: record.transmission_id?.name,
-        value: record.transmission_id?._id,
-      },
-      fuel_id: {
-        label: record.fuel_id?.name,
-        value: record.fuel_id?._id,
-      },
-      line_id: {
-        label: record.line_id?.name,
-        value: record.line_id?._id,
-      },
-      color: record.color,
-      price: record.price,
-      active: record.active,
-    });
     setIsModalVisible(true);
   };
 
@@ -158,29 +138,6 @@ const VehicleView: React.FC = () => {
           ? "desc"
           : prevParams.sortOrder,
     }));
-  };
-
-  const handleModalOk = () => {
-    form
-      .validateFields()
-      .then((values) => {
-        if (editingVehicle) {
-          updateMutation.mutate({
-            id: editingVehicle._id,
-            data: {
-              line_id: values.line_id?.value,
-              transmission_id: values.transmission_id?.value,
-              fuel_id: values.fuel_id?.value,
-              color: values.color,
-              price: values.price,
-              active: values.active,
-            },
-          });
-        }
-      })
-      .catch((info) => {
-        console.log("Validación fallida:", info);
-      });
   };
 
   const handleModalCancel = () => {
@@ -249,12 +206,11 @@ const VehicleView: React.FC = () => {
         <Space size="small">
           <Tooltip title="Editar Vehículo">
             <Button
-              type="primary"
-              icon={<EditOutlined />}
-              onClick={() => handleEdit(record)}
-              aria-label={`Editar vehículo ${
-                record.line_id?.name || record._id
-              }`}
+              type="default"
+              icon={<EditOutlined style={{ fontSize: 16 }} />}
+              onClick={() => {}}
+              aria-label={`Editar vehículo ${record.line_id?.name || record._id}`}
+              disabled
             />
           </Tooltip>
           <Tooltip title="Eliminar Vehículo">
@@ -271,10 +227,8 @@ const VehicleView: React.FC = () => {
             >
               <Button
                 danger
-                icon={<DeleteOutlined />}
-                aria-label={`Eliminar vehículo ${
-                  record.line_id?.name || record._id
-                }`}
+                icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                aria-label={`Eliminar vehículo ${record.line_id?.name || record._id}`}
                 disabled={
                   deleteMutation.isPending &&
                   deleteMutation.variables === record._id
@@ -293,6 +247,7 @@ const VehicleView: React.FC = () => {
           marginBottom: 16,
           display: "flex",
           justifyContent: "space-between",
+          alignItems: "center",
           flexWrap: "wrap",
           gap: "10px",
         }}
@@ -315,6 +270,17 @@ const VehicleView: React.FC = () => {
             Buscar
           </Button>
         </Space>
+        <Button
+          type="primary"
+          icon={<PlusOutlined style={{ fontSize: 16 }} />}
+          onClick={() => {
+            setEditingVehicle(null);
+            setIsModalVisible(true);
+            form.resetFields();
+          }}
+        >
+          Nuevo Vehículo
+        </Button>
       </div>
 
       <Table
@@ -323,9 +289,9 @@ const VehicleView: React.FC = () => {
         rowKey="_id"
         loading={isLoading}
         pagination={{
-          current: paginationData?.page || 1,
-          pageSize: paginationData?.limit || 10,
-          total: paginationData?.total || 0,
+          current: paginationData?.currentPage || 1,
+          pageSize: paginationData?.itemsPerPage || 10,
+          total: paginationData?.totalItems || 0,
           showSizeChanger: true,
           pageSizeOptions: ["10", "20", "50", "100"],
           showTotal: (total, range) =>
@@ -338,77 +304,13 @@ const VehicleView: React.FC = () => {
       <Modal
         title={editingVehicle ? "Editar Vehículo" : "Añadir Vehículo"}
         open={isModalVisible}
-        onOk={handleModalOk}
         onCancel={handleModalCancel}
-        confirmLoading={updateMutation.isPending}
-        okText="Guardar"
-        cancelText="Cancelar"
+        footer={null}
         destroyOnClose
         maskClosable={false}
+      width={'80vh'}
       >
-        <Form form={form} layout="vertical" name="vehicle_form">
-          <Form.Item
-            name="line_id"
-            label="Línea"
-            rules={[
-              { required: true, message: "Por favor seleccione una línea" },
-            ]}
-          >
-            <LineSelector initialValue={editingVehicle?.line_id?.value} />
-          </Form.Item>
-
-          <Form.Item
-            name="transmission_id"
-            label="Transmisión"
-            rules={[
-              {
-                required: true,
-                message: "Por favor seleccione una transmisión",
-              },
-            ]}
-          >
-            <TransmissionSelector
-              initialValue={editingVehicle?.transmission_id?.value}
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="fuel_id"
-            label="Combustible"
-            rules={[
-              {
-                required: true,
-                message: "Por favor seleccione un combustible",
-              },
-            ]}
-          >
-            <FuelSelector initialValue={editingVehicle?.fuel_id?.value} />
-          </Form.Item>
-
-          <Form.Item name="color" label="Color">
-            <Input />
-          </Form.Item>
-
-          <Form.Item name="price" label="Precio">
-            <InputNumber
-              formatter={(value) =>
-                `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-              }
-              parser={(value) => value!.replace(/\$\s?|(\.*)/g, "")}
-              style={{ width: "100%" }}
-              min={0}
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="active"
-            label="Estado"
-            valuePropName="checked"
-            initialValue={true}
-          >
-            <Switch checkedChildren="Activo" unCheckedChildren="Inactivo" />
-          </Form.Item>
-        </Form>
+        <VehicleMainForm />
       </Modal>
     </div>
   );

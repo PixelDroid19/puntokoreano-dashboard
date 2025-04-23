@@ -7,30 +7,22 @@ import {
   Input,
   Modal,
   Form,
-  Switch,
   Popconfirm,
   message,
+  Tooltip,
 } from "antd";
 import {
   EditOutlined,
   DeleteOutlined,
   SearchOutlined,
+  PlusOutlined,
 } from "@ant-design/icons";
 import VehicleFamiliesService from "../../services/vehicle-families.service";
-
-interface BrandData {
-  _id: string;
-  name: string;
-  country: string;
-  active: boolean;
-  // Add any other properties your API returns
-}
-
-
+import BrandForm from "./forms/brand-form";
 
 const BrandView: React.FC = () => {
   const [searchText, setSearchText] = useState("");
-  const [editingBrand, setEditingBrand] = useState(null);
+  const [editingBrand, setEditingBrand] = useState<any | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
@@ -51,26 +43,8 @@ const BrandView: React.FC = () => {
     queryFn: () => VehicleFamiliesService.getBrands(queryParams),
   });
 
-
   const brandsData = apiResponse?.brands;
   const paginationData = apiResponse?.pagination;
-
-  // Mutación para actualizar marca
-  const updateMutation = useMutation({
-    // Asegúrate que el servicio espera _id y los datos correctos
-    mutationFn: (
-      { id, data }: { id: string; data } // Omitir campos no editables
-    ) => VehicleFamiliesService.updateBrand(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["brands"] });
-      message.success("Marca actualizada correctamente");
-      setIsModalVisible(false);
-    },
-    onError: (error) => {
-      message.error("Error al actualizar la marca");
-      console.error(error);
-    },
-  });
 
   // Mutación para eliminar marca
   const deleteMutation = useMutation({
@@ -98,7 +72,7 @@ const BrandView: React.FC = () => {
   const handleEdit = (record) => {
     setEditingBrand(record);
     form.setFieldsValue({
-      name: record.name,
+      name: { value: record._id, label: record.name, brandData: record },
       country: record.country,
       active: record.active,
     });
@@ -125,22 +99,10 @@ const BrandView: React.FC = () => {
     }));
   };
 
-  const handleModalOk = () => {
-    form
-      .validateFields()
-      .then((values) => {
-        // Tipar values
-        if (editingBrand) {
-          updateMutation.mutate({
-            id: editingBrand._id, // Usar _id
-            data: values,
-          });
-        }
-      })
-      .catch((info) => {
-        console.log("Validate Failed:", info);
-      });
+  const handleAddNew = () => {
+    setIsModalVisible(true);
   };
+
   const handleModalCancel = () => {
     setIsModalVisible(false);
     setEditingBrand(null);
@@ -176,33 +138,37 @@ const BrandView: React.FC = () => {
       key: "actions",
       render: (_: any, record) => (
         <Space size="middle">
-          <Button
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-            aria-label={`Editar ${record.name}`} // Accesibilidad
-          />
-          <Popconfirm
-            title="¿Estás seguro de que deseas eliminar esta marca?" // Traducido
-            onConfirm={() => handleDelete(record._id)} // Usar _id
-            okText="Sí" // Traducido
-            cancelText="No" // Traducido
-            okButtonProps={{
-              loading:
-                deleteMutation.isPending &&
-                deleteMutation.variables === record._id,
-            }} // Mostrar carga en el botón Sí
-          >
+          <Tooltip title="Editar Marca">
             <Button
-              danger
-              icon={<DeleteOutlined />}
-              aria-label={`Eliminar ${record.name}`} // Accesibilidad
-              // Opcional: Deshabilitar si la mutación está en curso para *este* item
-              disabled={
-                deleteMutation.isPending &&
-                deleteMutation.variables === record._id
-              }
+              icon={<EditOutlined style={{ fontSize: 16 }} />}
+              onClick={() => {}}
+              aria-label={`Editar ${record.name}`}
+              disabled
             />
-          </Popconfirm>
+          </Tooltip>
+          <Tooltip title="Eliminar Marca">
+            <Popconfirm
+              title="¿Estás seguro de que deseas eliminar esta marca?"
+              onConfirm={() => handleDelete(record._id)}
+              okText="Sí"
+              cancelText="No"
+              okButtonProps={{
+                loading:
+                  deleteMutation.isPending &&
+                  deleteMutation.variables === record._id,
+              }}
+            >
+              <Button
+                danger
+                icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                aria-label={`Eliminar ${record.name}`}
+                disabled={
+                  deleteMutation.isPending &&
+                  deleteMutation.variables === record._id
+                }
+              />
+            </Popconfirm>
+          </Tooltip>
         </Space>
       ),
     },
@@ -210,14 +176,8 @@ const BrandView: React.FC = () => {
 
   return (
     <div>
-      <div
-        style={{
-          marginBottom: 16,
-          display: "flex",
-          justifyContent: "flex-end",
-        }}
-      >
-        <Space>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: "10px" }}>
           <Input
             placeholder="Buscar marcas"
             value={searchText}
@@ -234,7 +194,14 @@ const BrandView: React.FC = () => {
           >
             Buscar
           </Button>
-        </Space>
+        </div>
+        <Button
+          type="primary"
+          icon={<PlusOutlined style={{ fontSize: 16 }} />}
+          onClick={handleAddNew}
+        >
+          Nueva Marca
+        </Button>
       </div>
 
       <Table
@@ -243,9 +210,9 @@ const BrandView: React.FC = () => {
         rowKey="_id"
         loading={isLoading}
         pagination={{
-          current: paginationData?.page || 1,
-          pageSize: paginationData?.limit || 10,
-          total: paginationData?.total || 0,
+          current: paginationData?.currentPage || 1,
+          pageSize: paginationData?.itemsPerPage || 10,
+          total: paginationData?.totalItems || 0,
           showSizeChanger: true,
           pageSizeOptions: ["10", "20", "50", "100"],
           showTotal: (total, range) =>
@@ -258,37 +225,35 @@ const BrandView: React.FC = () => {
       <Modal
         title={editingBrand ? "Editar Marca" : "Añadir Marca"}
         open={isModalVisible}
-        onOk={handleModalOk}
         onCancel={handleModalCancel}
-        confirmLoading={updateMutation.isPending}
-        okText="Guardar"
-        cancelText="Cancelar"
+        footer={null}
         destroyOnClose
       >
-        <Form form={form} layout="vertical" name="brand_form">
-          <Form.Item
-            name="name"
-            label="Nombre"
-            rules={[{ required: true, message: "Por favor ingrese el nombre" }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="country"
-            label="País"
-            rules={[{ required: true, message: "Por favor ingrese el país" }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="active"
-            label="Activo"
-            valuePropName="checked"
-            initialValue={true} // O el valor por defecto que prefieras
-          >
-            <Switch checkedChildren="Sí" unCheckedChildren="No" />
-          </Form.Item>
-        </Form>
+        {editingBrand ? (
+          <BrandForm
+            mode="edit"
+            initialValues={{
+              name: editingBrand.name,
+              country: editingBrand.country,
+              active: editingBrand.active,
+            }}
+            onSubmit={(values) => {
+              VehicleFamiliesService.updateBrand(editingBrand._id, values)
+                .then(() => {
+                  queryClient.invalidateQueries({ queryKey: ["brands"] });
+                  message.success("Marca actualizada correctamente");
+                  setIsModalVisible(false);
+                  setEditingBrand(null);
+                  form.resetFields();
+                })
+                .catch((error) => {
+                  message.error(error?.message || "Error al actualizar la marca");
+                });
+            }}
+          />
+        ) : (
+          <BrandForm />
+        )}
       </Modal>
     </div>
   );

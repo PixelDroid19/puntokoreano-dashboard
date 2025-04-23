@@ -9,30 +9,49 @@ import VehicleFamiliesService from "../../../services/vehicle-families.service";
 import FormSuccess from "../ui/FormSuccess";
 import FormError from "./FormError";
 
-interface brandFormData {
+interface BrandFormData {
   name: string;
   country: string;
   active: boolean;
 }
 
-export default function BrandForm() {
+interface BrandFormProps {
+  initialValues?: Partial<BrandFormData>;
+  mode?: "create" | "edit";
+  onSubmit?: (data: BrandFormData) => void;
+}
+
+export default function BrandForm({ initialValues, mode = "create", onSubmit }: BrandFormProps) {
   const [formSuccess, setFormSuccess] = useState(false);
   const [formError, setFormError] = useState<{ message: string; errors?: string[] } | null>(null);
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
-  } = useForm<brandFormData>({
+  } = useForm<BrandFormData>({
     defaultValues: {
-      active: true,
+      name: initialValues?.name || "",
+      country: initialValues?.country || "",
+      active: initialValues?.active ?? true,
     },
   });
 
   const queryClient = useQueryClient();
 
+  // Si el formulario se usa en modo edición y cambian los initialValues, actualiza los valores
+  useEffect(() => {
+    if (mode === "edit" && initialValues) {
+      setValue("name", initialValues.name || "");
+      setValue("country", initialValues.country || "");
+      setValue("active", initialValues.active ?? true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialValues, mode]);
+
   const { mutate, isPending: isSubmitting } = useMutation({
-    mutationFn: (data: brandFormData) =>
+    mutationFn: (data: BrandFormData) =>
       VehicleFamiliesService.createBrand({
         name: data.name!,
         country: data.country,
@@ -49,13 +68,11 @@ export default function BrandForm() {
       }, 1500);
     },
     onError: (error: any) => {
-      // Intentar extraer el mensaje y posibles errores de validación del backend
       let message = "Ocurrió un error inesperado.";
       let errors: string[] | undefined = undefined;
       if (error?.response?.data) {
         message = error.response.data.message || message;
         if (error.response.data.errors) {
-          // Puede ser un objeto de errores de validación
           if (typeof error.response.data.errors === "object") {
             errors = Object.values(error.response.data.errors).map((e: any) => e.message || String(e));
           } else if (Array.isArray(error.response.data.errors)) {
@@ -69,18 +86,18 @@ export default function BrandForm() {
     },
   });
 
-  const onSubmit = (data: brandFormData) => {
-    setFormError(null); // Limpiar error previo
-    mutate(data);
+  const handleFormSubmit = (data: BrandFormData) => {
+    setFormError(null);
+    if (onSubmit) {
+      onSubmit(data);
+    } else {
+      mutate(data);
+    }
   };
 
-  // Limpia el error si el usuario cambia los campos relevantes
   useEffect(() => {
     setFormError(null);
-  }, [
-    errors.name,
-    errors.country
-  ]);
+  }, [errors.name, errors.country]);
 
   return (
     <motion.div
@@ -90,11 +107,11 @@ export default function BrandForm() {
     >
       {formSuccess ? (
         <FormSuccess
-          title="¡Marca creada con éxito!"
-          description="La marca ha sido registrada correctamente"
+          title={mode === "edit" ? "¡Marca actualizada con éxito!" : "¡Marca creada con éxito!"}
+          description={mode === "edit" ? "La marca ha sido actualizada correctamente" : "La marca ha sido registrada correctamente"}
         />
       ) : (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           {formError && (
             <FormError title="Error" description={formError.message} errors={formError.errors} />
           )}
@@ -108,9 +125,7 @@ export default function BrandForm() {
                 {...register("name", {
                   required: "El nombre de la marca es requerido",
                 })}
-                className={`${
-                  errors.name ? "border-red-300 focus:border-red-500 pr-10" : ""
-                }`}
+                className={`${errors.name ? "border-red-300 focus:border-red-500 pr-10" : ""}`}
               />
               {errors.name && (
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
@@ -154,10 +169,10 @@ export default function BrandForm() {
               {isSubmitting ? (
                 <>
                   <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                  Creando Marca...
+                  {mode === "edit" ? "Actualizando Marca..." : "Creando Marca..."}
                 </>
               ) : (
-                "Crear Marca"
+                mode === "edit" ? "Actualizar Marca" : "Crear Marca"
               )}
             </Button>
           </motion.div>

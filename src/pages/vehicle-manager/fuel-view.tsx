@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Table,
@@ -13,11 +13,13 @@ import {
   Row,
   Col,
   Card,
+  Tooltip,
 } from 'antd';
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import VehicleFamiliesService from '../../services/vehicle-families.service';
 import { useSearchParams } from 'react-router-dom';
 import { debounce } from 'lodash';
+import FuelForm from "./forms/fuel-form";
 
 interface FuelData {
   _id: string;
@@ -76,57 +78,52 @@ const FuelView: React.FC = () => {
   };
 
   const createFuelMutation = useMutation({
-    mutationFn: (values: { name: string; octane_rating?: number }) => 
+    mutationFn: (values: { name: string; octane_rating?: number }) =>
       VehicleFamiliesService.addFuel(values.name, values.octane_rating),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fuels'] });
-      message.success('Combustible creado exitosamente');
+      queryClient.invalidateQueries({ queryKey: ["fuels"] });
+      message.success("Combustible creado exitosamente");
       setIsModalVisible(false);
       form.resetFields();
     },
     onError: (error: Error) => {
-      message.error(`Error al crear combustible: ${error.message}`);
+      message.error(error?.message || "Error al crear combustible");
     },
   });
 
   const updateFuelMutation = useMutation({
-    mutationFn: (values: { id: string; name: string; octane_rating?: number }) => 
-      VehicleFamiliesService.updateVehicle(values.id, { 
-        name: values.name.toUpperCase(),
-        octane_rating: values.octane_rating 
-      }),
+    mutationFn: (values: { id: string; name: string; octane_rating?: number }) =>
+      VehicleFamiliesService.updateFuel(values.id, { name: values.name, octane_rating: values.octane_rating }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fuels'] });
-      message.success('Combustible actualizado exitosamente');
+      queryClient.invalidateQueries({ queryKey: ["fuels"] });
+      message.success("Combustible actualizado exitosamente");
       setIsModalVisible(false);
       form.resetFields();
     },
     onError: (error: Error) => {
-      message.error(`Error al actualizar combustible: ${error.message}`);
+      message.error(error?.message || "Error al actualizar combustible");
     },
   });
 
   const deleteFuelMutation = useMutation({
-    mutationFn: (id: string) => VehicleFamiliesService.deleteVehicle(id),
+    mutationFn: (id: string) => VehicleFamiliesService.deleteFuel(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fuels'] });
-      message.success('Combustible eliminado exitosamente');
+      queryClient.invalidateQueries({ queryKey: ["fuels"] });
+      message.success("Combustible eliminado exitosamente");
     },
     onError: (error: Error) => {
-      message.error(`Error al eliminar combustible: ${error.message}`);
+      message.error(error?.message || "Error al eliminar combustible");
     },
   });
 
   const handleAddFuel = () => {
-    setEditingFuel(null);
-    form.resetFields();
     setIsModalVisible(true);
   };
 
   const handleEditFuel = (record: FuelData) => {
     setEditingFuel(record);
     form.setFieldsValue({
-      name: record.name,
+      name: { value: record._id, label: record.name, fuelData: record },
       octane_rating: record.octane_rating,
     });
     setIsModalVisible(true);
@@ -138,14 +135,17 @@ const FuelView: React.FC = () => {
 
   const handleModalOk = () => {
     form.validateFields().then(values => {
+      const payload = {
+        ...values,
+        name: values.name?.label,
+      };
       if (editingFuel) {
         updateFuelMutation.mutate({
           id: editingFuel._id,
-          name: values.name,
-          octane_rating: values.octane_rating,
+          ...payload,
         });
       } else {
-        createFuelMutation.mutate(values);
+        createFuelMutation.mutate(payload);
       }
     });
   };
@@ -201,25 +201,32 @@ const FuelView: React.FC = () => {
       key: 'actions',
       render: (_: any, record: FuelData) => (
         <Space size="middle">
-          <Button
-            icon={<EditOutlined />}
-            onClick={() => handleEditFuel(record)}
-            type="primary"
-            size="small"
-          />
-          <Popconfirm
-            title="¿Está seguro de eliminar este combustible?"
-            onConfirm={() => handleDeleteFuel(record._id)}
-            okText="Sí"
-            cancelText="No"
-          >
+          <Tooltip title="Editar Combustible">
             <Button
-              icon={<DeleteOutlined />}
-              type="primary"
-              danger
+              icon={<EditOutlined style={{ fontSize: 16 }} />}
+              onClick={() => {}}
+              type="default"
               size="small"
+              aria-label={`Editar ${record.name}`}
+              disabled
             />
-          </Popconfirm>
+          </Tooltip>
+          <Tooltip title="Eliminar Combustible">
+            <Popconfirm
+              title="¿Está seguro de eliminar este combustible?"
+              onConfirm={() => handleDeleteFuel(record._id)}
+              okText="Sí"
+              cancelText="No"
+            >
+              <Button
+                icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                type="primary"
+                danger
+                size="small"
+                aria-label={`Eliminar ${record.name}`}
+              />
+            </Popconfirm>
+          </Tooltip>
         </Space>
       ),
     },
@@ -243,7 +250,7 @@ const FuelView: React.FC = () => {
               />
               <Button
                 type="primary"
-                icon={<PlusOutlined />}
+                icon={<PlusOutlined style={{ fontSize: 16 }} />}
                 onClick={handleAddFuel}
               >
                 Agregar Combustible
@@ -258,9 +265,9 @@ const FuelView: React.FC = () => {
           rowKey="_id"
           loading={isLoading}
           pagination={{
-            current: currentPage,
-            pageSize: pageSize,
-            total: data?.pagination.totalItems || 0,
+            current: data?.pagination?.currentPage || 1,
+            pageSize: data?.pagination?.itemsPerPage || 10,
+            total: data?.pagination?.totalItems || 0,
             showSizeChanger: true,
             showQuickJumper: true,
           }}
@@ -272,22 +279,33 @@ const FuelView: React.FC = () => {
       <Modal
         title={editingFuel ? 'Editar Combustible' : 'Agregar Combustible'}
         open={isModalVisible}
-        onOk={handleModalOk}
         onCancel={handleModalCancel}
-        confirmLoading={createFuelMutation.isPending || updateFuelMutation.isPending}
+        footer={null}
       >
-        <Form form={form} layout="vertical">
-          <Form.Item
-            name="name"
-            label="Nombre"
-            rules={[{ required: true, message: 'Por favor ingrese el nombre del combustible' }]}
-          >
-            <Input placeholder="Ej: DIESEL, GASOLINA" />
-          </Form.Item>
-          <Form.Item name="octane_rating" label="Octanaje">
-            <Input type="number" placeholder="Ej: 95" />
-          </Form.Item>
-        </Form>
+        {editingFuel ? (
+          <FuelForm
+            mode="edit"
+            initialValues={{
+              name: editingFuel.name,
+              octane_rating: editingFuel.octane_rating,
+              active: editingFuel.active,
+            }}
+            onSubmit={(values) => {
+              updateFuelMutation.mutate({
+                id: editingFuel._id,
+                ...values,
+              }, {
+                onSuccess: () => {
+                  setIsModalVisible(false);
+                  setEditingFuel(null);
+                  form.resetFields();
+                }
+              });
+            }}
+          />
+        ) : (
+          <FuelForm />
+        )}
       </Modal>
     </div>
   );

@@ -11,7 +11,7 @@ import {
   Popconfirm,
   message,
   Select,
-  InputNumber,
+  Tooltip,
 } from "antd";
 import {
   EditOutlined,
@@ -20,6 +20,7 @@ import {
   PlusOutlined,
 } from "@ant-design/icons";
 import VehicleFamiliesService from "../../services/vehicle-families.service";
+import ModelForm from "./forms/model-form";
 
 interface ModelData {
   _id: string;
@@ -65,7 +66,7 @@ const ModelView: React.FC = () => {
   // Obtener familias para el filtro y el formulario
   const { data: familiesData } = useQuery({
     queryKey: ["families"],
-    queryFn: () => VehicleFamiliesService.getFamilies({ active: true, limit: 100 }),
+    queryFn: () => VehicleFamiliesService.getFamilies({ page: 1, limit: 100, sortBy: "name", sortOrder: "asc" }),
   });
 
   const modelsData = apiResponse?.models;
@@ -88,12 +89,13 @@ const ModelView: React.FC = () => {
 
   // Mutación para actualizar modelo
   const updateMutation = useMutation({
-    mutationFn: (params: { id: string, data: any }) => 
-      VehicleFamiliesService.updateVehicle(params.id, params.data),
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      VehicleFamiliesService.updateModel(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["models"] });
       message.success("Modelo actualizado correctamente");
       setIsModalVisible(false);
+      form.resetFields();
     },
     onError: (error: any) => {
       message.error(error?.message || "Error al actualizar el modelo");
@@ -103,7 +105,7 @@ const ModelView: React.FC = () => {
 
   // Mutación para eliminar modelo
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => VehicleFamiliesService.deleteVehicle(id),
+    mutationFn: (id: string) => VehicleFamiliesService.deleteModel(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["models"] });
       message.success("Modelo eliminado correctamente");
@@ -132,8 +134,6 @@ const ModelView: React.FC = () => {
   };
 
   const handleAddNew = () => {
-    setEditingModel(null);
-    form.resetFields();
     setIsModalVisible(true);
   };
 
@@ -246,37 +246,41 @@ const ModelView: React.FC = () => {
       key: "actions",
       render: (_, record) => (
         <Space size="middle">
-          <Button
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-            aria-label={`Editar ${record.name}`}
-          />
-          <Popconfirm
-            title="¿Estás seguro de que deseas eliminar este modelo?"
-            onConfirm={() => handleDelete(record._id)}
-            okText="Sí"
-            cancelText="No"
-            okButtonProps={{
-              loading:
-                deleteMutation.isPending && deleteMutation.variables === record._id,
-            }}
-          >
+          <Tooltip title="Editar Modelo">
             <Button
-              danger
-              icon={<DeleteOutlined />}
-              aria-label={`Eliminar ${record.name}`}
-              disabled={
-                deleteMutation.isPending && deleteMutation.variables === record._id
-              }
+              icon={<EditOutlined style={{ fontSize: 16 }} />}
+              onClick={() => {}}
+              aria-label={`Editar ${record.name}`}
+              disabled
             />
-          </Popconfirm>
+          </Tooltip>
+          <Tooltip title="Eliminar Modelo">
+            <Popconfirm
+              title="¿Estás seguro de que deseas eliminar este modelo?"
+              onConfirm={() => handleDelete(record._id)}
+              okText="Sí"
+              cancelText="No"
+              okButtonProps={{
+                loading:
+                  deleteMutation.isPending &&
+                  deleteMutation.variables === record._id,
+              }}
+            >
+              <Button
+                danger
+                icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                aria-label={`Eliminar ${record.name}`}
+                disabled={
+                  deleteMutation.isPending &&
+                  deleteMutation.variables === record._id
+                }
+              />
+            </Popconfirm>
+          </Tooltip>
         </Space>
       ),
     },
   ];
-
-  const currentYear = new Date().getFullYear();
-  const yearRange = Array.from({ length: 40 }, (_, i) => currentYear - i); // Últimos 40 años
 
   return (
     <div style={{ padding: "20px" }}>
@@ -316,7 +320,7 @@ const ModelView: React.FC = () => {
         </div>
         <Button
           type="primary"
-          icon={<PlusOutlined />}
+          icon={<PlusOutlined style={{ fontSize: 16 }} />}
           onClick={handleAddNew}
         >
           Nuevo Modelo
@@ -341,66 +345,37 @@ const ModelView: React.FC = () => {
       <Modal
         title={editingModel ? "Editar Modelo" : "Nuevo Modelo"}
         open={isModalVisible}
-        onOk={handleModalOk}
         onCancel={handleModalCancel}
-        confirmLoading={createMutation.isPending || updateMutation.isPending}
+        footer={null}
         destroyOnClose
       >
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={{ active: true }}
-        >
-          <Form.Item
-            name="name"
-            label="Nombre"
-            rules={[{ required: true, message: "Por favor ingrese el nombre" }]}
-          >
-            <Input placeholder="Nombre del modelo" />
-          </Form.Item>
-          <Form.Item
-            name="year"
-            label="Año"
-            rules={[{ required: true, message: "Por favor seleccione el año" }]}
-          >
-            <InputNumber 
-              min={1950} 
-              max={currentYear + 2}
-              placeholder="Año del modelo" 
-              style={{ width: '100%' }}
-            />
-          </Form.Item>
-          <Form.Item
-            name="engine_type"
-            label="Tipo de Motor"
-            rules={[{ required: true, message: "Por favor ingrese el tipo de motor" }]}
-          >
-            <Input placeholder="Ej: 2.0L Turbo, V6 3.5L, etc." />
-          </Form.Item>
-          <Form.Item
-            name="family_id"
-            label="Familia"
-            rules={[{ required: true, message: "Por favor seleccione la familia" }]}
-          >
-            <Select
-              placeholder="Seleccionar familia"
-              options={
-                familiesData?.families?.map((family) => ({
-                  value: family._id,
-                  label: `${family.brand_id?.name || ''} - ${family.name}`,
-                })) || []
-              }
-              loading={!familiesData}
-            />
-          </Form.Item>
-          <Form.Item
-            name="active"
-            label="Activo"
-            valuePropName="checked"
-          >
-            <Switch />
-          </Form.Item>
-        </Form>
+        {editingModel ? (
+          <ModelForm
+            mode="edit"
+            initialValues={{
+              name: editingModel.name,
+              year: editingModel.year,
+              engine_type: editingModel.engine_type,
+              family_id: editingModel.family_id?._id,
+              active: editingModel.active,
+            }}
+            onSubmit={(values) => {
+              VehicleFamiliesService.updateModel(editingModel._id, values)
+                .then(() => {
+                  queryClient.invalidateQueries({ queryKey: ["models"] });
+                  message.success("Modelo actualizado correctamente");
+                  setIsModalVisible(false);
+                  setEditingModel(null);
+                  form.resetFields();
+                })
+                .catch((error) => {
+                  message.error(error?.message || "Error al actualizar el modelo");
+                });
+            }}
+          />
+        ) : (
+          <ModelForm />
+        )}
       </Modal>
     </div>
   );

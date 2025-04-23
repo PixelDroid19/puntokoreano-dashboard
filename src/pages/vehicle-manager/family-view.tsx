@@ -11,6 +11,7 @@ import {
   Popconfirm,
   message,
   Select,
+  Tooltip,
 } from "antd";
 import {
   EditOutlined,
@@ -19,20 +20,12 @@ import {
   PlusOutlined,
 } from "@ant-design/icons";
 import VehicleFamiliesService from "../../services/vehicle-families.service";
-
-interface FamilyData {
-  _id: string;
-  name: string;
-  brand_id: {
-    _id: string;
-    name: string;
-  };
-  active: boolean;
-}
+import BrandSelector from "./selectors/brand-selector";
+import FamilyForm from "./forms/family-form";
 
 const FamilyView: React.FC = () => {
   const [searchText, setSearchText] = useState("");
-  const [editingFamily, setEditingFamily] = useState(null);
+  const [editingFamily, setEditingFamily] = useState<any | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
@@ -59,7 +52,7 @@ const FamilyView: React.FC = () => {
   const { data: brandsData } = useQuery({
     queryKey: ["brands"],
     queryFn: () =>
-      VehicleFamiliesService.getBrands({ activeOnly: true, limit: 100 }),
+      VehicleFamiliesService.getBrands({ page: 1, limit: 100, sortBy: "name", sortOrder: "asc" }),
   });
 
   const familiesData = apiResponse?.families;
@@ -67,29 +60,32 @@ const FamilyView: React.FC = () => {
 
   // Mutación para crear familia
   const createMutation = useMutation({
-    mutationFn: (data) => VehicleFamiliesService.createFamily(data),
+    mutationFn: (data: { name: string; brand_id: string; active: boolean }) =>
+      VehicleFamiliesService.createFamily(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["families"] });
       message.success("Familia creada correctamente");
       setIsModalVisible(false);
       form.resetFields();
     },
-    onError: (error) => {
-      message.error("Error al crear la familia");
+    onError: (error: any) => {
+      message.error(error?.message || "Error al crear la familia");
       console.error(error);
     },
   });
 
   // Mutación para actualizar familia
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => VehicleFamiliesService.updateFamily(id, data),
+    mutationFn: ({ id, data }: { id: string; data: { name: string; brand_id: string; active: boolean } }) =>
+      VehicleFamiliesService.updateFamily(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["families"] });
       message.success("Familia actualizada correctamente");
       setIsModalVisible(false);
+      form.resetFields();
     },
-    onError: (error) => {
-      message.error("Error al actualizar la familia");
+    onError: (error: any) => {
+      message.error(error?.message || "Error al actualizar la familia");
       console.error(error);
     },
   });
@@ -126,8 +122,6 @@ const FamilyView: React.FC = () => {
   };
 
   const handleAddNew = () => {
-    setEditingFamily(null);
-    form.resetFields();
     setIsModalVisible(true);
   };
 
@@ -135,7 +129,9 @@ const FamilyView: React.FC = () => {
     setEditingFamily(record);
     form.setFieldsValue({
       name: record.name,
-      brand_id: record.brand_id?._id,
+      brand_id: record.brand_id
+        ? { value: record.brand_id._id, label: record.brand_id.name, brandData: record.brand_id }
+        : null,
       active: record.active,
     });
     setIsModalVisible(true);
@@ -164,13 +160,17 @@ const FamilyView: React.FC = () => {
     form
       .validateFields()
       .then((values) => {
+        const payload = {
+          ...values,
+          brand_id: values.brand_id?.value,
+        };
         if (editingFamily) {
           updateMutation.mutate({
             id: editingFamily._id,
-            data: values,
+            data: payload,
           });
         } else {
-          createMutation.mutate(values);
+          createMutation.mutate(payload);
         }
       })
       .catch((info) => {
@@ -212,32 +212,37 @@ const FamilyView: React.FC = () => {
       key: "actions",
       render: (_, record) => (
         <Space size="middle">
-          <Button
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-            aria-label={`Editar ${record.name}`}
-          />
-          <Popconfirm
-            title="¿Estás seguro de que deseas eliminar esta familia?"
-            onConfirm={() => handleDelete(record._id)}
-            okText="Sí"
-            cancelText="No"
-            okButtonProps={{
-              loading:
-                deleteMutation.isPending &&
-                deleteMutation.variables === record._id,
-            }}
-          >
+          <Tooltip title="Editar Familia">
             <Button
-              danger
-              icon={<DeleteOutlined />}
-              aria-label={`Eliminar ${record.name}`}
-              disabled={
-                deleteMutation.isPending &&
-                deleteMutation.variables === record._id
-              }
+              icon={<EditOutlined style={{ fontSize: 16 }} />}
+              onClick={() => {}}
+              aria-label={`Editar ${record.name}`}
+              disabled
             />
-          </Popconfirm>
+          </Tooltip>
+          <Tooltip title="Eliminar Familia">
+            <Popconfirm
+              title="¿Estás seguro de que deseas eliminar esta familia?"
+              onConfirm={() => handleDelete(record._id)}
+              okText="Sí"
+              cancelText="No"
+              okButtonProps={{
+                loading:
+                  deleteMutation.isPending &&
+                  deleteMutation.variables === record._id,
+              }}
+            >
+              <Button
+                danger
+                icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                aria-label={`Eliminar ${record.name}`}
+                disabled={
+                  deleteMutation.isPending &&
+                  deleteMutation.variables === record._id
+                }
+              />
+            </Popconfirm>
+          </Tooltip>
         </Space>
       ),
     },
@@ -281,7 +286,7 @@ const FamilyView: React.FC = () => {
         </div>
         <Button
           type="primary"
-          icon={<PlusOutlined />}
+          icon={<PlusOutlined style={{ fontSize: 16 }} />}
           onClick={handleAddNew}
         >
           Nueva Familia
@@ -306,47 +311,35 @@ const FamilyView: React.FC = () => {
       <Modal
         title={editingFamily ? "Editar Familia" : "Nueva Familia"}
         open={isModalVisible}
-        onOk={handleModalOk}
         onCancel={handleModalCancel}
-        confirmLoading={createMutation.isPending || updateMutation.isPending}
+        footer={null}
         destroyOnClose
       >
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={{ active: true }}
-        >
-          <Form.Item
-            name="name"
-            label="Nombre"
-            rules={[{ required: true, message: "Por favor ingrese el nombre" }]}
-          >
-            <Input placeholder="Nombre de la familia" />
-          </Form.Item>
-          <Form.Item
-            name="brand_id"
-            label="Marca"
-            rules={[{ required: true, message: "Por favor seleccione la marca" }]}
-          >
-            <Select
-              placeholder="Seleccionar marca"
-              options={
-                brandsData?.brands?.map((brand) => ({
-                  value: brand._id,
-                  label: brand.name,
-                })) || []
-              }
-              loading={!brandsData}
-            />
-          </Form.Item>
-          <Form.Item
-            name="active"
-            label="Activo"
-            valuePropName="checked"
-          >
-            <Switch />
-          </Form.Item>
-        </Form>
+        {editingFamily ? (
+          <FamilyForm
+            mode="edit"
+            initialValues={{
+              name: editingFamily.name,
+              brand_id: editingFamily.brand_id?._id,
+              active: editingFamily.active,
+            }}
+            onSubmit={(values) => {
+              VehicleFamiliesService.updateFamily(editingFamily._id, values)
+                .then(() => {
+                  queryClient.invalidateQueries({ queryKey: ["families"] });
+                  message.success("Familia actualizada correctamente");
+                  setIsModalVisible(false);
+                  setEditingFamily(null);
+                  form.resetFields();
+                })
+                .catch((error) => {
+                  message.error(error?.message || "Error al actualizar la familia");
+                });
+            }}
+          />
+        ) : (
+          <FamilyForm />
+        )}
       </Modal>
     </div>
   );

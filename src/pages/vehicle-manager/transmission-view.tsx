@@ -10,6 +10,7 @@ import {
   Switch,
   Popconfirm,
   message,
+  Tooltip,
 } from "antd";
 import {
   EditOutlined,
@@ -18,6 +19,7 @@ import {
   PlusOutlined,
 } from "@ant-design/icons";
 import VehicleFamiliesService from "../../services/vehicle-families.service";
+import TransmissionForm from "./forms/transmission-form";
 
 interface TransmissionData {
   _id: string;
@@ -52,8 +54,8 @@ const TransmissionView: React.FC = () => {
 
   // Mutación para crear transmisión
   const createMutation = useMutation({
-    mutationFn: (values: { name: string; active: boolean }) => 
-      VehicleFamiliesService.addTransmission(values.name, values.active),
+    mutationFn: (values: { name: string; active: boolean }) =>
+      VehicleFamiliesService.addTransmission(values.name, undefined),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transmissions"] });
       message.success("Transmisión creada correctamente");
@@ -66,19 +68,15 @@ const TransmissionView: React.FC = () => {
     },
   });
 
-  // Mutación para actualizar transmisión (asume que existe un método para actualizar)
+  // Mutación para actualizar transmisión
   const updateMutation = useMutation({
-    mutationFn: (params: { id: string; data: { name: string; active: boolean } }) => {
-      // Asumimos que podemos usar updateVehicle para esto o se creará un método específico
-      return VehicleFamiliesService.updateVehicle(params.id, {
-        name: params.data.name,
-        active: params.data.active,
-      });
-    },
+    mutationFn: ({ id, data }: { id: string; data: { name: string; active: boolean } }) =>
+      VehicleFamiliesService.updateTransmission(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transmissions"] });
       message.success("Transmisión actualizada correctamente");
       setIsModalVisible(false);
+      form.resetFields();
     },
     onError: (error: any) => {
       message.error(error?.message || "Error al actualizar la transmisión");
@@ -88,7 +86,7 @@ const TransmissionView: React.FC = () => {
 
   // Mutación para eliminar transmisión
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => VehicleFamiliesService.deleteVehicle(id),
+    mutationFn: (id: string) => VehicleFamiliesService.deleteTransmission(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transmissions"] });
       message.success("Transmisión eliminada correctamente");
@@ -108,15 +106,13 @@ const TransmissionView: React.FC = () => {
   };
 
   const handleAddNew = () => {
-    setEditingTransmission(null);
-    form.resetFields();
     setIsModalVisible(true);
   };
 
   const handleEdit = (record: TransmissionData) => {
     setEditingTransmission(record);
     form.setFieldsValue({
-      name: record.name,
+      name: { value: record._id, label: record.name, transmissionData: record },
       active: record.active,
     });
     setIsModalVisible(true);
@@ -145,13 +141,17 @@ const TransmissionView: React.FC = () => {
     form
       .validateFields()
       .then((values) => {
+        const payload = {
+          ...values,
+          name: values.name?.label,
+        };
         if (editingTransmission) {
           updateMutation.mutate({
             id: editingTransmission._id,
-            data: values,
+            data: payload,
           });
         } else {
-          createMutation.mutate(values);
+          createMutation.mutate(payload);
         }
       })
       .catch((info) => {
@@ -187,30 +187,37 @@ const TransmissionView: React.FC = () => {
       key: "actions",
       render: (_, record: TransmissionData) => (
         <Space size="middle">
-          <Button
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-            aria-label={`Editar ${record.name}`}
-          />
-          <Popconfirm
-            title="¿Estás seguro de que deseas eliminar esta transmisión?"
-            onConfirm={() => handleDelete(record._id)}
-            okText="Sí"
-            cancelText="No"
-            okButtonProps={{
-              loading:
-                deleteMutation.isPending && deleteMutation.variables === record._id,
-            }}
-          >
+          <Tooltip title="Editar Transmisión">
             <Button
-              danger
-              icon={<DeleteOutlined />}
-              aria-label={`Eliminar ${record.name}`}
-              disabled={
-                deleteMutation.isPending && deleteMutation.variables === record._id
-              }
+              icon={<EditOutlined style={{ fontSize: 16 }} />}
+              onClick={() => {}}
+              aria-label={`Editar ${record.name}`}
+              disabled
             />
-          </Popconfirm>
+          </Tooltip>
+          <Tooltip title="Eliminar Transmisión">
+            <Popconfirm
+              title="¿Estás seguro de que deseas eliminar esta transmisión?"
+              onConfirm={() => handleDelete(record._id)}
+              okText="Sí"
+              cancelText="No"
+              okButtonProps={{
+                loading:
+                  deleteMutation.isPending &&
+                  deleteMutation.variables === record._id,
+              }}
+            >
+              <Button
+                danger
+                icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                aria-label={`Eliminar ${record.name}`}
+                disabled={
+                  deleteMutation.isPending &&
+                  deleteMutation.variables === record._id
+                }
+              />
+            </Popconfirm>
+          </Tooltip>
         </Space>
       ),
     },
@@ -241,7 +248,7 @@ const TransmissionView: React.FC = () => {
         </div>
         <Button
           type="primary"
-          icon={<PlusOutlined />}
+          icon={<PlusOutlined style={{ fontSize: 16 }} />}
           onClick={handleAddNew}
         >
           Nueva Transmisión
@@ -266,31 +273,34 @@ const TransmissionView: React.FC = () => {
       <Modal
         title={editingTransmission ? "Editar Transmisión" : "Nueva Transmisión"}
         open={isModalVisible}
-        onOk={handleModalOk}
         onCancel={handleModalCancel}
-        confirmLoading={createMutation.isPending || updateMutation.isPending}
+        footer={null}
         destroyOnClose
       >
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={{ active: true }}
-        >
-          <Form.Item
-            name="name"
-            label="Nombre"
-            rules={[{ required: true, message: "Por favor ingrese el nombre" }]}
-          >
-            <Input placeholder="Nombre de la transmisión" />
-          </Form.Item>
-          <Form.Item
-            name="active"
-            label="Activo"
-            valuePropName="checked"
-          >
-            <Switch />
-          </Form.Item>
-        </Form>
+        {editingTransmission ? (
+          <TransmissionForm
+            mode="edit"
+            initialValues={{
+              name: editingTransmission.name,
+              active: editingTransmission.active,
+            }}
+            onSubmit={(values) => {
+              VehicleFamiliesService.updateTransmission(editingTransmission._id, values)
+                .then(() => {
+                  queryClient.invalidateQueries({ queryKey: ["transmissions"] });
+                  message.success("Transmisión actualizada correctamente");
+                  setIsModalVisible(false);
+                  setEditingTransmission(null);
+                  form.resetFields();
+                })
+                .catch((error) => {
+                  message.error(error?.message || "Error al actualizar la transmisión");
+                });
+            }}
+          />
+        ) : (
+          <TransmissionForm />
+        )}
       </Modal>
     </div>
   );

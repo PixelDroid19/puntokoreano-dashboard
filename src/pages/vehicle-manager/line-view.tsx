@@ -11,7 +11,7 @@ import {
   Popconfirm,
   message,
   Select,
-  InputNumber,
+  Tooltip,
 } from "antd";
 import {
   EditOutlined,
@@ -20,6 +20,7 @@ import {
   PlusOutlined,
 } from "@ant-design/icons";
 import VehicleFamiliesService from "../../services/vehicle-families.service";
+import LineForm from "./forms/line-form";
 
 interface LineData {
   _id: string;
@@ -106,21 +107,13 @@ const LineView: React.FC = () => {
 
   // Mutación para actualizar línea
   const updateMutation = useMutation({
-    mutationFn: (params: { id: string; data: any }) => {
-      const { model_id, name, features, price, active } = params.data;
-      // Para actualización, usamos el updateVehicle ya que no hay un método específico
-      return VehicleFamiliesService.updateVehicle(params.id, {
-        line_id: model_id,
-        name,
-        features,
-        price,
-        active,
-      });
-    },
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      VehicleFamiliesService.updateLine(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lines"] });
       message.success("Línea actualizada correctamente");
       setIsModalVisible(false);
+      form.resetFields();
     },
     onError: (error: any) => {
       message.error(error?.message || "Error al actualizar la línea");
@@ -130,7 +123,7 @@ const LineView: React.FC = () => {
 
   // Mutación para eliminar línea
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => VehicleFamiliesService.deleteVehicle(id),
+    mutationFn: (id: string) => VehicleFamiliesService.deleteLine(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lines"] });
       message.success("Línea eliminada correctamente");
@@ -159,8 +152,6 @@ const LineView: React.FC = () => {
   };
 
   const handleAddNew = () => {
-    setEditingLine(null);
-    form.resetFields();
     setIsModalVisible(true);
   };
 
@@ -170,7 +161,9 @@ const LineView: React.FC = () => {
       name: record.name,
       features: record.features,
       price: record.price,
-      model_id: record.model_id?._id,
+      model_id: record.model_id
+        ? { value: record.model_id._id, label: record.model_id.name, modelData: record.model_id }
+        : null,
       active: record.active,
     });
     setIsModalVisible(true);
@@ -199,13 +192,17 @@ const LineView: React.FC = () => {
     form
       .validateFields()
       .then((values) => {
+        const payload = {
+          ...values,
+          model_id: values.model_id?.value,
+        };
         if (editingLine) {
           updateMutation.mutate({
             id: editingLine._id,
-            data: values,
+            data: payload,
           });
         } else {
-          createMutation.mutate(values);
+          createMutation.mutate(payload);
         }
       })
       .catch((info) => {
@@ -271,30 +268,37 @@ const LineView: React.FC = () => {
       key: "actions",
       render: (_, record) => (
         <Space size="middle">
-          <Button
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-            aria-label={`Editar ${record.name}`}
-          />
-          <Popconfirm
-            title="¿Estás seguro de que deseas eliminar esta línea?"
-            onConfirm={() => handleDelete(record._id)}
-            okText="Sí"
-            cancelText="No"
-            okButtonProps={{
-              loading:
-                deleteMutation.isPending && deleteMutation.variables === record._id,
-            }}
-          >
+          <Tooltip title="Editar Línea">
             <Button
-              danger
-              icon={<DeleteOutlined />}
-              aria-label={`Eliminar ${record.name}`}
-              disabled={
-                deleteMutation.isPending && deleteMutation.variables === record._id
-              }
+              icon={<EditOutlined style={{ fontSize: 16 }} />}
+              onClick={() => {}}
+              aria-label={`Editar ${record.name}`}
+              disabled
             />
-          </Popconfirm>
+          </Tooltip>
+          <Tooltip title="Eliminar Línea">
+            <Popconfirm
+              title="¿Estás seguro de que deseas eliminar esta línea?"
+              onConfirm={() => handleDelete(record._id)}
+              okText="Sí"
+              cancelText="No"
+              okButtonProps={{
+                loading:
+                  deleteMutation.isPending &&
+                  deleteMutation.variables === record._id,
+              }}
+            >
+              <Button
+                danger
+                icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                aria-label={`Eliminar ${record.name}`}
+                disabled={
+                  deleteMutation.isPending &&
+                  deleteMutation.variables === record._id
+                }
+              />
+            </Popconfirm>
+          </Tooltip>
         </Space>
       ),
     },
@@ -338,7 +342,7 @@ const LineView: React.FC = () => {
             Buscar
           </Button>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleAddNew}>
+        <Button type="primary" icon={<PlusOutlined style={{ fontSize: 16 }} />} onClick={handleAddNew}>
           Nueva Línea
         </Button>
       </div>
@@ -361,63 +365,37 @@ const LineView: React.FC = () => {
       <Modal
         title={editingLine ? "Editar Línea" : "Nueva Línea"}
         open={isModalVisible}
-        onOk={handleModalOk}
         onCancel={handleModalCancel}
-        confirmLoading={createMutation.isPending || updateMutation.isPending}
+        footer={null}
         destroyOnClose
       >
-        <Form form={form} layout="vertical" initialValues={{ active: true }}>
-          <Form.Item
-            name="name"
-            label="Nombre"
-            rules={[{ required: true, message: "Por favor ingrese el nombre" }]}
-          >
-            <Input placeholder="Nombre de la línea" />
-          </Form.Item>
-          <Form.Item
-            name="model_id"
-            label="Modelo"
-            rules={[
-              { required: true, message: "Por favor seleccione el modelo" },
-            ]}
-          >
-            <Select
-              placeholder="Seleccionar modelo"
-              options={
-                modelsData?.models?.map((model) => ({
-                  value: model._id,
-                  label: `${model.family_id?.brand_id?.name || ""} - ${
-                    model.family_id?.name || ""
-                  } - ${model.name} (${model.year})`,
-                })) || []
-              }
-              loading={!modelsData}
-            />
-          </Form.Item>
-          <Form.Item name="features" label="Características">
-            <Input.TextArea
-              placeholder="Ej: 4x4, airbags, etc."
-              rows={3}
-            />
-          </Form.Item>
-          <Form.Item name="price" label="Precio">
-            <InputNumber
-              min={0}
-              placeholder="Precio de la línea"
-              style={{ width: "100%" }}
-              formatter={(value) =>
-                value ? `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",") : ""
-              }
-              parser={(value) => {
-                const parsed = value ? value.replace(/\$\s?|(,*)/g, "") : "";
-                return parsed === "" ? undefined : parsed;
-              }}
-            />
-          </Form.Item>
-          <Form.Item name="active" label="Activo" valuePropName="checked">
-            <Switch />
-          </Form.Item>
-        </Form>
+        {editingLine ? (
+          <LineForm
+            mode="edit"
+            initialValues={{
+              name: editingLine.name,
+              features: editingLine.features,
+              price: editingLine.price,
+              model_id: editingLine.model_id?._id,
+              active: editingLine.active,
+            }}
+            onSubmit={(values) => {
+              VehicleFamiliesService.updateLine(editingLine._id, values)
+                .then(() => {
+                  queryClient.invalidateQueries({ queryKey: ["lines"] });
+                  message.success("Línea actualizada correctamente");
+                  setIsModalVisible(false);
+                  setEditingLine(null);
+                  form.resetFields();
+                })
+                .catch((error) => {
+                  message.error(error?.message || "Error al actualizar la línea");
+                });
+            }}
+          />
+        ) : (
+          <LineForm />
+        )}
       </Modal>
     </div>
   );

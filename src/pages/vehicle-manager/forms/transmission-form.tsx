@@ -10,34 +10,44 @@ import FormError from "./FormError";
 
 interface TransmissionFormData {
   name: string;
-  gears?: number;
+  active: boolean;
 }
 
-export default function TransmissionForm() {
+interface TransmissionFormProps {
+  initialValues?: Partial<TransmissionFormData>;
+  mode?: "create" | "edit";
+  onSubmit?: (data: TransmissionFormData) => void;
+}
+
+export default function TransmissionForm({ initialValues, mode = "create", onSubmit }: TransmissionFormProps) {
   const [formSuccess, setFormSuccess] = useState(false);
   const [formError, setFormError] = useState<{ message: string; errors?: string[] } | null>(null);
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<TransmissionFormData>({
     defaultValues: {
-      name: "",
-      gears: 0, 
+      name: initialValues?.name || "",
+      active: initialValues?.active ?? true,
     },
   });
 
-  //  const addActivity = useVehicleStore((state) => state.addActivity)
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (mode === "edit" && initialValues) {
+      setValue("name", initialValues.name || "");
+      setValue("active", initialValues.active ?? true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialValues, mode]);
 
   const { mutate, isPending: isSubmitting } = useMutation({
     mutationFn: (data: TransmissionFormData) =>
-      VehicleFamiliesService.addTransmission(
-        // Call addTransmission with name and gears
-        data.name,
-        data.gears
-      ),
+      VehicleFamiliesService.addTransmission(data.name),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transmissions"] });
       queryClient.invalidateQueries({ queryKey: ["dashboardAnalytics"] });
@@ -67,17 +77,18 @@ export default function TransmissionForm() {
     },
   });
 
-  // Limpia el error si el usuario cambia los campos relevantes
+  const handleFormSubmit = (data: TransmissionFormData) => {
+    setFormError(null);
+    if (onSubmit) {
+      onSubmit(data);
+    } else {
+      mutate(data);
+    }
+  };
+
   useEffect(() => {
     setFormError(null);
-  }, [
-    errors.name,
-    errors.gears
-  ]);
-
-  const onSubmit = (data: TransmissionFormData) => {
-    mutate(data);
-  };
+  }, [errors.name]);
 
   return (
     <motion.div
@@ -87,11 +98,11 @@ export default function TransmissionForm() {
     >
       {formSuccess ? (
         <FormSuccess
-          title="Transmisión creada con éxito!"
-          description="La transmisión ha sido registrada correctamente"
+          title={mode === "edit" ? "¡Transmisión actualizada con éxito!" : "Transmisión creada con éxito!"}
+          description={mode === "edit" ? "La transmisión ha sido actualizada correctamente" : "La Transmisión ha sido registrada correctamente"}
         />
       ) : (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           {formError && (
             <FormError title="Error" description={formError.message} errors={formError.errors} />
           )}
@@ -132,11 +143,17 @@ export default function TransmissionForm() {
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Button
               type="submit"
-              className="w-full bg-amber-500 hover:bg-amber-600 text-white py-2 rounded-md"
+              className="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-2 rounded-md"
               disabled={isSubmitting}
-              isLoading={isSubmitting}
             >
-              {isSubmitting ? "Creando Transmisión..." : "Crear Transmisión"}
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                  {mode === "edit" ? "Actualizando Transmisión..." : "Creando Transmisión..."}
+                </>
+              ) : (
+                mode === "edit" ? "Actualizar Transmisión" : "Crear Transmisión"
+              )}
             </Button>
           </motion.div>
         </form>
