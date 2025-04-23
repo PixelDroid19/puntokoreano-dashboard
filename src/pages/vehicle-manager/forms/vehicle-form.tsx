@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form"; // Import Controller
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -28,6 +28,17 @@ import LineForm from "./line-form";
 import TransmissionForm from "./transmission-form";
 import FuelForm from "./fuel-form";
 import VehicleFamiliesService from "../../../services/vehicle-families.service"; // Ensure path is correct
+import FormError from "./FormError";
+
+// Defino el tipo localmente para evitar error de importación
+interface VehicleGetParams {
+  page: number;
+  limit: number;
+  sortBy: string;
+  sortOrder: string;
+  search?: string;
+  tag_id?: string;
+}
 
 interface VehicleFormData {
   line_id: string;
@@ -51,6 +62,7 @@ export default function VehicleForm() {
     null
   );
   const [formSuccess, setFormSuccess] = useState(false);
+  const [formError, setFormError] = useState<{ message: string; errors?: string[] } | null>(null);
 
   const {
     register,
@@ -90,24 +102,38 @@ export default function VehicleForm() {
       return VehicleFamiliesService.addVehicle(payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vehicles"] }); // Or more specific key if used
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardAnalytics"] });
       setFormSuccess(true);
+      setFormError(null);
       setTimeout(() => {
-        reset(); // Reset form to default values
-        // Reset selector states as well
+        reset();
         setSelectedLineValue(null);
         setSelectedTransmissionValue(null);
         setSelectedFuelValue(null);
         setFormSuccess(false);
       }, 1500);
     },
-    onError: (error: Error) => {
-      console.error("Error submitting vehicle:", error);
-      // Consider adding user feedback here (e.g., toast notification)
+    onError: (error: any) => {
+      let message = "Ocurrió un error inesperado.";
+      let errors: string[] | undefined = undefined;
+      if (error?.response?.data) {
+        message = error.response.data.message || message;
+        if (error.response.data.errors) {
+          if (typeof error.response.data.errors === "object") {
+            errors = Object.values(error.response.data.errors).map((e: any) => e.message || String(e));
+          } else if (Array.isArray(error.response.data.errors)) {
+            errors = error.response.data.errors;
+          }
+        }
+      } else if (error?.message) {
+        message = error.message;
+      }
+      setFormError({ message, errors });
     },
   });
 
-  const onSubmit = (data: VehicleFormData) => {
+  const onSubmit = async (data: VehicleFormData) => {
     // Basic validation for selectors (consider adding to RHF rules for better UX)
     if (
       !selectedLineValue ||
@@ -119,12 +145,38 @@ export default function VehicleForm() {
       return;
     }
 
-    // Data manipulation happens within the mutationFn now
+    // Validación: no permitir duplicados de tag_id
+    try {
+      if (data.tag_id && data.tag_id.trim() !== "") {
+        // Buscar vehículos con ese tag_id (ignorando mayúsculas/minúsculas)
+        const params: VehicleGetParams = {
+          page: 1,
+          limit: 1,
+          sortBy: "createdAt",
+          sortOrder: "desc",
+          tag_id: data.tag_id.trim(),
+        };
+        const response = await VehicleFamiliesService.getVehicles(params);
+        const vehicles = response.vehicles || [];
+        // Si existe alguno, mostrar error y no enviar
+        if (vehicles.length > 0) {
+          setFormError({ message: "Ya existe un vehículo con ese identificador único." });
+          return;
+        }
+      }
+    } catch (err) {
+      // Si falla la validación, permitimos el submit y dejamos que el backend lo rechace si corresponde
+      console.error("Error validando tag_id existente:", err);
+    }
+
+    // Enviar solo el string del ID para cada campo
+    const getId = (val: any) => (typeof val === 'string' ? val : val?.value);
+
     mutate({
       ...data,
-      line_id: selectedLineValue.value,
-      transmission_id: selectedTransmissionValue.value,
-      fuel_id: selectedFuelValue.value,
+      line_id: getId(selectedLineValue),
+      transmission_id: getId(selectedTransmissionValue),
+      fuel_id: getId(selectedFuelValue),
     });
   };
 
@@ -149,6 +201,19 @@ export default function VehicleForm() {
     setSelectedFuelValue(value);
     setValue("fuel_id", value || "", { shouldValidate: true });
   };
+
+  // Limpia el error si el usuario cambia cualquier campo relevante
+  useEffect(() => {
+    setFormError(null);
+  }, [
+    errors.line_id,
+    errors.transmission_id,
+    errors.fuel_id,
+    errors.color,
+    errors.precio,
+    errors.active,
+    errors.tag_id
+  ]);
 
   return (
     <motion.div
@@ -439,7 +504,7 @@ export default function VehicleForm() {
                           {...register("tag_id", {
                             required: "El identificador único es requerido",
                             pattern: {
-                              value: /^[a-zA-Z0-9-_]+$/,
+                              value: /^[\p{L}0-9_-]+$/u,
                               message:
                                 "Solo se permiten letras, números, guiones y guiones bajos",
                             },
@@ -498,6 +563,9 @@ export default function VehicleForm() {
                         </label>
                       </div>
                     </div>
+                    {formError && (
+                      <FormError title="Error" description={formError.message} errors={formError.errors} />
+                    )}
                     <motion.div
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}

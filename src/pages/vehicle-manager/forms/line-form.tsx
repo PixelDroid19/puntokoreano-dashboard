@@ -6,11 +6,12 @@ import { motion } from "framer-motion";
 import { Input } from "../ui/input"; // Assuming ShadCN UI Input
 import { Button } from "../ui/button";
 import ModelSelector, { ModelsOption } from "../selectors/model-selector";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import VehicleFamiliesService from "../../../services/vehicle-families.service";
 import FormSuccess from "../ui/FormSuccess";
-import { NumericFormat, PatternFormat } from "react-number-format"; // Import NumericFormat
+import { NumericFormat } from "react-number-format"; // Import NumericFormat
 import { AlertCircle } from "lucide-react"; // For error icons
+import FormError from "./FormError";
 
 // Interface ajustada: price es number | null | undefined
 interface LineFormData {
@@ -26,6 +27,7 @@ export default function LineForm() {
   const [selectedModelValue, setSelectedModelValue] =
     useState<ModelsOption | null>(null);
   const [apiError, setApiError] = useState<string | null>(null); // State for API errors
+  const [formError, setFormError] = useState<{ message: string; errors?: string[] } | null>(null);
 
   const {
     register,
@@ -58,26 +60,64 @@ export default function LineForm() {
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lines"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardAnalytics"] });
       setFormSuccess(true);
       setApiError(null); // Clear previous API errors
+      setFormError(null); // Limpia el error tras éxito
       setTimeout(() => {
         reset();
         setSelectedModelValue(null);
         setFormSuccess(false);
       }, 1500);
     },
-    onError: (error: Error) => {
-      console.error("Error creando la línea:", error);
-      setApiError(error.message || "Ocurrió un error al crear la línea."); // Set API error message
+    onError: (error: any) => {
+      let message = "Ocurrió un error inesperado.";
+      let errors: string[] | undefined = undefined;
+      if (error?.response?.data) {
+        message = error.response.data.message || message;
+        if (error.response.data.errors) {
+          if (typeof error.response.data.errors === "object") {
+            errors = Object.values(error.response.data.errors).map((e: any) => e.message || String(e));
+          } else if (Array.isArray(error.response.data.errors)) {
+            errors = error.response.data.errors;
+          }
+        }
+      } else if (error?.message) {
+        message = error.message;
+      }
+      setFormError({ message, errors });
     },
   });
 
-  const onSubmit = (data: LineFormData) => {
+  const onSubmit = async (data: LineFormData) => {
     setApiError(null); // Clear errors before submitting
+    setFormError(null);
     if (!data.model_id) {
        // react-hook-form debería manejar esto si model_id es required
        console.error("Modelo no seleccionado");
        return;
+    }
+    // Validación: no permitir duplicados de nombre de línea por modelo
+    try {
+      const response = await VehicleFamiliesService.getLines({
+        page: 1,
+        limit: 100,
+        sortBy: "name",
+        sortOrder: "asc",
+        ...(data.model_id && { model_id: data.model_id }),
+      });
+      const lines = response.lines || [];
+      const normalizedNewName = data.name.trim().toUpperCase();
+      const exists = lines.some((line: any) =>
+        line.name && line.name.trim().toUpperCase() === normalizedNewName
+      );
+      if (exists) {
+        setFormError({ message: "Ya existe una línea con ese nombre para este modelo." });
+        return;
+      }
+    } catch (err) {
+      // Si falla la validación, permitimos el submit y dejamos que el backend lo rechace si corresponde
+      console.error("Error validando líneas existentes:", err);
     }
     // Price ya es un número (o null/undefined) gracias a NumericFormat
     console.log("Enviando datos de línea:", data);
@@ -89,6 +129,16 @@ export default function LineForm() {
     // Registrar model_id como requerido si es necesario en useForm
     setValue("model_id", value?.value || "", { shouldValidate: true });
   };
+
+  // Limpia el error si el usuario cambia los campos relevantes
+  useEffect(() => {
+    setFormError(null);
+  }, [
+    errors.name,
+    errors.model_id,
+    errors.features,
+    errors.price
+  ]);
 
   return (
     <motion.div
@@ -109,6 +159,10 @@ export default function LineForm() {
                 <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
                 {apiError}
             </div>
+          )}
+
+          {formError && (
+            <FormError title="Error" description={formError.message} errors={formError.errors} />
           )}
 
           <div className="space-y-2">
@@ -169,7 +223,7 @@ export default function LineForm() {
                  rules={{ // Opcional: Validaciones adicionales
                     min: { value: 0, message: "El precio no puede ser negativo" },
                  }}
-                render={({ field: { onChange, onBlur, value, name, ref } }) => (
+                render={({ field: { onChange, onBlur, value, name } }) => (
                     <NumericFormat
                         id="price"
                         customInput={Input} // Usa tu componente Input de ShadCN/UI
@@ -186,7 +240,6 @@ export default function LineForm() {
                         }}
                         onBlur={onBlur} // Propaga onBlur para validación de RHF
                         name={name}     // Propaga name
-                        ref={ref}       // Propaga ref
                         aria-invalid={errors.price ? "true" : "false"}
                         className={errors.price ? "border-destructive focus:border-destructive" : ""}
                     />

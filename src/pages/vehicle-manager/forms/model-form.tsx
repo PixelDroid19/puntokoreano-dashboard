@@ -4,14 +4,14 @@ import { motion } from "framer-motion";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import FamilySelector from "../selectors/family-selector";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import VehicleFamiliesService from "../../../services/vehicle-families.service";
 import FormSuccess from "../ui/FormSuccess";
+import FormError from "./FormError";
 
 interface ModelFormData {
   name: string;
   active: boolean;
-
   family_id: string;
   engineType: string;
   year: string;
@@ -19,9 +19,8 @@ interface ModelFormData {
 
 export default function ModelForm() {
   const [formSuccess, setFormSuccess] = useState(false);
-  const [selectedFamilyValue, setSelectedFamilyValue] = useState<string | null>(
-    null
-  );
+  const [selectedFamilyValue, setSelectedFamilyValue] = useState<string>("");
+  const [formError, setFormError] = useState<{ message: string; errors?: string[] } | null>(null);
 
   const {
     register,
@@ -32,7 +31,6 @@ export default function ModelForm() {
   } = useForm<ModelFormData>({
     defaultValues: {
       active: true,
-
       family_id: "",
       engineType: "",
       year: "",
@@ -51,39 +49,79 @@ export default function ModelForm() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["models"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardAnalytics"] });
       setFormSuccess(true);
+      setFormError(null);
 
-      /*   // Añadir actividad
-      addActivity({
-        type: "model",
-        title: "Nuevo modelo añadido",
-        description: data.data.name,
-        timestamp: new Date(),
-      }); */
-
+   
       setTimeout(() => {
         reset();
         setFormSuccess(false);
       }, 1500);
     },
-    onError: (error: Error) => {
-      console.error(error);
+    onError: (error: any) => {
+      let message = "Ocurrió un error inesperado.";
+      let errors: string[] | undefined = undefined;
+      if (error?.response?.data) {
+        message = error.response.data.message || message;
+        if (error.response.data.errors) {
+          if (typeof error.response.data.errors === "object") {
+            errors = Object.values(error.response.data.errors).map((e: any) => e.message || String(e));
+          } else if (Array.isArray(error.response.data.errors)) {
+            errors = error.response.data.errors;
+          }
+        }
+      } else if (error?.message) {
+        message = error.message;
+      }
+      setFormError({ message, errors });
     },
   });
 
   const onSubmit = (data: ModelFormData) => {
-    console.log(data);
+    const isValidObjectId = (id: string) => /^[a-f\d]{24}$/i.test(id);
+    if (!data.family_id || typeof data.family_id !== "string" || !isValidObjectId(data.family_id)) {
+      setFormError({ message: "Debe seleccionar una familia válida." });
+      return;
+    }
+
+    const currentYear = new Date().getFullYear();
+    const yearNum = Number(data.year);
+    if (
+      !/^[0-9]{4}$/.test(data.year) ||
+      isNaN(yearNum) ||
+      yearNum < 1900 ||
+      yearNum > currentYear + 1 // Permite hasta el próximo año
+    ) {
+      setFormError({ message: `Ingrese un año válido entre 1900 y ${currentYear + 1}.` });
+      return;
+    }
     mutate({
       ...data,
-      family_id: data.family_id.value
+      family_id: data.family_id,
     });
   };
 
-
-  const handleFamilyChange = (value: string | null) => {
-    setSelectedFamilyValue(value);
-    setValue("family_id", value || "");
+  const handleFamilyChange = (option: any) => {
+    // Permite tanto string como objeto, pero siempre guarda el ID string
+    let id = "";
+    if (typeof option === "object" && option !== null && typeof option.value === "string") {
+      id = option.value;
+    } else if (typeof option === "string") {
+      id = option;
+    }
+    setSelectedFamilyValue(id);
+    setValue("family_id", id, { shouldValidate: true });
   };
+
+  useEffect(() => {
+    setFormError(null);
+  }, [
+    errors.name,
+    errors.family_id,
+    errors.year,
+    errors.engineType
+  ]);
 
   return (
     <motion.div
@@ -98,7 +136,9 @@ export default function ModelForm() {
         />
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-
+          {formError && (
+            <FormError title="Error" description={formError.message} errors={formError.errors} />
+          )}
 
           <div className="space-y-2">
             <label className="block text-sm font-medium mb-1">Familia</label>
@@ -108,21 +148,30 @@ export default function ModelForm() {
             />
           </div>
 
-
           <div className="space-y-2">
             <label className="block text-sm font-medium mb-1">Año <span className="text-red-500">*</span></label>
             <Input
               placeholder="Ingrese el año del modelo (Ej: 2023)"
               {...register("year", {
                 required: "El año es requerido",
+                pattern: {
+                  value: /^[0-9]{4}$/,
+                  message: "El año debe tener 4 dígitos",
+                },
+                validate: (value) => {
+                  const yearNum = Number(value);
+                  const currentYear = new Date().getFullYear();
+                  if (isNaN(yearNum) || yearNum < 1900 || yearNum > currentYear + 1) {
+                    return `Ingrese un año válido entre 1900 y ${currentYear + 1}.`;
+                  }
+                  return true;
+                },
               })}
             />
             {errors.year && (
               <p className="text-sm text-red-500 mt-1">{errors.year.message}</p>
             )}
           </div>
-
-
 
           <div className="space-y-2">
             <label className="block text-sm font-medium mb-1">
@@ -148,13 +197,11 @@ export default function ModelForm() {
             <Input
               required={false}
               placeholder="Ingrese el nombre del modelo (Ej: Corolla)"
-
             />
             {errors.name && (
               <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>
             )}
           </div>
-
 
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Button

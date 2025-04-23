@@ -152,7 +152,7 @@ interface CreateFamilyPayload {
 }
 
 interface CreateModel {
-  name: string;
+  name?: string;
   familyId: string;
   year: string;
   engineType: string;
@@ -515,25 +515,28 @@ class VehicleFamiliesService {
 
   static async addModel(payload: CreateModel): Promise<any> {
     if (!payload.familyId) throw new Error("El ID de la familia es requerido");
-    if (!payload.engineType?.trim()) throw new Error("Tipo de motor inválido");
-    if (
-      !payload.year ||
-      isNaN(parseInt(payload.year)) ||
-      payload.year.length !== 4
-    )
+    if (!payload.engineType || typeof payload.engineType !== 'string' || !payload.engineType.trim()) {
+      throw new Error("Tipo de motor inválido");
+    }
+    if (!payload.year || isNaN(parseInt(payload.year)) || payload.year.length !== 4) {
       throw new Error("Año inválido");
+    }
+
+    const data: any = {
+      family_id: payload.familyId,
+      year: parseInt(payload.year),
+      engine_type: payload.engineType.trim(),
+      active: payload.active !== undefined ? payload.active : true,
+    };
+    if (typeof payload.name === 'string' && payload.name.trim() !== '') {
+      data.name = payload.name.trim();
+    }
 
     try {
       const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicles/models`,
         method: "POST",
-        data: {
-          name: payload.name.trim(),
-          family_id: payload.familyId,
-          year: parseInt(payload.year),
-          engine_type: payload.engineType.trim(),
-          active: payload.active !== undefined ? payload.active : true,
-        },
+        data,
       });
       if (!response.data?.success || !response.data?.data) {
         throw new Error(

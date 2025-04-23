@@ -5,8 +5,9 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import BrandSelector from "../selectors/brand-selector";
 import VehicleFamiliesService from "../../../services/vehicle-families.service";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import FormSuccess from "../ui/FormSuccess";
+import FormError from "./FormError";
 
 interface FamilyFormData {
   name: string;
@@ -19,6 +20,7 @@ export default function FamilyForm() {
   const [selectedBrandValue, setSelectedBrandValue] = useState<string | null>(
     null
   );
+  const [formError, setFormError] = useState<{ message: string; errors?: string[] } | null>(null);
   const {
     register,
     handleSubmit,
@@ -43,15 +45,30 @@ export default function FamilyForm() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["families"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardAnalytics"] });
       setFormSuccess(true);
-
+      setFormError(null);
       setTimeout(() => {
         reset();
         setFormSuccess(false);
       }, 1500);
     },
-    onError: (error: Error) => {
-      console.error(error);
+    onError: (error: any) => {
+      let message = "Ocurrió un error inesperado.";
+      let errors: string[] | undefined = undefined;
+      if (error?.response?.data) {
+        message = error.response.data.message || message;
+        if (error.response.data.errors) {
+          if (typeof error.response.data.errors === "object") {
+            errors = Object.values(error.response.data.errors).map((e: any) => e.message || String(e));
+          } else if (Array.isArray(error.response.data.errors)) {
+            errors = error.response.data.errors;
+          }
+        }
+      } else if (error?.message) {
+        message = error.message;
+      }
+      setFormError({ message, errors });
     },
   });
 
@@ -73,6 +90,13 @@ export default function FamilyForm() {
     setValue("brand_id", value || "");
   };
 
+  useEffect(() => {
+    setFormError(null);
+  }, [
+    errors.name,
+    errors.brand_id
+  ]);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -86,6 +110,9 @@ export default function FamilyForm() {
         />
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {formError && (
+            <FormError title="Error" description={formError.message} errors={formError.errors} />
+          )}
           <div className="space-y-2">
             <label className="block text-sm font-medium mb-1">Marca</label>
             <BrandSelector

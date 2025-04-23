@@ -5,7 +5,8 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import VehicleFamiliesService from "../../../services/vehicle-families.service";
 import FormSuccess from "../ui/FormSuccess";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import FormError from "./FormError";
 
 interface TransmissionFormData {
   name: string;
@@ -14,6 +15,7 @@ interface TransmissionFormData {
 
 export default function TransmissionForm() {
   const [formSuccess, setFormSuccess] = useState(false);
+  const [formError, setFormError] = useState<{ message: string; errors?: string[] } | null>(null);
   const {
     register,
     handleSubmit,
@@ -38,24 +40,40 @@ export default function TransmissionForm() {
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transmissions"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardAnalytics"] });
       setFormSuccess(true);
-
-      /*    // Añadir actividad -  This section is commented out, keeping it as is
-      addActivity({
-        type: "transmission",
-        title: "Transmisión creada",
-        description: `${data.data.name} (${data.data.gears} velocidades)`,
-        timestamp: new Date(),
-      })*/
+      setFormError(null);
       setTimeout(() => {
         reset();
         setFormSuccess(false);
       }, 1500);
     },
-    onError: (error: Error) => {
-      console.error("Error creating transmission:", error);
+    onError: (error: any) => {
+      let message = "Ocurrió un error inesperado.";
+      let errors: string[] | undefined = undefined;
+      if (error?.response?.data) {
+        message = error.response.data.message || message;
+        if (error.response.data.errors) {
+          if (typeof error.response.data.errors === "object") {
+            errors = Object.values(error.response.data.errors).map((e: any) => e.message || String(e));
+          } else if (Array.isArray(error.response.data.errors)) {
+            errors = error.response.data.errors;
+          }
+        }
+      } else if (error?.message) {
+        message = error.message;
+      }
+      setFormError({ message, errors });
     },
   });
+
+  // Limpia el error si el usuario cambia los campos relevantes
+  useEffect(() => {
+    setFormError(null);
+  }, [
+    errors.name,
+    errors.gears
+  ]);
 
   const onSubmit = (data: TransmissionFormData) => {
     mutate(data);
@@ -74,6 +92,9 @@ export default function TransmissionForm() {
         />
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {formError && (
+            <FormError title="Error" description={formError.message} errors={formError.errors} />
+          )}
           <div className="space-y-2">
             <label className="block text-sm font-medium mb-1">
               Nombre de la Transmisión

@@ -4,9 +4,10 @@ import { motion } from "framer-motion";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { AlertCircle } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import VehicleFamiliesService from "../../../services/vehicle-families.service";
 import FormSuccess from "../ui/FormSuccess";
+import FormError from "./FormError";
 
 interface brandFormData {
   name: string;
@@ -14,8 +15,9 @@ interface brandFormData {
   active: boolean;
 }
 
-export default function brandForm() {
+export default function BrandForm() {
   const [formSuccess, setFormSuccess] = useState(false);
+  const [formError, setFormError] = useState<{ message: string; errors?: string[] } | null>(null);
   const {
     register,
     handleSubmit,
@@ -37,32 +39,48 @@ export default function brandForm() {
         active: true,
       }),
     onSuccess: () => {
-      // data contains the response from createBrand
       queryClient.invalidateQueries({ queryKey: ["brands"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardAnalytics"] });
       setFormSuccess(true);
-
-      // Example of using data from onSuccess to customize the success message description
-      /* addActivity({
-        type: "brand",
-        title: "Nueva marca creada",
-        description: data.data.name, // Access data.data.name if your response structure is like that
-        timestamp: new Date(),
-      }); */
-
-      // Resetear el formulario después de un tiempo
+      setFormError(null);
       setTimeout(() => {
         reset();
         setFormSuccess(false);
       }, 1500);
     },
-    onError: (error: Error) => {
-      console.error(error);
+    onError: (error: any) => {
+      // Intentar extraer el mensaje y posibles errores de validación del backend
+      let message = "Ocurrió un error inesperado.";
+      let errors: string[] | undefined = undefined;
+      if (error?.response?.data) {
+        message = error.response.data.message || message;
+        if (error.response.data.errors) {
+          // Puede ser un objeto de errores de validación
+          if (typeof error.response.data.errors === "object") {
+            errors = Object.values(error.response.data.errors).map((e: any) => e.message || String(e));
+          } else if (Array.isArray(error.response.data.errors)) {
+            errors = error.response.data.errors;
+          }
+        }
+      } else if (error?.message) {
+        message = error.message;
+      }
+      setFormError({ message, errors });
     },
   });
 
   const onSubmit = (data: brandFormData) => {
+    setFormError(null); // Limpiar error previo
     mutate(data);
   };
+
+  // Limpia el error si el usuario cambia los campos relevantes
+  useEffect(() => {
+    setFormError(null);
+  }, [
+    errors.name,
+    errors.country
+  ]);
 
   return (
     <motion.div
@@ -77,6 +95,9 @@ export default function brandForm() {
         />
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {formError && (
+            <FormError title="Error" description={formError.message} errors={formError.errors} />
+          )}
           <div className="space-y-2">
             <label className="block text-sm font-medium mb-1">
               Nombre de la Marca
