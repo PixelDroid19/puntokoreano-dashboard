@@ -173,7 +173,7 @@ export default function LineForm({ initialValues, mode = "create", onSubmit }: L
                         value={selectedModelValue} // Keep local state for the selector component itself
                         onChange={(selectedOption) => {
                            field.onChange(selectedOption?.value || ""); // Update RHF state with the ID
-                           handleModelChange(selectedOption?.value || null); // Update local state for selector display
+                           handleModelChange(selectedOption || null); // Update local state for selector display
                         }}
                         // Add aria-invalid for accessibility
                          aria-invalid={errors.model_id ? "true" : "false"}
