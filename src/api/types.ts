@@ -294,11 +294,30 @@ export interface Endpoints {
 export interface ProductCreateInput {
   name: string;
   price: number;
+  reservedStock?: number;
   group: string;
   subgroup: string;
   stock: number;
   code: number;
   shipping: string[];
+  videoUrl?: string;
+  warranty?: string;
+  discount?: {
+    isActive: boolean;
+    type: "permanent" | "temporary";
+    startDate?: string;
+    endDate?: string;
+    percentage: number;
+  },
+  seoTitle?: string;
+  seoDescription?: string;
+  seoKeywords?: string[];
+  variants?: Array<{
+    name: string;
+    value: string;
+    price: number;
+  }>;
+  compatible_vehicles?: any[];
   images: string[];
   short_description: string;
   long_description: string;

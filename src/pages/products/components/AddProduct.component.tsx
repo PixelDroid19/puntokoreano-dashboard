@@ -12,7 +12,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
-import React, { useEffect } from "react";
+import React from "react";
 import { RcFile } from "antd/es/upload";
 import { getGroups } from "../../../helpers/queries.helper";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -25,7 +25,6 @@ import BasicInformation from "./form/BasicInformation";
 import MultimediaInformation from "./form/MultimediaInformation";
 import DescriptionInformation from "./form/DescriptionInformation";
 import SeoInformation from "./form/SeoInformation";
-import { axiosInstance } from "../../../utils/axios-interceptor";
 import axios from "axios";
 
 const { TabPane } = Tabs;
@@ -103,13 +102,9 @@ const AddProduct = () => {
       navigate("/products");
     },
     onError: (error: Error) => {
-      let description = error.message || "Ocurrió un error inesperado.";
-      if (error.message.includes("ya existe")) {
-        description = NOTIFICATIONS.PRODUCT_EXIST;
-      }
       notification.error({
         message: "Error al guardar",
-        description: description,
+        description: error.message || "Ocurrió un error inesperado.",
         placement: "bottomRight",
       });
       console.error("Error creating product:", error);
@@ -296,7 +291,6 @@ const AddProduct = () => {
       setSubgroups([]);
     }
   };
-
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
