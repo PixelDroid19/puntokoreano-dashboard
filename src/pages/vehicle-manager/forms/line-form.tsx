@@ -1,17 +1,17 @@
-// --- START OF FILE line-form.tsx ---
-
-import { useForm, Controller } from "react-hook-form"; // Import Controller
+import { useForm, Controller } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Input } from "../ui/input"; // Assuming ShadCN UI Input
+import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-import ModelSelector, { ModelsOption } from "../selectors/model-selector";
+import ModelSelector from "../selectors/model-selector";
 import { useState, useEffect } from "react";
 import VehicleFamiliesService from "../../../services/vehicle-families.service";
 import FormSuccess from "../ui/FormSuccess";
-import { NumericFormat } from "react-number-format"; // Import NumericFormat
-import { AlertCircle } from "lucide-react"; // For error icons
+import { NumericFormat } from "react-number-format";
+import { AlertCircle } from "lucide-react";
 import FormError from "./FormError";
+import { Tooltip } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 
 interface LineFormData {
   name: string;
@@ -27,11 +27,20 @@ interface LineFormProps {
   onSubmit?: (data: LineFormData) => void;
 }
 
-export default function LineForm({ initialValues, mode = "create", onSubmit }: LineFormProps) {
+export default function LineForm({
+  initialValues,
+  mode = "create",
+  onSubmit,
+}: LineFormProps) {
   const [formSuccess, setFormSuccess] = useState(false);
-  const [selectedModelValue, setSelectedModelValue] = useState<string | null>(initialValues?.model_id || null);
+  const [selectedModelValue, setSelectedModelValue] = useState<string | null>(
+    initialValues?.model_id || null
+  );
   const [apiError, setApiError] = useState<string | null>(null); // State for API errors
-  const [formError, setFormError] = useState<{ message: string; errors?: string[] } | null>(null);
+  const [formError, setFormError] = useState<{
+    message: string;
+    errors?: string[];
+  } | null>(null);
 
   const {
     register,
@@ -91,7 +100,9 @@ export default function LineForm({ initialValues, mode = "create", onSubmit }: L
         message = error.response.data.message || message;
         if (error.response.data.errors) {
           if (typeof error.response.data.errors === "object") {
-            errors = Object.values(error.response.data.errors).map((e: any) => e.message || String(e));
+            errors = Object.values(error.response.data.errors).map(
+              (e: any) => e.message || String(e)
+            );
           } else if (Array.isArray(error.response.data.errors)) {
             errors = error.response.data.errors;
           }
@@ -127,12 +138,7 @@ export default function LineForm({ initialValues, mode = "create", onSubmit }: L
   // Limpia el error si el usuario cambia los campos relevantes
   useEffect(() => {
     setFormError(null);
-  }, [
-    errors.name,
-    errors.model_id,
-    errors.features,
-    errors.price
-  ]);
+  }, [errors.name, errors.model_id, errors.features, errors.price]);
 
   return (
     <motion.div
@@ -142,57 +148,92 @@ export default function LineForm({ initialValues, mode = "create", onSubmit }: L
     >
       {formSuccess ? (
         <FormSuccess
-          title={mode === "edit" ? "¡Línea actualizada con éxito!" : "Línea creada con éxito!"}
-          description={mode === "edit" ? "La línea ha sido actualizada correctamente" : "La Línea ha sido registrada correctamente"}
+          title={
+            mode === "edit"
+              ? "¡Línea actualizada con éxito!"
+              : "Línea creada con éxito!"
+          }
+          description={
+            mode === "edit"
+              ? "La línea ha sido actualizada correctamente"
+              : "La Línea ha sido registrada correctamente"
+          }
         />
       ) : (
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           {/* Mostrar error de API */}
           {apiError && (
-             <div className="bg-destructive/15 border border-destructive text-destructive px-3 py-2 rounded-md flex items-center text-sm">
-                <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
-                {apiError}
+            <div className="bg-destructive/15 border border-destructive text-destructive px-3 py-2 rounded-md flex items-center text-sm">
+              <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+              {apiError}
             </div>
           )}
 
           {formError && (
-            <FormError title="Error" description={formError.message} errors={formError.errors} />
+            <FormError
+              title="Error"
+              description={formError.message}
+              errors={formError.errors}
+            />
           )}
 
           <div className="space-y-2">
-            <label htmlFor="model_id_field" className="block text-sm font-medium mb-1">Modelo *</label>
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="model_id_field"
+                className="block text-sm font-medium mb-1"
+              >
+                Modelo <span className="text-red-500">*</span>
+              </label>
+              <Tooltip title="Selecciona el modelo al que pertenece esta línea. Este campo es obligatorio.">
+                <InfoCircleOutlined className="text-blue-500 cursor-help" />
+              </Tooltip>
+            </div>
             <Controller
-                name="model_id"
-                control={control}
-                rules={{ required: "Debe seleccionar un modelo" }} // Add validation rule
-                render={({ field }) => (
-                     <ModelSelector
-                        // Pass necessary props from field if ModelSelector expects them directly
-                        // Or handle it via the onChange wrapper below
-                        inputId="model_id_field"
-                        value={selectedModelValue} // Keep local state for the selector component itself
-                        onChange={(selectedOption) => {
-                           field.onChange(selectedOption?.value || ""); // Update RHF state with the ID
-                           handleModelChange(selectedOption || null); // Update local state for selector display
-                        }}
-                        // Add aria-invalid for accessibility
-                         aria-invalid={errors.model_id ? "true" : "false"}
-                      />
-                )}
-             />
+              name="model_id"
+              control={control}
+              rules={{ required: "Debe seleccionar un modelo" }} 
+              render={({ field }) => (
+                <ModelSelector
+                  inputId="model_id_field"
+                  value={selectedModelValue}
+                  onChange={(selectedOption) => {
+                    field.onChange(selectedOption?.value || "");
+                    handleModelChange(selectedOption || null);
+                  }}
+                  aria-invalid={errors.model_id ? "true" : "false"}
+                />
+              )}
+            />
             {errors.model_id && (
-              <p className="text-sm text-red-500 mt-1">{errors.model_id.message}</p>
+              <p className="text-sm text-red-500 mt-1">
+                {errors.model_id.message}
+              </p>
             )}
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="line_name" className="block text-sm font-medium mb-1">Nombre de la Línea *</label>
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="line_name"
+                className="block text-sm font-medium mb-1"
+              >
+                Nombre de la Línea <span className="text-red-500">*</span>
+              </label>
+              <Tooltip title="Nombre de la línea de vehículo. Es obligatorio y debe ser único dentro del modelo.">
+                <InfoCircleOutlined className="text-blue-500 cursor-help" />
+              </Tooltip>
+            </div>
             <Input
               id="line_name"
               placeholder="Ingrese el nombre de la línea (Ej: XLE, SE)"
-              {...register("name", { required: "El nombre de la línea es requerido" })}
+              {...register("name", {
+                required: "El nombre de la línea es requerido",
+              })}
               aria-invalid={errors.name ? "true" : "false"}
-              className={errors.name ? "border-destructive focus:border-destructive" : ""}
+              className={
+                errors.name ? "border-destructive focus:border-destructive" : ""
+              }
             />
             {errors.name && (
               <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>
@@ -200,47 +241,71 @@ export default function LineForm({ initialValues, mode = "create", onSubmit }: L
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="features" className="block text-sm font-medium mb-1">Características (Opcional)</label>
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="features"
+                className="block text-sm font-medium mb-1"
+              >
+                Características (Opcional)
+              </label>
+              <Tooltip title="Descripción opcional de las características principales de esta línea (ej. equipamiento, acabados).">
+                <InfoCircleOutlined className="text-blue-500 cursor-help" />
+              </Tooltip>
+            </div>
             <Input
               id="features"
               placeholder="Ej: Techo solar, Asientos de cuero, GPS"
               {...register("features")} // Es opcional, no necesita validación `required`
             />
-             {/* No suele haber errores para campos opcionales a menos que haya otras validaciones */}
+            {/* No suele haber errores para campos opcionales a menos que haya otras validaciones */}
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="price" className="block text-sm font-medium mb-1">Precio Base (Opcional)</label>
-             <Controller
-                name="price"
-                control={control}
-                 rules={{ // Opcional: Validaciones adicionales
-                    min: { value: 0, message: "El precio no puede ser negativo" },
-                 }}
-                render={({ field: { onChange, onBlur, value, name } }) => (
-                    <NumericFormat
-                        id="price"
-                        customInput={Input} // Usa tu componente Input de ShadCN/UI
-                        placeholder="Ingrese el precio base"
-                        thousandSeparator="." // Separador de miles
-                        decimalSeparator=","   // Separador decimal
-                        prefix="$ "            // Prefijo de moneda
-                        allowNegative={false}   // No permitir negativos
-                        decimalScale={0}        // Sin decimales (ajusta si necesitas)
-                        value={value ?? ""}       // Usa el valor del field, o "" si es null/undefined
-                        onValueChange={(values) => {
-                             // Actualiza react-hook-form con el valor numérico o null
-                            onChange(values.floatValue ?? null);
-                        }}
-                        onBlur={onBlur} // Propaga onBlur para validación de RHF
-                        name={name}     // Propaga name
-                        aria-invalid={errors.price ? "true" : "false"}
-                        className={errors.price ? "border-destructive focus:border-destructive" : ""}
-                    />
-                )}
-             />
+            <div className="flex items-center gap-2">
+              <label htmlFor="price" className="block text-sm font-medium mb-1">
+                Precio Base (Opcional)
+              </label>
+              <Tooltip title="Precio de referencia de esta línea. Debe ser un número mayor o igual a cero. Puedes dejarlo vacío si no aplica.">
+                <InfoCircleOutlined className="text-blue-500 cursor-help" />
+              </Tooltip>
+            </div>
+            <Controller
+              name="price"
+              control={control}
+              rules={{
+                // Opcional: Validaciones adicionales
+                min: { value: 0, message: "El precio no puede ser negativo" },
+              }}
+              render={({ field: { onChange, onBlur, value, name } }) => (
+                <NumericFormat
+                  id="price"
+                  customInput={Input} // Usa tu componente Input de ShadCN/UI
+                  placeholder="Ingrese el precio base"
+                  thousandSeparator="." // Separador de miles
+                  decimalSeparator="," // Separador decimal
+                  prefix="$ " // Prefijo de moneda
+                  allowNegative={false} // No permitir negativos
+                  decimalScale={0} // Sin decimales (ajusta si necesitas)
+                  value={value ?? ""} // Usa el valor del field, o "" si es null/undefined
+                  onValueChange={(values) => {
+                    // Actualiza react-hook-form con el valor numérico o null
+                    onChange(values.floatValue ?? null);
+                  }}
+                  onBlur={onBlur} // Propaga onBlur para validación de RHF
+                  name={name} // Propaga name
+                  aria-invalid={errors.price ? "true" : "false"}
+                  className={
+                    errors.price
+                      ? "border-destructive focus:border-destructive"
+                      : ""
+                  }
+                />
+              )}
+            />
             {errors.price && (
-              <p className="text-sm text-red-500 mt-1">{errors.price.message}</p>
+              <p className="text-sm text-red-500 mt-1">
+                {errors.price.message}
+              </p>
             )}
           </div>
 
@@ -253,10 +318,14 @@ export default function LineForm({ initialValues, mode = "create", onSubmit }: L
               {isSubmitting ? (
                 <>
                   <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                  {mode === "edit" ? "Actualizando Línea..." : "Creando Línea..."}
+                  {mode === "edit"
+                    ? "Actualizando Línea..."
+                    : "Creando Línea..."}
                 </>
+              ) : mode === "edit" ? (
+                "Actualizar Línea"
               ) : (
-                mode === "edit" ? "Actualizar Línea" : "Crear Línea"
+                "Crear Línea"
               )}
             </Button>
           </motion.div>

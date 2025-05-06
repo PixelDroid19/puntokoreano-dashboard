@@ -8,23 +8,40 @@ import VehicleFamiliesService from "../../../services/vehicle-families.service";
 import { useState, useEffect } from "react";
 import FormSuccess from "../ui/FormSuccess";
 import FormError from "./FormError";
+import { Tooltip } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 
 interface FamilyFormData {
   name: string;
-  active: boolean;
   brand_id: string;
+  active: boolean;
 }
 
 interface FamilyFormProps {
-  initialValues?: Partial<FamilyFormData>;
+  initialValues?: Partial<{
+    name: string;
+    active: boolean;
+    brand_id: string;
+    brand: {
+      value: string;
+      label: string;
+    };
+  }>;
   mode?: "create" | "edit";
   onSubmit?: (data: FamilyFormData) => void;
 }
 
-export default function FamilyForm({ initialValues, mode = "create", onSubmit }: FamilyFormProps) {
+export default function FamilyForm({
+  initialValues,
+  mode = "create",
+  onSubmit,
+}: FamilyFormProps) {
   const [formSuccess, setFormSuccess] = useState(false);
-  const [selectedBrandValue, setSelectedBrandValue] = useState<string | null>(initialValues?.brand_id || null);
-  const [formError, setFormError] = useState<{ message: string; errors?: string[] } | null>(null);
+  const [selectedBrandValue, setSelectedBrandValue] = useState<object | null>();
+  const [formError, setFormError] = useState<{
+    message: string;
+    errors?: string[];
+  } | null>(null);
   const {
     register,
     handleSubmit,
@@ -35,7 +52,7 @@ export default function FamilyForm({ initialValues, mode = "create", onSubmit }:
     defaultValues: {
       name: initialValues?.name || "",
       active: initialValues?.active ?? true,
-      brand_id: initialValues?.brand_id || "",
+      brand_id: initialValues?.brand.value || "",
     },
   });
 
@@ -44,9 +61,12 @@ export default function FamilyForm({ initialValues, mode = "create", onSubmit }:
   useEffect(() => {
     if (mode === "edit" && initialValues) {
       setValue("name", initialValues.name || "");
-      setValue("brand_id", initialValues.brand_id || "");
+      setValue("brand_id", initialValues.brand.value || "");
       setValue("active", initialValues.active ?? true);
-      setSelectedBrandValue(initialValues.brand_id || null);
+      setSelectedBrandValue({
+        value: initialValues?.brand?.value || "",
+        label: initialValues?.brand?.label || "",
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialValues, mode]);
@@ -75,7 +95,9 @@ export default function FamilyForm({ initialValues, mode = "create", onSubmit }:
         message = error.response.data.message || message;
         if (error.response.data.errors) {
           if (typeof error.response.data.errors === "object") {
-            errors = Object.values(error.response.data.errors).map((e: any) => e.message || String(e));
+            errors = Object.values(error.response.data.errors).map(
+              (e: any) => e.message || String(e)
+            );
           } else if (Array.isArray(error.response.data.errors)) {
             errors = error.response.data.errors;
           }
@@ -91,10 +113,6 @@ export default function FamilyForm({ initialValues, mode = "create", onSubmit }:
     setFormError(null);
     const payload = {
       ...data,
-      brand_id:
-        typeof data.brand_id === "object" && data.brand_id !== null
-          ? data.brand_id.value
-          : data.brand_id,
     };
     if (onSubmit) {
       onSubmit(payload);
@@ -103,17 +121,21 @@ export default function FamilyForm({ initialValues, mode = "create", onSubmit }:
     }
   };
 
-  const handleBrandChange = (value: string | null) => {
+  const handleBrandChange = (
+    value: {
+      value: string;
+      label: string;
+      country: string;
+      brandData: any;
+    } | null
+  ) => {
     setSelectedBrandValue(value);
-    setValue("brand_id", value || "");
+    setValue("brand_id", value.value || "");
   };
 
   useEffect(() => {
     setFormError(null);
-  }, [
-    errors.name,
-    errors.brand_id
-  ]);
+  }, [errors.name, errors.brand_id]);
 
   return (
     <motion.div
@@ -123,16 +145,33 @@ export default function FamilyForm({ initialValues, mode = "create", onSubmit }:
     >
       {formSuccess ? (
         <FormSuccess
-          title={mode === "edit" ? "¡Familia actualizada con éxito!" : "Familia creada con éxito!"}
-          description={mode === "edit" ? "La familia ha sido actualizada correctamente" : "La Familia ha sido registrada correctamente"}
+          title={
+            mode === "edit"
+              ? "¡Familia actualizada con éxito!"
+              : "Familia creada con éxito!"
+          }
+          description={
+            mode === "edit"
+              ? "La familia ha sido actualizada correctamente"
+              : "La Familia ha sido registrada correctamente"
+          }
         />
       ) : (
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           {formError && (
-            <FormError title="Error" description={formError.message} errors={formError.errors} />
+            <FormError
+              title="Error"
+              description={formError.message}
+              errors={formError.errors}
+            />
           )}
           <div className="space-y-2">
-            <label className="block text-sm font-medium mb-1">Marca</label>
+            <div className="flex items-center gap-2">
+              <label className="block text-sm font-medium mb-1">Marca</label>
+              <Tooltip title="Marca a la que pertenece esta familia.">
+                <InfoCircleOutlined className="text-blue-500 cursor-help" />
+              </Tooltip>
+            </div>
             <BrandSelector
               onChange={handleBrandChange}
               value={selectedBrandValue}
@@ -143,9 +182,14 @@ export default function FamilyForm({ initialValues, mode = "create", onSubmit }:
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium mb-1">
-              Nombre de la Familia
-            </label>
+            <div className="flex items-center gap-2">
+              <label className="block text-sm font-medium mb-1">
+                Nombre de la Familia
+              </label>
+              <Tooltip title="Nombre de la familia del vehículo. Este campo es obligatorio y no puede repetirse si ya existe una familia activa con el mismo nombre.">
+                <InfoCircleOutlined className="text-blue-500 cursor-help" />
+              </Tooltip>
+            </div>
             <Input
               placeholder="Ingrese el nombre de la familia"
               {...register("name", {
@@ -166,10 +210,14 @@ export default function FamilyForm({ initialValues, mode = "create", onSubmit }:
               {isSubmitting ? (
                 <>
                   <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                  {mode === "edit" ? "Actualizando Familia..." : "Creando Familia..."}
+                  {mode === "edit"
+                    ? "Actualizando Familia..."
+                    : "Creando Familia..."}
                 </>
+              ) : mode === "edit" ? (
+                "Actualizar Familia"
               ) : (
-                mode === "edit" ? "Actualizar Familia" : "Crear Familia"
+                "Crear Familia"
               )}
             </Button>
           </motion.div>

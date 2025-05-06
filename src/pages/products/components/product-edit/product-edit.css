@@ -1,0 +1,279 @@
+/* Estilos para el componente ProductEdit inspirados en el diseño de PayPen */
+
+/* Variables de color */
+:root {
+  --primary-color: #1e293b;
+  --primary-light: #334155;
+  --accent-color: #3b82f6;
+  --accent-hover: #2563eb;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --danger-color: #ef4444;
+  --background-color: #f8fafc;
+  --card-background: #ffffff;
+  --border-color: #e2e8f0;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Estilos generales del modal */
+.product-edit-modal .ant-modal-content {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+}
+
+.product-edit-modal .ant-modal-header {
+  background-color: var(--card-background);
+  border-bottom: 1px solid var(--border-color);
+  padding: 16px 24px;
+}
+
+.product-edit-modal .ant-modal-body {
+  background-color: var(--background-color);
+  padding: 20px;
+}
+
+.product-edit-modal .ant-modal-footer {
+  border-top: 1px solid var(--border-color);
+  padding: 16px 24px;
+  background-color: var(--card-background);
+}
+
+/* Mejoras para los tabs */
+.product-tabs .ant-tabs-nav {
+  margin-bottom: 16px;
+  background-color: var(--card-background);
+  border-radius: 10px;
+  padding: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.product-tabs .ant-tabs-tab {
+  border-radius: 8px !important;
+  margin: 0 4px !important;
+  transition: all 0.3s ease;
+  padding: 8px 16px !important;
+}
+
+.product-tabs .ant-tabs-tab:hover {
+  color: var(--accent-color);
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+.product-tabs .ant-tabs-tab-active {
+  background-color: white !important;
+  border-color: var(--border-color) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.product-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--accent-color) !important;
+  font-weight: 500;
+}
+
+/* Mejoras para los cards */
+.product-edit-form .ant-card {
+  border-radius: 10px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-color);
+  margin-bottom: 16px;
+}
+
+.product-edit-form .ant-card-head {
+  background-color: var(--card-background);
+  border-bottom: 1px solid var(--border-color);
+  padding: 12px 16px;
+}
+
+.product-edit-form .ant-card-head-title {
+  font-weight: 500;
+  font-size: 16px;
+}
+
+.product-edit-form .ant-card-body {
+  background-color: var(--card-background);
+  padding: 16px;
+}
+
+/* Mejoras para los inputs */
+.product-edit-form .ant-input,
+.product-edit-form .ant-input-number,
+.product-edit-form .ant-select-selector,
+.product-edit-form .ant-input-affix-wrapper {
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  border-color: var(--border-color);
+}
+
+.product-edit-form .ant-input:hover,
+.product-edit-form .ant-input-number:hover,
+.product-edit-form .ant-select-selector:hover,
+.product-edit-form .ant-input-affix-wrapper:hover {
+  border-color: var(--accent-color);
+}
+
+.product-edit-form .ant-input:focus,
+.product-edit-form .ant-input-number:focus,
+.product-edit-form .ant-select-selector:focus,
+.product-edit-form .ant-input-affix-wrapper:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.product-edit-form .ant-form-item-label > label {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Mejoras para el área de carga de imágenes */
+.upload-area {
+  border-radius: 10px;
+  border: 2px dashed var(--border-color);
+  background-color: var(--background-color);
+  transition: all 0.3s ease;
+}
+
+.upload-area:hover {
+  border-color: var(--accent-color);
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+/* Mejoras para los botones */
+.product-edit-modal .ant-btn {
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  height: 40px;
+  font-weight: 500;
+}
+
+.product-edit-modal .ant-btn-primary {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.product-edit-modal .ant-btn-primary:hover {
+  background-color: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.product-edit-modal .ant-btn-default {
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+}
+
+.product-edit-modal .ant-btn-default:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+/* Mejoras para el editor de texto enriquecido */
+.product-edit-form .quill {
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.product-edit-form .ql-toolbar {
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  border-color: var(--border-color);
+  background-color: var(--background-color);
+}
+
+.product-edit-form .ql-container {
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+  border-color: var(--border-color);
+  background-color: var(--card-background);
+}
+
+/* Mejoras para los switches */
+.product-edit-form .ant-switch {
+  transition: all 0.3s ease;
+}
+
+.product-edit-form .ant-switch-checked {
+  background-color: var(--accent-color);
+}
+
+/* Mejoras para las alertas */
+.product-edit-form .ant-alert {
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+/* Mejoras para las etiquetas */
+.product-edit-form .ant-tag {
+  transition: all 0.3s ease;
+  border-radius: 6px;
+  padding: 4px 8px;
+  margin-right: 8px;
+  margin-bottom: 8px;
+}
+
+/* Estilos para las badges */
+.product-edit-form .site-badge-count-4 {
+  margin-right: 8px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  background-color: var(--accent-color);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+/* Estilos para los dividers */
+.product-edit-form .ant-divider {
+  border-color: var(--border-color);
+}
+
+/* Estilos para los bloques de información */
+.product-edit-form .bg-gray-50 {
+  background-color: var(--background-color);
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.product-edit-form .bg-gray-50:hover {
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+/* Estilos para las tarjetas de imágenes */
+.product-edit-form .group {
+  transition: all 0.3s ease;
+}
+
+.product-edit-form .group:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Estilos para los campos modificados */
+.product-edit-form .bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+  border-radius: 10px;
+}
+
+.product-edit-form .text-blue-700 {
+  color: var(--accent-color);
+}

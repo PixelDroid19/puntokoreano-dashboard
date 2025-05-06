@@ -193,7 +193,7 @@ const FamilyView: React.FC = () => {
     },
     {
       title: "Marca",
-      dataIndex: ["brand_id", "name"],
+      dataIndex: ["brand", "name"],
       key: "brand",
       sorter: true,
     },
@@ -215,9 +215,9 @@ const FamilyView: React.FC = () => {
           <Tooltip title="Editar Familia">
             <Button
               icon={<EditOutlined style={{ fontSize: 16 }} />}
-              onClick={() => {}}
+              onClick={() => handleEdit(record)}
               aria-label={`Editar ${record.name}`}
-              disabled
+              //disabled
             />
           </Tooltip>
           <Tooltip title="Eliminar Familia">
@@ -314,13 +314,16 @@ const FamilyView: React.FC = () => {
         onCancel={handleModalCancel}
         footer={null}
         destroyOnClose
-      >
+      >{console.log("editingFamily", editingFamily)}
         {editingFamily ? (
           <FamilyForm
             mode="edit"
             initialValues={{
               name: editingFamily.name,
-              brand_id: editingFamily.brand_id?._id,
+              brand: {
+                value: editingFamily?.brand?._id? editingFamily.brand._id : null,
+                label: editingFamily?.brand?._id? editingFamily.brand.name : null,
+              },
               active: editingFamily.active,
             }}
             onSubmit={(values) => {

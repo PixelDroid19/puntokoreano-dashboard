@@ -8,6 +8,8 @@ import { useState, useEffect } from "react";
 import VehicleFamiliesService from "../../../services/vehicle-families.service";
 import FormSuccess from "../ui/FormSuccess";
 import FormError from "./FormError";
+import { Tooltip } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 
 interface ModelFormData {
   name: string;
@@ -23,10 +25,19 @@ interface ModelFormProps {
   onSubmit?: (data: ModelFormData) => void;
 }
 
-export default function ModelForm({ initialValues, mode = "create", onSubmit }: ModelFormProps) {
+export default function ModelForm({
+  initialValues,
+  mode = "create",
+  onSubmit,
+}: ModelFormProps) {
   const [formSuccess, setFormSuccess] = useState(false);
-  const [selectedFamilyValue, setSelectedFamilyValue] = useState<any>(initialValues?.family_id_obj || null);
-  const [formError, setFormError] = useState<{ message: string; errors?: string[] } | null>(null);
+  const [selectedFamilyValue, setSelectedFamilyValue] = useState<any>(
+    initialValues?.family_id_obj || null
+  );
+  const [formError, setFormError] = useState<{
+    message: string;
+    errors?: string[];
+  } | null>(null);
 
   const {
     register,
@@ -53,7 +64,11 @@ export default function ModelForm({ initialValues, mode = "create", onSubmit }: 
       setValue("family_id", initialValues.family_id || "");
       setValue("active", initialValues.active ?? true);
       if (initialValues.family_id && initialValues.family_label) {
-        setSelectedFamilyValue({ value: initialValues.family_id, label: initialValues.family_label, brand_id: initialValues.brand_id });
+        setSelectedFamilyValue({
+          value: initialValues.family_id,
+          label: initialValues.family_label,
+          brand_id: initialValues.brand_id,
+        });
       } else {
         setSelectedFamilyValue(null);
       }
@@ -62,8 +77,7 @@ export default function ModelForm({ initialValues, mode = "create", onSubmit }: 
   }, [initialValues, mode]);
 
   const { mutate, isPending: isSubmitting } = useMutation({
-    mutationFn: (data: ModelFormData) =>
-      VehicleFamiliesService.addModel(data),
+    mutationFn: (data: ModelFormData) => VehicleFamiliesService.addModel(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["models"] });
       queryClient.invalidateQueries({ queryKey: ["dashboardAnalytics"] });
@@ -81,7 +95,9 @@ export default function ModelForm({ initialValues, mode = "create", onSubmit }: 
         message = error.response.data.message || message;
         if (error.response.data.errors) {
           if (typeof error.response.data.errors === "object") {
-            errors = Object.values(error.response.data.errors).map((e: any) => e.message || String(e));
+            errors = Object.values(error.response.data.errors).map(
+              (e: any) => e.message || String(e)
+            );
           } else if (Array.isArray(error.response.data.errors)) {
             errors = error.response.data.errors;
           }
@@ -95,7 +111,7 @@ export default function ModelForm({ initialValues, mode = "create", onSubmit }: 
 
   const handleFormSubmit = (data: ModelFormData) => {
     setFormError(null);
-    console.log('handleFormSubmit',data);
+    console.log("handleFormSubmit", data);
     if (onSubmit) {
       onSubmit(data);
     } else {
@@ -104,19 +120,13 @@ export default function ModelForm({ initialValues, mode = "create", onSubmit }: 
   };
 
   const handleFamilyChange = (option: any) => {
-   
     setSelectedFamilyValue(option);
     setValue("family_id", option?.value || "");
   };
 
   useEffect(() => {
     setFormError(null);
-  }, [
-    errors.name,
-    errors.family_id,
-    errors.year,
-    errors.engine_type
-  ]);
+  }, [errors.name, errors.family_id, errors.year, errors.engine_type]);
 
   return (
     <motion.div
@@ -126,17 +136,34 @@ export default function ModelForm({ initialValues, mode = "create", onSubmit }: 
     >
       {formSuccess ? (
         <FormSuccess
-          title={mode === "edit" ? "¡Modelo actualizado con éxito!" : "Modelo creado con éxito!"}
-          description={mode === "edit" ? "El modelo ha sido actualizado correctamente" : "El Modelo ha sido registrado correctamente"}
+          title={
+            mode === "edit"
+              ? "¡Modelo actualizado con éxito!"
+              : "Modelo creado con éxito!"
+          }
+          description={
+            mode === "edit"
+              ? "El modelo ha sido actualizado correctamente"
+              : "El Modelo ha sido registrado correctamente"
+          }
         />
       ) : (
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           {formError && (
-            <FormError title="Error" description={formError.message} errors={formError.errors} />
+            <FormError
+              title="Error"
+              description={formError.message}
+              errors={formError.errors}
+            />
           )}
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium mb-1">Familia</label>
+            <div className="flex items-center gap-2">
+              <label className="block text-sm font-medium mb-1">Familia</label>
+              <Tooltip title="Selecciona la familia del vehículo. Este campo es obligatorio y debe tener un formato válido.">
+                <InfoCircleOutlined className="text-blue-500 cursor-help" />
+              </Tooltip>
+            </div>
             <FamilySelector
               onChange={handleFamilyChange}
               value={selectedFamilyValue}
@@ -144,7 +171,18 @@ export default function ModelForm({ initialValues, mode = "create", onSubmit }: 
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium mb-1">Año <span className="text-red-500">*</span></label>
+            <div className="flex items-center gap-2">
+              <label className="block text-sm font-medium mb-1">
+                Año <span className="text-red-500">*</span>
+              </label>
+              <Tooltip
+                title={`Año del modelo. Debe ser un número entre 1900 y ${
+                  new Date().getFullYear() + 1
+                }.`}
+              >
+                <InfoCircleOutlined className="text-blue-500 cursor-help" />
+              </Tooltip>
+            </div>
             <Input
               placeholder="Ingrese el año del modelo (Ej: 2023)"
               {...register("year", {
@@ -156,8 +194,14 @@ export default function ModelForm({ initialValues, mode = "create", onSubmit }: 
                 validate: (value) => {
                   const yearNum = Number(value);
                   const currentYear = new Date().getFullYear();
-                  if (isNaN(yearNum) || yearNum < 1900 || yearNum > currentYear + 1) {
-                    return `Ingrese un año válido entre 1900 y ${currentYear + 1}.`;
+                  if (
+                    isNaN(yearNum) ||
+                    yearNum < 1900 ||
+                    yearNum > currentYear + 1
+                  ) {
+                    return `Ingrese un año válido entre 1900 y ${
+                      currentYear + 1
+                    }.`;
                   }
                   return true;
                 },
@@ -169,9 +213,14 @@ export default function ModelForm({ initialValues, mode = "create", onSubmit }: 
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium mb-1">
-              Tipo de Motor
-            </label>
+            <div className="flex items-center gap-2">
+              <label className="block text-sm font-medium mb-1">
+                Tipo de Motor
+              </label>
+              <Tooltip title="Tipo de motor del modelo (ej. Diesel, Eléctrico). Es obligatorio y no puede estar vacío.">
+                <InfoCircleOutlined className="text-blue-500 cursor-help" />
+              </Tooltip>
+            </div>
             <Input
               placeholder="Ingrese el tipo de motor (Ej: 1.8L Híbrido)"
               {...register("engine_type", {
@@ -186,10 +235,16 @@ export default function ModelForm({ initialValues, mode = "create", onSubmit }: 
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium mb-1">
-              Nombre del Modelo
-            </label>
+            <div className="flex items-center gap-2">
+              <label className="block text-sm font-medium mb-1">
+                Nombre del Modelo
+              </label>
+              <Tooltip title="Nombre opcional del modelo. Puede dejarse en blanco.">
+                <InfoCircleOutlined className="text-blue-500 cursor-help" />
+              </Tooltip>
+            </div>
             <Input
+              {...register("name")}
               required={false}
               placeholder="Ingrese el nombre del modelo (Ej: Corolla)"
             />
@@ -207,10 +262,14 @@ export default function ModelForm({ initialValues, mode = "create", onSubmit }: 
               {isSubmitting ? (
                 <>
                   <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                  {mode === "edit" ? "Actualizando Modelo..." : "Creando Modelo..."}
+                  {mode === "edit"
+                    ? "Actualizando Modelo..."
+                    : "Creando Modelo..."}
                 </>
+              ) : mode === "edit" ? (
+                "Actualizar Modelo"
               ) : (
-                mode === "edit" ? "Actualizar Modelo" : "Crear Modelo"
+                "Crear Modelo"
               )}
             </Button>
           </motion.div>

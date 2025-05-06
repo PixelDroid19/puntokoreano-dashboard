@@ -7,6 +7,8 @@ import VehicleFamiliesService from "../../../services/vehicle-families.service";
 import { useState, useEffect } from "react";
 import FormSuccess from "../ui/FormSuccess";
 import FormError from "./FormError";
+import { Tooltip } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 
 interface FuelFormData {
   name: string;
@@ -111,9 +113,14 @@ export default function FuelForm({ initialValues, mode = "create", onSubmit }: F
             <FormError title="Error" description={formError.message} errors={formError.errors} />
           )}
           <div className="space-y-2">
-            <label className="block text-sm font-medium mb-1">
-              Tipo de Combustible
-            </label>
+            <div className="flex items-center gap-2">
+              <label className="block text-sm font-medium mb-1">
+                Tipo de Combustible
+              </label>
+              <Tooltip title="Tipo de combustible que utiliza el vehículo. Este campo es obligatorio y debe ser único (ej. Gasolina, Diésel).">
+                <InfoCircleOutlined className="text-blue-500 cursor-help" />
+              </Tooltip>
+            </div>
             <Input
               placeholder="Ingrese el tipo de combustible (ej. Gasolina, Diésel)"
               {...register("name", {
@@ -126,7 +133,12 @@ export default function FuelForm({ initialValues, mode = "create", onSubmit }: F
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium mb-1">Octanaje</label>
+            <div className="flex items-center gap-2">
+              <label className="block text-sm font-medium mb-1">Octanaje</label>
+              <Tooltip title="Número de octanos del combustible. Debe ser un valor positivo (ej. 87, 89, 92, 95).">
+                <InfoCircleOutlined className="text-blue-500 cursor-help" />
+              </Tooltip>
+            </div>
             <Input
               type="number"
               placeholder="Ingrese el octanaje"

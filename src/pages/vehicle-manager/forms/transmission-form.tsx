@@ -7,6 +7,8 @@ import VehicleFamiliesService from "../../../services/vehicle-families.service";
 import FormSuccess from "../ui/FormSuccess";
 import { useState, useEffect } from "react";
 import FormError from "./FormError";
+import { Tooltip } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 
 interface TransmissionFormData {
   name: string;
@@ -107,9 +109,14 @@ export default function TransmissionForm({ initialValues, mode = "create", onSub
             <FormError title="Error" description={formError.message} errors={formError.errors} />
           )}
           <div className="space-y-2">
-            <label className="block text-sm font-medium mb-1">
-              Nombre de la Transmisión
-            </label>
+            <div className="flex items-center gap-2">
+              <label className="block text-sm font-medium mb-1">
+                Nombre de la Transmisión
+              </label>
+              <Tooltip title="Nombre del tipo de transmisión. Este campo es obligatorio y debe ser único (ej. Automática, Manual).">
+                <InfoCircleOutlined className="text-blue-500 cursor-help" />
+              </Tooltip>
+            </div>
             <Input
               placeholder="Ingrese el nombre de la transmisión (ej. Automática, Manual)"
               {...register("name", {
@@ -122,9 +129,14 @@ export default function TransmissionForm({ initialValues, mode = "create", onSub
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium mb-1">
-              Número de Velocidades (Opcional)
-            </label>
+            <div className="flex items-center gap-2">
+              <label className="block text-sm font-medium mb-1">
+                Número de Velocidades (Opcional)
+              </label>
+              <Tooltip title="Número de velocidades o marchas de la transmisión. Debe ser un número positivo mayor a 0.">
+                <InfoCircleOutlined className="text-blue-500 cursor-help" />
+              </Tooltip>
+            </div>
             <Input
               type="number"
               placeholder="Ingrese el número de velocidades (opcional)"

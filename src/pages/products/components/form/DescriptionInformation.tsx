@@ -148,9 +148,13 @@ const DescriptionInformation: React.FC<DescriptionInformationProps> = ({
                   rules={[
                     {
                       required: true,
+                      message:
+                        "La descripción corta es obligatoria",
+                    },
+                    {
                       max: 150,
                       message:
-                        "La descripción corta es obligatoria y no debe exceder 150 caracteres",
+                        "La descripción corta no debe exceder 150 caracteres",
                     },
                   ]}
                 >
@@ -179,7 +183,7 @@ const DescriptionInformation: React.FC<DescriptionInformationProps> = ({
                     <Form.Item
                       name="long_description"
                       label="Descripción Detallada"
-                      rules={[{ required: true }]}
+                      rules={[{ required: true, message: "La descripción detallada es obligatoria" }]}
                     >
                       <ReactQuill
                         theme="snow"

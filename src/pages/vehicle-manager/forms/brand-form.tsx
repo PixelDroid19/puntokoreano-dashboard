@@ -8,6 +8,8 @@ import { useState, useEffect } from "react";
 import VehicleFamiliesService from "../../../services/vehicle-families.service";
 import FormSuccess from "../ui/FormSuccess";
 import FormError from "./FormError";
+import { Tooltip } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 
 interface BrandFormData {
   name: string;
@@ -116,9 +118,14 @@ export default function BrandForm({ initialValues, mode = "create", onSubmit }: 
             <FormError title="Error" description={formError.message} errors={formError.errors} />
           )}
           <div className="space-y-2">
-            <label className="block text-sm font-medium mb-1">
-              Nombre de la Marca
-            </label>
+            <div className="flex items-center gap-2">
+              <label className="block text-sm font-medium mb-1">
+                Nombre de la Marca <span className="text-red-500">*</span>
+              </label>
+              <Tooltip title="Nombre de la marca. Este campo es obligatorio y debe ser único entre las marcas activas.">
+                <InfoCircleOutlined className="text-blue-500 cursor-help" />
+              </Tooltip>
+            </div>
             <div className="relative">
               <Input
                 placeholder="Ingrese el nombre de la marca"
@@ -151,9 +158,14 @@ export default function BrandForm({ initialValues, mode = "create", onSubmit }: 
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium mb-1">
-              País de Origen
-            </label>
+            <div className="flex items-center gap-2">
+              <label className="block text-sm font-medium mb-1">
+                País de Origen
+              </label>
+              <Tooltip title="País de origen de la marca (opcional). Puedes dejar este campo vacío si no aplica.">
+                <InfoCircleOutlined className="text-blue-500 cursor-help" />
+              </Tooltip>
+            </div>
             <Input
               placeholder="Ingrese el país de origen"
               {...register("country")}

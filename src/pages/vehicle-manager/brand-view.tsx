@@ -141,9 +141,8 @@ const BrandView: React.FC = () => {
           <Tooltip title="Editar Marca">
             <Button
               icon={<EditOutlined style={{ fontSize: 16 }} />}
-              onClick={() => {}}
+              onClick={() => handleEdit(record)}
               aria-label={`Editar ${record.name}`}
-              disabled
             />
           </Tooltip>
           <Tooltip title="Eliminar Marca">

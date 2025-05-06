@@ -11,6 +11,8 @@ import TransmissionSelector from "../selectors/transmission-selector";
 import FuelSelector from "../selectors/fuel-selector";
 import VehicleFamiliesService from "../../../services/vehicle-families.service";
 import FormError from "./FormError";
+import { Tooltip } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 
 interface VehicleFormData {
   line_id: string;
@@ -170,9 +172,14 @@ export default function VehicleMainForm() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">
-                Línea <span className="text-red-500">*</span>
-              </label>
+              <div className="flex items-center gap-2">
+                <label className="block text-sm font-medium mb-1 text-gray-700">
+                  Línea <span className="text-red-500">*</span>
+                </label>
+                <Tooltip title="Selecciona la línea del vehículo. Este campo es obligatorio y determina el modelo específico del vehículo.">
+                  <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                </Tooltip>
+              </div>
               <LineSelector onChange={handleLineChange} value={selectedLineValue} />
               {errors.line_id && (
                 <motion.p
@@ -185,9 +192,14 @@ export default function VehicleMainForm() {
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">
-                Transmisión <span className="text-red-500">*</span>
-              </label>
+              <div className="flex items-center gap-2">
+                <label className="block text-sm font-medium mb-1 text-gray-700">
+                  Transmisión <span className="text-red-500">*</span>
+                </label>
+                <Tooltip title="Selecciona el tipo de transmisión del vehículo. Este campo es obligatorio.">
+                  <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                </Tooltip>
+              </div>
               <TransmissionSelector onChange={handleTransmissionChange} value={selectedTransmissionValue} />
               {errors.transmission_id && (
                 <motion.p
@@ -200,9 +212,14 @@ export default function VehicleMainForm() {
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">
-                Combustible <span className="text-red-500">*</span>
-              </label>
+              <div className="flex items-center gap-2">
+                <label className="block text-sm font-medium mb-1 text-gray-700">
+                  Combustible <span className="text-red-500">*</span>
+                </label>
+                <Tooltip title="Selecciona el tipo de combustible que utiliza el vehículo. Este campo es obligatorio.">
+                  <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                </Tooltip>
+              </div>
               <FuelSelector onChange={handleFuelChange} value={selectedFuelValue} />
               {errors.fuel_id && (
                 <motion.p
@@ -217,9 +234,14 @@ export default function VehicleMainForm() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label htmlFor="color" className="block text-sm font-medium mb-1 text-gray-700">
-                Color (Opcional)
-              </label>
+              <div className="flex items-center gap-2">
+                <label htmlFor="color" className="block text-sm font-medium mb-1 text-gray-700">
+                  Color (Opcional)
+                </label>
+                <Tooltip title="Especifica el color del vehículo. Este campo es opcional y puede dejarse en blanco.">
+                  <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                </Tooltip>
+              </div>
               <div className="relative">
                 <Input
                   id="color"
@@ -242,9 +264,14 @@ export default function VehicleMainForm() {
               )}
             </div>
             <div>
-              <label htmlFor="precio" className="block text-sm font-medium mb-1 text-gray-700">
-                Precio (Opcional)
-              </label>
+              <div className="flex items-center gap-2">
+                <label htmlFor="precio" className="block text-sm font-medium mb-1 text-gray-700">
+                  Precio (Opcional)
+                </label>
+                <Tooltip title="Ingresa el precio del vehículo. Este campo es opcional y debe ser un número positivo.">
+                  <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                </Tooltip>
+              </div>
               <div className="relative">
                 <Controller
                   name="precio"
@@ -287,9 +314,14 @@ export default function VehicleMainForm() {
               )}
             </div>
             <div>
-              <label htmlFor="tag_id" className="block text-sm font-medium mb-1 text-gray-700">
-                Identificador Único <span className="text-red-500">*</span>
-              </label>
+              <div className="flex items-center gap-2">
+                <label htmlFor="tag_id" className="block text-sm font-medium mb-1 text-gray-700">
+                  Identificador Único <span className="text-red-500">*</span>
+                </label>
+                <Tooltip title="Ingresa un identificador único para el vehículo. Solo se permiten letras, números, guiones y guiones bajos. Este campo es obligatorio y no puede repetirse.">
+                  <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                </Tooltip>
+              </div>
               <div className="relative">
                 <Input
                   id="tag_id"
@@ -319,9 +351,14 @@ export default function VehicleMainForm() {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700">
-              Estado
-            </label>
+            <div className="flex items-center gap-2">
+              <label className="block text-sm font-medium mb-1 text-gray-700">
+                Estado
+              </label>
+              <Tooltip title="Indica si el vehículo está activo o inactivo en el sistema.">
+                <InfoCircleOutlined className="text-blue-500 cursor-help" />
+              </Tooltip>
+            </div>
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
@@ -357,4 +394,4 @@ export default function VehicleMainForm() {
       )}
     </>
   );
-} 
+}

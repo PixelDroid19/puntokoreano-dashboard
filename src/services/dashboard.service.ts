@@ -22,7 +22,6 @@ export class DashboardService {
 
   // Métodos existentes de productos
   static async createProduct(product: ProductCreateInput): Promise<ProductResponse> {
-
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.CREATE;
       const response = await axiosInstance({
@@ -36,7 +35,13 @@ export class DashboardService {
     } catch (error) {
       if (axios.isAxiosError(error)) {
         if (error.response?.status === 409) {
-          throw new Error(error.response?.data?.message ||  'El producto ya existe');
+          throw new Error(error.response?.data?.message || 'El producto ya existe');
+        }
+        if (error.response?.status === 400 && error.response?.data?.errors?.length > 0) {
+          const errorMessages = error.response.data.errors
+            .map((err: { field: string; message: string }) => err.message)
+            .join('\n');
+          throw new Error(errorMessages);
         }
         throw new Error(error.response?.data?.message || 'Error al crear el producto');
       }

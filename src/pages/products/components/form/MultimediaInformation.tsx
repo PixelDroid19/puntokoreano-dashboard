@@ -173,6 +173,7 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
 
   // Specific handler for removing files from the individual upload list
   const handleRemoveFile = (fileToRemove: UploadFile) => {
+    console.log("Removing file:", fileToRemove, fileList);  
     const newFileList = fileList.filter(
       (file) => file.uid !== fileToRemove.uid
     );
@@ -406,11 +407,15 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
                       name="images"
                       rules={[
                         {
-                          required: !useGroupImages,
-                          message: "Por favor suba al menos una imagen",
+                          validator: async (_, value) => {
+                            if (!useGroupImages && (!fileList || fileList.length === 0)) {
+                              return Promise.reject('Por favor suba al menos una imagen');
+                            }
+                            return Promise.resolve();
+                          },
                         },
                       ]}
-                      valuePropName="fileList" // Important for Dragger with Form.Item
+                      valuePropName="fileList"
                       getValueFromEvent={(e) => {
                         if (Array.isArray(e)) {
                           return e;
@@ -431,7 +436,7 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
                           fileList={fileList}
                           beforeUpload={(file) => {
                             // Prevent default upload behavior, handle manually via handleUpload prop
-                            handleUpload({ file });
+                            handleUpload(file);
                             return false; // Must return false to prevent default upload
                           }}
                           onPreview={handleImagePreview} // Use the modal preview handler

@@ -87,10 +87,11 @@ const VehicleSelector: React.FC<VehicleSelectorProps> = ({
 
       const newOptions: VehiclesOption[] = vehicles.map(
         (vehicle: ApiVehicle) => {
+          console.log("Procesando vehículo:", vehicle);
           const brandName =
-            vehicle.line_id?.model_id?.brand_id?.name || "Marca Desc.";
-          const modelName = vehicle.line_id?.model_id?.name || "Modelo Desc.";
-          const lineName = vehicle.line_id?.name || "Línea Desc.";
+            vehicle.line_id?.model_id?.family_id?.brand_id?.name || "";
+          const modelName = vehicle.line_id?.model_id?.name || "";
+          const lineName = vehicle.line_id?.name || "";
           const vehicleDisplayName = `${brandName} ${modelName} ${lineName}`;
 
           return {

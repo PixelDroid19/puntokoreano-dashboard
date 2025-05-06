@@ -31,6 +31,7 @@ export interface Product {
   shipping: string[];
   videoUrl?: string;
   warranty?: string;
+  search_terms?: string[];
   seo?: {
     title: string;
     description: string;

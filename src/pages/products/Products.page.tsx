@@ -20,11 +20,10 @@ import {
   EditOutlined,
   EyeOutlined,
   PercentageOutlined,
-  FilterOutlined,
   ReloadOutlined,
 } from "@ant-design/icons";
 import HeaderTable from "./components/HeaderTable.component";
-import { ProductEdit } from "./components/ProductEdit";
+import { ProductEdit } from "./components/product-edit";
 import { useMediaQuery } from "react-responsive";
 import ProductsService from "../../services/products.service";
 import type { Product } from "../../api/types";
@@ -60,7 +59,7 @@ const Products = () => {
 
   const deleteProduct = useMutation({
     mutationFn: (id: string) => ProductsService.deleteProduct(id),
-    onSuccess: (response) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
 
       message.success("Producto eliminado correctamente");
@@ -93,7 +92,7 @@ const Products = () => {
       queryClient.invalidateQueries({ queryKey: ["products"], exact: false });
       message.success("Estado actualizado correctamente");
     },
-    onError: (error: any, variables) => {
+    onError: (error: any) => {
       message.error(
         error?.response?.data?.message ||
           error.message ||

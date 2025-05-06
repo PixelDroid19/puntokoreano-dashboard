@@ -7,7 +7,6 @@ import {
   BrandSelectorProps as UpdatedBrandSelectorProps,
 } from "../../../types/selectors.types";
 
-// --- API Type Definitions ---
 interface ApiBrand {
   _id: string;
   name: string;
@@ -93,9 +92,9 @@ const BrandSelector: React.FC<UpdatedBrandSelectorProps> = ({
 
       const newOptions: BrandOption[] = brands.map((brand: ApiBrand) => ({
         value: brand._id,
-        label: brand.name, // Keep label simple or enhance as needed
-        country: brand.country, // Include extra data if useful
-        brandData: brand, // Store the full data object
+        label: brand.name, 
+        country: brand.country, 
+        brandData: brand, 
       }));
 
       const hasMore = pagination.currentPage < pagination.totalPages;

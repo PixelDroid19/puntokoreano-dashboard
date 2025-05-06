@@ -1,4 +1,5 @@
 import {
+  Badge, // <-- Importar Badge
   Button,
   Flex,
   Form,
@@ -74,10 +75,10 @@ const AddProduct = () => {
   const [previewOpen, setPreviewOpen] = React.useState<boolean>(false);
   const [previewImage, setPreviewImage] = React.useState("");
   const [fileList, setFileList] = React.useState<UploadFile[]>([]);
-  // const [videoUrl, setVideoUrl] = React.useState<string>(""); // Comentar si videoUrl es parte del form
   const [useGroupImages, setUseGroupImages] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("1");
   const [subgroups, setSubgroups] = React.useState<Array<{ name: string }>>([]);
+  const [tabErrors, setTabErrors] = React.useState<Record<string, number>>({}); // <-- Estado para errores por pestaña
 
   const { data: groups } = useQuery({
     queryKey: ["groups"],
@@ -107,7 +108,6 @@ const AddProduct = () => {
         description: error.message || "Ocurrió un error inesperado.",
         placement: "bottomRight",
       });
-      console.error("Error creating product:", error);
     },
   });
 
@@ -128,7 +128,7 @@ const AddProduct = () => {
         name: file.name,
         status: "done",
         url: response.data.data.url,
-        // thumbUrl: response.data.data.thumb.url, // Opcional: si la API provee miniatura
+         thumbUrl: response.data.data.thumb.url, // Opcional: si la API provee miniatura
       };
 
       setFileList((prevFileList) => [...prevFileList, newFile]);
@@ -177,8 +177,78 @@ const AddProduct = () => {
     setPreviewOpen(true);
   };
 
+  // Función para mapear campos a pestañas
+  const getTabForKey = (fieldName: string): string | null => {
+    const fieldNameStr = Array.isArray(fieldName) ? fieldName.join('.') : fieldName;
+    // Tab 1: Información Básica
+    if (["name", "code", "price", "stock", "reservedStock", "group", "subgroup", "active", "discount", "compatible_vehicles"].includes(fieldNameStr)) return "1";
+    // Tab 2: Multimedia
+    if (["useGroupImages", "imageGroup", "images", "videoUrl"].includes(fieldNameStr)) return "2";
+    // Tab 3: Descripción y Detalles
+    if (["short_description", "long_description", "shipping", "warranty", "variants"].includes(fieldNameStr)) return "3";
+    // Tab 4: SEO
+    if (["seoTitle", "seoDescription", "seoKeywords"].includes(fieldNameStr)) return "4";
+    return null;
+  };
+
+  // Manejador para cuando la validación falla
+  const onFinishFailed = (errorInfo: any) => {
+    console.log("Validation Failed:", errorInfo);
+    const errors: Record<string, number> = {"1": 0, "2": 0, "3": 0, "4": 0};
+    let firstErrorTab: string | null = null;
+
+    errorInfo.errorFields.forEach((errorField: any) => {
+      // errorField.name es un array, unimos para facilitar la comparación
+      const fieldName = Array.isArray(errorField.name) ? errorField.name.join('.') : String(errorField.name);
+      const tabKey = getTabForKey(fieldName);
+
+      // Lógica específica para la pestaña Multimedia (Tab 2)
+      if (fieldName === 'images' || fieldName === 'imageGroup') {
+        errors['2'] = (errors['2'] || 0) + 1;
+        if (!firstErrorTab) firstErrorTab = '2';
+      } else if (tabKey) {
+        // Lógica general para otras pestañas
+        errors[tabKey] = (errors[tabKey] || 0) + 1;
+        if (!firstErrorTab) {
+          firstErrorTab = tabKey;
+        }
+      }
+    });
+
+    // Comprobación adicional para Multimedia si no hay errores directos pero falta la selección
+    // Es importante obtener los valores actuales del formulario para esta lógica
+    const currentValues = form.getFieldsValue();
+    const imagesField = currentValues.images; // Puede ser UploadFile[] o undefined
+    const imageGroupField = currentValues.imageGroup; // Puede ser string o undefined
+
+    if (!currentValues.useGroupImages && (!imagesField || (Array.isArray(imagesField) && imagesField.length === 0))) {
+        if (errors['2'] === 0) { // Solo si no se contó ya un error directo
+            errors['2'] = 1;
+            if (!firstErrorTab) firstErrorTab = '2';
+        }
+    }
+    if (currentValues.useGroupImages && !imageGroupField) {
+        if (errors['2'] === 0) { // Solo si no se contó ya un error directo
+            errors['2'] = 1;
+            if (!firstErrorTab) firstErrorTab = '2';
+        }
+    }
+
+    setTabErrors(errors);
+    if (firstErrorTab) {
+      setActiveTab(firstErrorTab); // Cambiar a la primera pestaña con errores
+    }
+
+    notification.error({
+      message: "Errores de Validación",
+      description: "Por favor, corrija los errores marcados en las pestañas antes de guardar.",
+      placement: "bottomRight",
+    });
+  };
+
   const onFinish = (values: any) => {
     console.log("Valores recibidos del formulario:", values);
+    setTabErrors({}); // Limpiar errores si la validación es exitosa
 
     const rawCompatibleVehicles = values.compatible_vehicles;
     let compatibleVehicleIds: string[] = [];
@@ -214,6 +284,9 @@ const AddProduct = () => {
             description:
               "Los descuentos temporales requieren fechas de inicio y fin.",
           });
+          // Marcar error en la pestaña correspondiente si es necesario
+          setTabErrors(prev => ({ ...prev, "1": (prev["1"] || 0) + 1 }));
+          setActiveTab("1");
           return;
         }
       }
@@ -228,6 +301,9 @@ const AddProduct = () => {
           description:
             "El porcentaje de descuento debe ser un número entre 0.01 y 100.",
         });
+         // Marcar error en la pestaña correspondiente si es necesario
+         setTabErrors(prev => ({ ...prev, "1": (prev["1"] || 0) + 1 }));
+         setActiveTab("1");
         return;
       }
     }
@@ -235,6 +311,27 @@ const AddProduct = () => {
     const finalImages = useGroupImages
       ? []
       : fileList.map((file) => file.url).filter((url): url is string => !!url); // Obtener URLs válidas
+
+    // Validar si se requieren imágenes y no se han proporcionado
+    if (!useGroupImages && finalImages.length === 0) {
+        notification.error({
+            message: "Error de Validación",
+            description: "Debe subir al menos una imagen manualmente si no usa un grupo.",
+        });
+        setTabErrors(prev => ({ ...prev, "2": (prev["2"] || 0) + 1 }));
+        setActiveTab("2");
+        return;
+    }
+    // Validar si se seleccionó un grupo cuando la opción está activa
+    if (useGroupImages && !values.imageGroup) {
+        notification.error({
+            message: "Error de Validación",
+            description: "Debe seleccionar un grupo de imágenes si la opción está activada.",
+        });
+        setTabErrors(prev => ({ ...prev, "2": (prev["2"] || 0) + 1 }));
+        setActiveTab("2");
+        return;
+    }
 
     const productData: ProductCreateInput = {
       name: values.name,
@@ -292,6 +389,19 @@ const AddProduct = () => {
     }
   };
 
+  // Función para renderizar el título de la pestaña con el badge de error
+  const renderTabTitle = (title: string, tabKey: string) => {
+    const errorCount = tabErrors[tabKey];
+    return (
+      <span>
+        {title}
+        {errorCount > 0 && (
+          <Badge count={errorCount} size="small" status="error" style={{ marginLeft: 8 }} />
+        )}
+      </span>
+    );
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <Flex align="center" gap={10} className="mb-6">
@@ -310,14 +420,19 @@ const AddProduct = () => {
         form={form}
         layout="vertical"
         onFinish={onFinish}
+        onFinishFailed={onFinishFailed} // <-- Añadir manejador de fallo
         className="space-y-8"
         initialValues={{
           active: true,
           discount: { isActive: false, type: "permanent", percentage: 0 },
+          // Asegurarse de que los campos de imagen/grupo estén inicializados si es necesario
+          useGroupImages: false,
+          imageGroup: undefined,
+          images: [],
         }}
       >
         <Tabs activeKey={activeTab} onChange={setActiveTab} type="card">
-          <TabPane tab="1. Información Básica" key="1">
+          <TabPane tab={renderTabTitle("1. Información Básica", "1")} key="1">
             <BasicInformation
               form={form}
               groups={groups}
@@ -326,36 +441,37 @@ const AddProduct = () => {
             />
           </TabPane>
 
-          <TabPane tab="2. Multimedia" key="2">
+          <TabPane tab={renderTabTitle("2. Multimedia", "2")} key="2">
             <MultimediaInformation
-              form={form}
+              form={form} // Pasar form si es necesario dentro del componente
               useGroupImages={useGroupImages}
               setUseGroupImages={setUseGroupImages}
               fileList={fileList}
-              setFileList={setFileList}
-              handleUpload={handleUpload}
-              handlePreview={handlePreview}
+              setFileList={setFileList} // Pasar setFileList
+              handleUpload={handleUpload} // Pasar handleUpload
+              handlePreview={handlePreview} // Pasar handlePreview
               imageGroups={imageGroups}
+              // videoUrl y setVideoUrl ya no se manejan aquí directamente, sino a través del form
             />
           </TabPane>
 
-          <TabPane tab="3. Descripción y Detalles" key="3">
+          <TabPane tab={renderTabTitle("3. Descripción y Detalles", "3")} key="3">
             <DescriptionInformation
-              form={form}
+              form={form} // Pasar form si es necesario
               quillModules={quillModules}
               quillFormats={quillFormats}
             />
           </TabPane>
 
-          <TabPane tab="4. SEO" key="4">
-            <SeoInformation form={form} />
+          <TabPane tab={renderTabTitle("4. SEO", "4")} key="4">
+            <SeoInformation form={form} /> // Pasar form si es necesario
           </TabPane>
         </Tabs>
 
         <div className="flex justify-end mt-8 pt-5 border-t border-gray-200">
           <Button
             type="primary"
-            htmlType="submit"
+            htmlType="submit" // htmlType="submit" activará onFinish/onFinishFailed
             size="large"
             loading={saveProduct.isPending}
           >
