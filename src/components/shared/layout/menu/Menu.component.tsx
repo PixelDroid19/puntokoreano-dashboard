@@ -70,10 +70,15 @@ const menuItems = [
   },
   {
     key: "/vehicle-families",
-    label: <Link to={"/vehicle-families"}>Familias de Vehículos</Link>,
+    label: 'Familias de Vehículos',
     icon: <CarryOutOutlined />,
     title: "Familias de Vehículos",
     children: [
+      {
+        key: "/vehicle-families",
+        label: <Link to={"/vehicle-families"}>Creación de vehículos</Link>,
+        title: "Creación de vehículos",
+      },
       {
         key: "/brand-management",
         label: <Link to="/brand-management">Marcas</Link>,
