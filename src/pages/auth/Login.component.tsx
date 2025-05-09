@@ -1,11 +1,10 @@
-// src/pages/auth/Login.component.tsx
-
 import { useEffect } from "react";
-import { Button, Form, Input } from "antd";
+import { Button, Form, Input, Card, Typography, Divider, Checkbox } from "antd";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { LockOutlined, MailOutlined, UserOutlined } from "@ant-design/icons";
 
 import { loginSuccess } from "../../redux/reducers/userSlice";
 import AuthService from "../../services/auth.service";
@@ -17,6 +16,8 @@ import { FORM_PROPS } from "../../enums/contants.ant";
 import Logo from "/src/assets/logo-2.png";
 import "/src/pages/auth/Login.styles.css";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "../../api";
+
+const { Title, Text, Link } = Typography;
 
 // Definir interfaces para los datos esperados
 interface UserData {
@@ -125,58 +126,111 @@ const Login = () => {
   }, []);
 
   return (
-    <div className="container w-full md:max-w-[500px]">
-      <img className="logo" src={Logo} alt="logo" />
-      <Form
-        name={COMMON_ATTRIBUTES.LOGIN}
-        onFinish={onFinish}
-        layout={FORM_PROPS.VERTICAL}
-        className="form"
-        autoComplete="off"
-      >
-        <Form.Item
-          name={COMMON_ATTRIBUTES.EMAIL}
-          label={LOGIN_TEXT.EMAIL}
-          rules={[
-            {
-              required: true,
-              message: LOGIN_TEXT.REQUIRED_EMAIL,
-              type: COMMON_ATTRIBUTES.EMAIL,
-            },
-          ]}
-        >
-          <Input placeholder="email@example.com" autoComplete="username" />
-        </Form.Item>
+    <div className="flex min-h-screen items-center justify-center  p-4">
+      <div className="w-full max-w-md">
+        <div className="mb-8 flex justify-center">
+          <div className="rounded-full bg-white p-2 shadow-md">
+            <img
+              src={Logo}
+              alt="Logo"
+              className="h-16 w-16 object-contain"
+            />
+          </div>
+        </div>
 
-        <Form.Item
-          name={COMMON_ATTRIBUTES.PASSWORD}
-          label={LOGIN_TEXT.PASSWORD}
-          rules={[{ required: true, message: LOGIN_TEXT.REQUIRED_PASSWORD }]}
-        >
-          <Input.Password
-            placeholder="********"
-            autoComplete="current-password"
-          />
-        </Form.Item>
+        <Card className="overflow-hidden shadow-lg">
+          <div className="p-2">
+            <Title level={3} className="text-center mb-1">{LOGIN_TEXT.LOGIN || "Iniciar Sesión"}</Title>
+            <Text className="text-center block mb-6 text-gray-500">
+              Ingresa tus credenciales para acceder al sistema
+            </Text>
 
-        <Form.Item>
-          <a className="login-form-forgot" href="/forgot-password">
-            {LOGIN_TEXT.FORGOT_PASSWORD}
-          </a>
-        </Form.Item>
+            <Form
+              name={COMMON_ATTRIBUTES.LOGIN}
+              onFinish={onFinish}
+              layout={FORM_PROPS.VERTICAL}
+              autoComplete="off"
+              requiredMark={false}
+            >
+              <Form.Item
+                name={COMMON_ATTRIBUTES.EMAIL}
+                label={LOGIN_TEXT.EMAIL}
+                rules={[
+                  {
+                    required: true,
+                    message: LOGIN_TEXT.REQUIRED_EMAIL,
+                    type: COMMON_ATTRIBUTES.EMAIL
+                  }
+                ]}
+              >
+                <Input
+                  prefix={<MailOutlined className="text-gray-400" />}
+                  placeholder="nombre@ejemplo.com"
+                  size="large"
+                  autoComplete="username"
+                />
+              </Form.Item>
 
-        <Form.Item>
-          <Button
-            type="primary"
-            htmlType="submit"
-            className="login-form-button"
-            disabled={mutation.isPending}
-            loading={mutation.isPending}
-          >
-            {LOGIN_TEXT.LOGIN}
-          </Button>
-        </Form.Item>
-      </Form>
+              <Form.Item
+                name={COMMON_ATTRIBUTES.PASSWORD}
+                label={
+                  <div className="flex justify-between w-full">
+                    <span>{LOGIN_TEXT.PASSWORD}</span>
+                    <Link href="/forgot-password" className="text-[#9b87f5]">
+                      {LOGIN_TEXT.FORGOT_PASSWORD}
+                    </Link>
+                  </div>
+                }
+                rules={[{ required: true, message: LOGIN_TEXT.REQUIRED_PASSWORD }]}
+              >
+                <Input.Password
+                  prefix={<LockOutlined className="text-gray-400" />}
+                  placeholder="••••••••"
+                  size="large"
+                  autoComplete="current-password"
+                />
+              </Form.Item>
+
+              <Form.Item name="remember" valuePropName="checked">
+                <Checkbox>Recordarme</Checkbox>
+              </Form.Item>
+
+              <Form.Item>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  loading={mutation.isPending}
+                  block
+                  size="large"
+               
+                  disabled={mutation.isPending}
+                >
+                  {mutation.isPending ? "Iniciando sesión..." : LOGIN_TEXT.LOGIN || "Iniciar Sesión"}
+                </Button>
+              </Form.Item>
+            </Form>
+
+       {/*      <Divider plain>
+              <Text className="text-gray-400 text-xs">O continúa con</Text>
+            </Divider>
+
+            <div className="flex space-x-4 mb-4">
+              <Button block icon={<img src="https://cdn.jsdelivr.net/npm/simple-icons@v7/icons/google.svg" alt="Google" className="h-5 w-5 mr-2" />}>
+                Google
+              </Button>
+              <Button block icon={<img src="https://cdn.jsdelivr.net/npm/simple-icons@v7/icons/microsoft.svg" alt="Microsoft" className="h-5 w-5 mr-2" />}>
+                Microsoft
+              </Button>
+            </div> */}
+
+            <div className="text-center mt-4">
+              <Text className="text-gray-500">
+                ¿No tienes una cuenta? <Link href="/register" className="text-[#9b87f5] font-medium hover:underline">Regístrate</Link>
+              </Text>
+            </div>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 };
