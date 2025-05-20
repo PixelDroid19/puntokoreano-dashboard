@@ -1,0 +1,23 @@
+/* Estilos personalizados para el componente Upload de categorías */
+
+.category-image-uploader .ant-upload {
+  width: 100% !important;
+  height: auto !important;
+}
+
+.category-image-uploader .ant-upload-select {
+  width: 100% !important;
+  margin: 0 !important;
+}
+
+/* Ajusta el contenedor del uploader para ocupar todo el ancho disponible */
+.ant-upload-wrapper.category-image-uploader {
+  width: 100%;
+  display: block;
+}
+
+/* Asegura que el botón de upload ocupe todo el ancho */
+.category-image-uploader .ant-upload-select-picture-card {
+  width: 100% !important;
+  margin-right: 0 !important;
+} 

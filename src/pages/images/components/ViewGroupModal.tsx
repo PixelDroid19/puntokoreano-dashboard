@@ -2,27 +2,32 @@
 import React from "react";
 import {
   Modal,
-  Image,
+  Typography,
+  Divider,
+  Card,
+  Row,
+  Col,
   Space,
   Button,
-  Popconfirm,
   Tooltip,
-  Tag,
-  notification,
+  Empty,
+  Popconfirm,
 } from "antd";
 import {
-  DeleteOutlined,
+  PictureOutlined,
   CopyOutlined,
-  TagsOutlined,
+  DeleteOutlined,
   EyeOutlined,
 } from "@ant-design/icons";
-import { ImageGroup, ImageData } from "../../../services/files.service";
+import { ImageGroup } from "../../../services/files.service";
+
+const { Title, Text } = Typography;
 
 interface ViewGroupModalProps {
   group: ImageGroup | null;
   visible: boolean;
   onClose: () => void;
-  onDeleteImage: (imageId: string) => Promise<void>;
+  onDeleteImage: (type: 'thumb' | 'carousel', index?: number) => void;
   onCopyUrl: (url: string) => void;
 }
 
@@ -33,177 +38,189 @@ const ViewGroupModal: React.FC<ViewGroupModalProps> = ({
   onDeleteImage,
   onCopyUrl,
 }) => {
-  // Estado para manejar la carga al eliminar
-  const [deletingImageId, setDeletingImageId] = React.useState<string | null>(
-    null
-  );
-  // Estado para previsualización de imagen
-  const [previewImage, setPreviewImage] = React.useState<string | null>(null);
+  if (!group) return null;
 
-  // Manejar eliminación de imagen con estado de carga
-  const handleDeleteImage = async (imageId: string) => {
-    try {
-      setDeletingImageId(imageId);
-      await onDeleteImage(imageId);
-      notification.success({
-        message: "Imagen eliminada correctamente",
-      });
-    } catch (error: any) {
-      notification.error({
-        message: "Error al eliminar la imagen",
-        description: error.message,
-      });
-    } finally {
-      setDeletingImageId(null);
-    }
-  };
-
-  // Manejar copia de URL con feedback
-  const handleCopyUrl = async (url: string) => {
-    try {
-      await onCopyUrl(url);
-      notification.success({
-        message: "URL copiada al portapapeles",
-        placement: "topRight",
-      });
-    } catch (error) {
-      notification.error({
-        message: "Error al copiar la URL",
-        placement: "topRight",
-      });
-    }
-  };
+  const hasThumb = !!group.thumb;
+  const hasCarousel = !!group.carousel && group.carousel.length > 0;
 
   return (
-    <>
-      <Modal
-        title={
-          <div className="flex items-center gap-2">
-            <TagsOutlined className="text-blue-500" />
-            <span>Grupo: {group?.identifier}</span>
-          </div>
-        }
-        open={visible}
-        onCancel={onClose}
-        footer={null}
-        width={800}
-        className="image-group-modal"
-      >
-        {group && (
-          <div className="space-y-6">
-            {/* Identificador del grupo */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-bold mb-2 flex items-center gap-2">
-                <TagsOutlined />
-                Identificador del grupo
-              </h3>
-              <code className="block bg-white p-3 rounded border text-sm">
-                {group.identifier}
-              </code>
-              <small className="text-gray-500 mt-2 block">
-                Usa este identificador para asociar estas imágenes en otros
-                lugares
-              </small>
-            </div>
+    <Modal
+      title={
+        <Space>
+          <PictureOutlined /> Detalles del Grupo: <Text code>{group.identifier}</Text>
+        </Space>
+      }
+      open={visible}
+      onCancel={onClose}
+      footer={null}
+      width={900}
+      destroyOnClose
+      bodyStyle={{ 
+        maxHeight: "75vh", 
+        overflowY: "auto",
+        padding: 20,
+      }}
+    >
+      <Row gutter={[16, 16]}>
+        <Col span={24}>
+          <Card>
+            <Space direction="vertical" style={{ width: "100%" }}>
+              <Title level={5}>Información General</Title>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Text strong>Identificador:</Text> {group.identifier}
+                </Col>
+                <Col span={12}>
+                  <Text strong>Descripción:</Text>{" "}
+                  {group.description || <Text type="secondary">Sin descripción</Text>}
+                </Col>
+              </Row>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Text strong>Creado:</Text>{" "}
+                  {new Date(group.createdAt).toLocaleString()}
+                </Col>
+                <Col span={12}>
+                  <Text strong>Última actualización:</Text>{" "}
+                  {new Date(group.updatedAt).toLocaleString()}
+                </Col>
+              </Row>
+            </Space>
+          </Card>
+        </Col>
 
-            {/* Información del grupo */}
-            <div className="bg-white p-4 rounded-lg border">
-              <h3 className="font-bold mb-3">Información</h3>
-              <p className="text-gray-600 mb-3">
-                {group.description || "Sin descripción"}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {group.tags?.map((tag) => (
-                  <Tag
-                    key={tag}
-                    icon={<TagsOutlined />}
-                    className="flex items-center gap-1"
-                  >
-                    {tag}
-                  </Tag>
-                ))}
-              </div>
-            </div>
-
-            {/* Grid de imágenes */}
-            <div>
-              <h3 className="font-bold mb-3 flex items-center gap-2">
-                <EyeOutlined />
-                Imágenes ({group.images.length})
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {group.images.map((image: ImageData) => (
-                  <div
-                    key={image._id}
-                    className="relative group rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    <Image
-                      src={image.url}
-                      alt={image.name}
-                      className="w-full h-48 object-cover cursor-pointer"
-                      onClick={() => setPreviewImage(image.url)}
-                      preview={false}
+        {/* Imagen de miniatura */}
+        {hasThumb && (
+          <Col span={24}>
+            <Card
+              title={
+                <Space>
+                  <PictureOutlined /> Imagen Principal (Miniatura)
+                </Space>
+              }
+              extra={
+                <Space>
+                  <Tooltip title="Copiar URL">
+                    <Button
+                      type="text"
+                      icon={<CopyOutlined />}
+                      onClick={() => onCopyUrl(group.thumb!)}
                     />
-                    <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 p-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                      <Space className="w-full justify-center">
-                        <Tooltip title="Previsualizar">
-                          <Button
-                            icon={<EyeOutlined />}
-                            size="small"
-                            onClick={() => setPreviewImage(image.url)}
+                  </Tooltip>
+                  <Popconfirm
+                    title="¿Eliminar esta imagen?"
+                    description="Esta acción no se puede deshacer"
+                    okText="Sí, eliminar"
+                    cancelText="Cancelar"
+                    onConfirm={() => onDeleteImage('thumb')}
+                    okButtonProps={{ danger: true }}
+                  >
+                    <Button danger type="text" icon={<DeleteOutlined />} />
+                  </Popconfirm>
+                </Space>
+              }
+            >
+              <div className="flex justify-center">
+                <div style={{ maxWidth: "300px" }}>
+                  <img
+                    src={group.thumb}
+                    alt="Thumbnail"
+                    style={{
+                      width: "100%",
+                      borderRadius: "8px",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                    }}
+                  />
+                  <div className="mt-2 text-center">
+                    <Text type="secondary">Miniatura 300x300</Text>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </Col>
+        )}
+
+        {/* Imágenes de carrusel */}
+        <Col span={24}>
+          <Card
+            title={
+              <Space>
+                <PictureOutlined /> Imágenes de Carrusel ({hasCarousel ? group.carousel!.length : 0})
+              </Space>
+            }
+          >
+            {hasCarousel ? (
+              <Row gutter={[16, 16]}>
+                {group.carousel!.map((imageUrl, idx) => (
+                  <Col key={idx} xs={24} sm={12} md={8} lg={6}>
+                    <Card
+                      hoverable
+                      cover={
+                        <div
+                          style={{
+                            height: "150px",
+                            overflow: "hidden",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <img
+                            alt={`Imagen ${idx + 1}`}
+                            src={imageUrl}
+                            style={{
+                              maxWidth: "100%",
+                              maxHeight: "100%",
+                              objectFit: "cover",
+                            }}
                           />
-                        </Tooltip>
+                        </div>
+                      }
+                      actions={[
+                        <Tooltip title="Ver imagen completa">
+                          <Button
+                            type="text"
+                            icon={<EyeOutlined />}
+                            onClick={() => window.open(imageUrl, "_blank")}
+                          />
+                        </Tooltip>,
                         <Tooltip title="Copiar URL">
                           <Button
+                            type="text"
                             icon={<CopyOutlined />}
-                            size="small"
-                            onClick={() => handleCopyUrl(image.url)}
+                            onClick={() => onCopyUrl(imageUrl)}
                           />
-                        </Tooltip>
+                        </Tooltip>,
                         <Popconfirm
                           title="¿Eliminar esta imagen?"
                           description="Esta acción no se puede deshacer"
-                          onConfirm={() => handleDeleteImage(image._id)}
                           okText="Sí, eliminar"
-                          cancelText="No"
+                          cancelText="Cancelar"
+                          onConfirm={() => onDeleteImage('carousel', idx)}
+                          okButtonProps={{ danger: true }}
                         >
-                          <Tooltip title="Eliminar">
-                            <Button
-                              icon={<DeleteOutlined />}
-                              size="small"
-                              danger
-                              loading={deletingImageId === image._id}
-                            />
-                          </Tooltip>
-                        </Popconfirm>
-                      </Space>
-                    </div>
-                  </div>
+                          <Button danger type="text" icon={<DeleteOutlined />} />
+                        </Popconfirm>,
+                      ]}
+                    >
+                      <Card.Meta
+                        title={`Imagen ${idx + 1}`}
+                        description={<Text type="secondary">Carrusel 600x600</Text>}
+                      />
+                    </Card>
+                  </Col>
                 ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* Modal de previsualización de imagen */}
-      <div style={{ display: "none" }}>
-        <Image.PreviewGroup
-          preview={{
-            visible: !!previewImage,
-            onVisibleChange: (visible) => {
-              if (!visible) setPreviewImage(null);
-            },
-            current:
-              group?.images.findIndex((img) => img.url === previewImage) || 0,
-          }}
-        >
-          {group?.images.map((image) => (
-            <Image key={image._id} src={image.url} />
-          ))}
-        </Image.PreviewGroup>
-      </div>
-    </>
+              </Row>
+            ) : (
+              <Empty
+                image={<PictureOutlined style={{ fontSize: 64 }} />}
+                description="No hay imágenes de carrusel"
+              />
+            )}
+          </Card>
+        </Col>
+      </Row>
+    </Modal>
   );
 };
 

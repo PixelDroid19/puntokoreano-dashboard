@@ -95,6 +95,25 @@ class OrdersService {
   }
 
   /**
+   * Envía la factura por correo electrónico
+   * @param orderId ID de la orden
+   * @param emailAddress Dirección de correo electrónico opcional
+   * @returns Promise con el resultado de la operación
+   */
+  static async sendInvoiceByEmail(orderId: string, emailAddress?: string) {
+    try {
+      const response = await axiosInstance.post(
+        `/invoices/orders/${orderId}/send-email`,
+        emailAddress ? { emailAddress } : {}
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error sending invoice by email:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Método auxiliar para iniciar la descarga del archivo
    * @param blob Blob del PDF
    * @param fileName Nombre del archivo

@@ -19,8 +19,10 @@ export interface ImageGroup {
   _id: string;
   identifier: string;
   description?: string;
-  images: ImageData[];
-  tags?: string[];
+  thumb?: string;
+  thumb_delete_url?: string;
+  carousel?: string[];
+  carousel_delete_urls?: string[];
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -47,12 +49,66 @@ class FilesService {
     identifier: string;
     description?: string;
     tags?: string[];
+    thumb?: File;
+    thumbUrl?: string;
+    carousel?: File[];
+    carouselUrls?: string[];
+    images?: File[];
+    imageUrls?: string[];
   }) {
     try {
+      // Crear FormData para soportar archivos
+      const formData = new FormData();
+      
+      // Datos básicos
+      formData.append('identifier', data.identifier);
+      if (data.description) {
+        formData.append('description', data.description);
+      }
+      
+      // Tags (opcional)
+      if (data.tags && data.tags.length) {
+        formData.append('tags', JSON.stringify(data.tags));
+      }
+      
+      // Imagen de miniatura (thumb)
+      if (data.thumb) {
+        formData.append('thumb', data.thumb);
+      } else if (data.thumbUrl) {
+        formData.append('thumbUrl', data.thumbUrl);
+      }
+      
+      // Imágenes de carrusel (600x600)
+      if (data.carousel && data.carousel.length) {
+        data.carousel.forEach(file => {
+          formData.append('carousel', file);
+        });
+      } else if (data.carouselUrls && data.carouselUrls.length) {
+        formData.append('carouselUrls', JSON.stringify(data.carouselUrls));
+      }
+      
+      // Imágenes principales
+      if (data.images && data.images.length) {
+        data.images.forEach(file => {
+          formData.append('images', file);
+        });
+      } else if (data.imageUrls && data.imageUrls.length) {
+        formData.append('imageUrls', JSON.stringify(data.imageUrls));
+      }
+      
+      // Configurar headers para FormData
+      const config = {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      };
+      
       const response = await axiosInstance.post(
         ENDPOINTS.DASHBOARD.FILES.CREATE_GROUP.url,
-        data
+        formData,
+        config
       );
+      
       return response.data;
     } catch (error: any) {
       throw this.handleError(error);
@@ -193,7 +249,6 @@ class FilesService {
     page?: number;
     limit?: number;
     search?: string;
-    tag?: string;
   }): Promise<FilesResponse> {
     try {
       const response = await axiosInstance.get(ENDPOINTS.DASHBOARD.FILES.GET_GROUPS.url, {
@@ -242,13 +297,65 @@ class FilesService {
   }
 
   /**
-   * Eliminar grupo completo
+   * Actualizar información del grupo
    */
-
-  static async deleteGroup(identifier: string) {
+  static async updateGroup(
+    identifier: string,
+    data: { 
+      description?: string; 
+      thumb?: File | string;
+      carousel?: string[] | File[];
+    }
+  ) {
     try {
-      const response = await axiosInstance.delete(
-        `${ENDPOINTS.DASHBOARD.FILES.DELETE_GROUP.url}/${identifier}`
+      // Si tenemos archivos, debemos usar FormData
+      if (
+        (data.thumb && data.thumb instanceof File) ||
+        (data.carousel && data.carousel.length > 0 && data.carousel[0] instanceof File)
+      ) {
+        const formData = new FormData();
+        
+        // Agregar descripción si existe
+        if (data.description !== undefined) {
+          formData.append('description', data.description);
+        }
+        
+        // Agregar thumb si es un archivo
+        if (data.thumb && data.thumb instanceof File) {
+          formData.append('thumb', data.thumb);
+        } else if (data.thumb && typeof data.thumb === 'string') {
+          formData.append('thumbUrl', data.thumb);
+        }
+        
+        // Agregar carousel si son archivos
+        if (data.carousel && data.carousel.length > 0) {
+          if (data.carousel[0] instanceof File) {
+            // Son archivos
+            data.carousel.forEach((file: any) => {
+              formData.append('carousel', file);
+            });
+          } else {
+            // Son URLs
+            formData.append('carouselUrls', JSON.stringify(data.carousel));
+          }
+        }
+        
+        const response = await axiosInstance.patch(
+          ENDPOINTS.DASHBOARD.FILES.UPDATE_GROUP.url.replace(':identifier', identifier),
+          formData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        );
+        return response.data;
+      }
+      
+      // Si solo son datos simples, enviamos como JSON
+      const response = await axiosInstance.patch(
+        ENDPOINTS.DASHBOARD.FILES.UPDATE_GROUP.url.replace(':identifier', identifier),
+        data
       );
       return response.data;
     } catch (error: any) {
@@ -257,16 +364,42 @@ class FilesService {
   }
 
   /**
-   * Actualizar información del grupo
+   * Eliminar grupo completo
    */
-  static async updateGroup(
-    identifier: string,
-    data: { description?: string; tags?: string[] }
-  ) {
+  static async deleteGroup(identifier: string) {
     try {
-      const response = await axiosInstance.patch(
-        `${ENDPOINTS.DASHBOARD.FILES.UPDATE_GROUP.url}/${identifier}`,
-        data
+      const response = await axiosInstance.delete(
+        ENDPOINTS.DASHBOARD.FILES.DELETE_GROUP.url.replace(':identifier', identifier)
+      );
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Eliminar miniatura de un grupo
+   */
+  static async deleteThumb(identifier: string) {
+    try {
+      const response = await axiosInstance.delete(
+        ENDPOINTS.DASHBOARD.FILES.DELETE_THUMB.url.replace(':identifier', identifier)
+      );
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Eliminar imagen de carrusel por índice
+   */
+  static async deleteCarouselImage(identifier: string, index: number) {
+    try {
+      const response = await axiosInstance.delete(
+        ENDPOINTS.DASHBOARD.FILES.DELETE_CAROUSEL_IMAGE.url
+          .replace(':identifier', identifier)
+          .replace(':index', index.toString())
       );
       return response.data;
     } catch (error: any) {
@@ -294,3 +427,4 @@ class FilesService {
 }
 
 export default FilesService;
+

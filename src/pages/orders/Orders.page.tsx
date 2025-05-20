@@ -21,6 +21,7 @@ import {
   EditOutlined,
   EyeOutlined,
   SyncOutlined,
+  MailOutlined,
 } from "@ant-design/icons";
 import type { RangePickerProps } from "antd/es/date-picker";
 import { Order, OrderStatus, PaymentStatus } from "../../types/orders";
@@ -37,6 +38,7 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   processing: "blue",
   shipped: "cyan",
   delivered: "green",
+  completed: "green",
   cancelled: "red",
   refunded: "purple",
 };
@@ -70,8 +72,10 @@ const Orders = () => {
   const [isViewModalOpen, setIsViewModalOpen] = React.useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
   const [isRefundModalOpen, setIsRefundModalOpen] = React.useState(false);
+  const [isEmailModalOpen, setIsEmailModalOpen] = React.useState(false);
   const [form] = Form.useForm();
   const [refundForm] = Form.useForm();
+  const [emailForm] = Form.useForm();
   const token = localStorage.getItem(ACCESS_TOKEN_KEY);
 
   // Query para obtener pedidos
@@ -145,6 +149,22 @@ const Orders = () => {
     },
   });
 
+  // Mutación para enviar factura por correo
+  const sendInvoiceByEmail = useMutation({
+    mutationFn: ({ orderId, emailAddress }: { orderId: string; emailAddress?: string }) =>
+      OrdersService.sendInvoiceByEmail(orderId, emailAddress),
+    onSuccess: () => {
+      message.success("Factura enviada correctamente por correo electrónico");
+      setIsEmailModalOpen(false);
+      emailForm.resetFields();
+    },
+    onError: (error: any) => {
+      message.error(
+        error.response?.data?.message || "Error al enviar la factura por correo"
+      );
+    },
+  });
+
   const handleInvoiceAction = async (orderId: string) => {
     try {
       message.loading("Procesando factura...");
@@ -162,6 +182,28 @@ const Orders = () => {
         console.error("Error handling invoice:", genError);
       }
     }
+  };
+
+  const handleSendInvoiceEmail = async () => {
+    if (!selectedOrder) return;
+    
+    try {
+      const values = await emailForm.validateFields();
+      sendInvoiceByEmail.mutate({
+        orderId: selectedOrder.id,
+        emailAddress: values.emailAddress,
+      });
+    } catch (error) {
+      console.error("Validation failed:", error);
+    }
+  };
+
+  const handleEmailModal = (order: Order) => {
+    setSelectedOrder(order);
+    setIsEmailModalOpen(true);
+    emailForm.setFieldsValue({
+      emailAddress: order.customer.email,
+    });
   };
 
   const handleDateRangeChange: RangePickerProps["onChange"] = (dates) => {
@@ -311,6 +353,15 @@ const Orders = () => {
               record.status === "pending" ||
               record.payment.status !== "completed"
             }
+          />
+          <Button
+            icon={<MailOutlined />}
+            onClick={() => handleEmailModal(record)}
+            disabled={
+              record.status === "pending" ||
+              record.payment.status !== "completed"
+            }
+            title="Enviar factura por correo"
           />
           {record.payment.status === "completed" && (
             <Tooltip title="Procesar reembolso">
@@ -583,6 +634,35 @@ const Orders = () => {
               placeholder="Ingrese la razón del reembolso"
             />
           </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Modal para Enviar Factura por Correo */}
+      <Modal
+        title={`Enviar Factura por Correo - Pedido #${selectedOrder?.orderNumber}`}
+        open={isEmailModalOpen}
+        onOk={handleSendInvoiceEmail}
+        onCancel={() => {
+          setIsEmailModalOpen(false);
+          setSelectedOrder(null);
+          emailForm.resetFields();
+        }}
+        confirmLoading={sendInvoiceByEmail.isPending}
+      >
+        <Form form={emailForm} layout="vertical">
+          <Form.Item
+            name="emailAddress"
+            label="Correo Electrónico"
+            rules={[
+              { required: true, message: "El correo es requerido" },
+              { type: "email", message: "Ingrese un correo electrónico válido" }
+            ]}
+          >
+            <Input placeholder="Ingrese el correo electrónico del destinatario" />
+          </Form.Item>
+          <p className="text-gray-500">
+            La factura será enviada al correo electrónico especificado.
+          </p>
         </Form>
       </Modal>
     </div>

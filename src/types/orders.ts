@@ -33,9 +33,18 @@ export interface Order {
 export type OrderStatus =
   | "pending"
   | "processing"
+  | "shipped"
+  | "delivered"
   | "completed"
   | "cancelled"
   | "refunded";
+
+export type PaymentStatus = 
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "cancelled";
 
 export interface OrderStatusHistory {
   status: OrderStatus;
@@ -47,7 +56,7 @@ export interface OrderStatusHistory {
   };
 }
 export interface OrderPayment {
-  status: string;
+  status: PaymentStatus;
   method: string;
   total: number;
   transaction_id?: string;
@@ -56,6 +65,7 @@ export interface OrderPayment {
 export interface OrderShipping {
   method: string;
   tracking_number?: string;
+  tracking?: string; // Para compatibilidad
   status: string;
 }
 

@@ -1,14 +1,23 @@
 // src/pages/images/components/HeaderTable.component.tsx
-import { Button, Alert } from "antd";
-import { InfoCircleOutlined, PlusOutlined } from "@ant-design/icons";
-import { useState } from "react"; // Añadimos useState
-import CreateGroupModal from "./CreateGroupModal"; // Importamos el nuevo componente
+import { Button, Alert, Card, Row, Col, Typography } from "antd";
+import { 
+  InfoCircleOutlined, 
+  PlusOutlined, 
+  PictureOutlined, 
+  TagOutlined, 
+  FileImageOutlined, 
+  IdcardOutlined 
+} from "@ant-design/icons";
+import { useState } from "react";
+import CreateGroupModal from "./CreateGroupModal";
+
+const { Text, Title } = Typography;
 
 const HeaderImageManager = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold">Gestor de Imágenes</h2>
@@ -19,40 +28,80 @@ const HeaderImageManager = () => {
         <Button 
           type="primary" 
           icon={<PlusOutlined />}
+          size="large"
+          className="flex items-center"
           onClick={() => setIsModalVisible(true)}
+          id="createGroupBtn"
         >
           Nuevo Grupo
         </Button>
       </div>
 
-      <Alert
-        message={
-          <div className="space-y-2 text-sm">
-            <p>
-              <strong>Grupos de Imágenes:</strong> Organiza tus imágenes en
-              grupos para una mejor gestión.
-            </p>
-            <p>
-              <strong>Límites:</strong> Cada imagen debe ser menor a 2MB y en
-              formatos comunes (JPG, PNG, GIF).
-            </p>
-            <p>
-              <strong>Identificador:</strong> Úsalo en el Excel de productos
-              para asociar las imágenes al producto correspondiente.
-            </p>
-            <p>
-              <strong>Etiquetas:</strong> Facilitan la búsqueda y organización
-              de los grupos.
-            </p>
-          </div>
-        }
-        type="info"
-        showIcon
-        icon={<InfoCircleOutlined />}
-        className="bg-blue-50"
-      />
+      <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
+        <div className="flex items-center mb-3">
+          <InfoCircleOutlined className="text-blue-500 mr-2 text-lg" />
+          <Title level={5} style={{margin: 0}}>Guía de uso</Title>
+        </div>
+        
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} md={6}>
+            <Card size="small" bordered={false} className="bg-white bg-opacity-70 h-full">
+              <div className="flex items-start">
+                <PictureOutlined className="text-lg text-blue-500 mt-1 mr-2" />
+                <div>
+                  <Text strong>Grupos de Imágenes</Text>
+                  <div className="text-sm text-gray-600 mt-1">
+                    Organiza tus imágenes en grupos para una gestión eficiente
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </Col>
+          
+          <Col xs={24} sm={12} md={6}>
+            <Card size="small" bordered={false} className="bg-white bg-opacity-70 h-full">
+              <div className="flex items-start">
+                <FileImageOutlined className="text-lg text-blue-500 mt-1 mr-2" />
+                <div>
+                  <Text strong>Límites</Text>
+                  <div className="text-sm text-gray-600 mt-1">
+                    Máximo 2MB por imagen en formatos JPG, PNG, GIF, WEBP
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </Col>
+          
+          <Col xs={24} sm={12} md={6}>
+            <Card size="small" bordered={false} className="bg-white bg-opacity-70 h-full">
+              <div className="flex items-start">
+                <IdcardOutlined className="text-lg text-blue-500 mt-1 mr-2" />
+                <div>
+                  <Text strong>Identificador</Text>
+                  <div className="text-sm text-gray-600 mt-1">
+                    Úsalo en Excel para asociar imágenes a productos
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </Col>
+          
+          <Col xs={24} sm={12} md={6}>
+            <Card size="small" bordered={false} className="bg-white bg-opacity-70 h-full">
+              <div className="flex items-start">
+                <TagOutlined className="text-lg text-blue-500 mt-1 mr-2" />
+                <div>
+                  <Text strong>Etiquetas</Text>
+                  <div className="text-sm text-gray-600 mt-1">
+                    Facilitan búsqueda y organización de los grupos
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </Col>
+        </Row>
+      </div>
 
-      {/* Modal de creación */}
       <CreateGroupModal 
         visible={isModalVisible}
         onClose={() => setIsModalVisible(false)}

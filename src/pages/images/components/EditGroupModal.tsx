@@ -1,18 +1,40 @@
 // components/EditGroupModal.tsx
-import React from "react";
-import { Modal, Form, Input, Button, notification, Progress } from "antd";
+import React, { useState, useEffect } from "react";
 import {
-  PlusOutlined,
-  TagOutlined,
-  FileImageOutlined,
+  Modal,
+  Form,
+  Input,
+  Upload,
+  Button,
+  notification,
+  Typography,
+  Space,
+  Divider,
+  Card,
+  Tabs,
+  Row,
+  Col,
+  Image,
+  Popconfirm
+} from "antd";
+import {
+  UploadOutlined,
   EditOutlined,
   InboxOutlined,
+  LinkOutlined,
+  FileImageOutlined,
+  PictureOutlined,
+  PlusOutlined,
   DeleteOutlined,
+  EyeOutlined
 } from "@ant-design/icons";
-import type { UploadFile } from "antd/lib/upload/interface";
+import type { RcFile, UploadFile } from "antd/es/upload/interface";
 import { ImageGroup } from "../../../services/files.service";
 import "./EditGroupModal.css";
-import Dragger from "antd/es/upload/Dragger";
+
+const { Text, Title } = Typography;
+const { TextArea } = Input;
+const { TabPane } = Tabs;
 
 interface EditGroupModalProps {
   group: ImageGroup | null;
@@ -20,6 +42,7 @@ interface EditGroupModalProps {
   onClose: () => void;
   onUpdate: (values: any) => Promise<void>;
   onAddImages: (files: File[]) => Promise<void>;
+  onDeleteImage?: (type: 'thumb' | 'carousel', index?: number) => Promise<void>;
 }
 
 const EditGroupModal: React.FC<EditGroupModalProps> = ({
@@ -28,258 +51,521 @@ const EditGroupModal: React.FC<EditGroupModalProps> = ({
   onClose,
   onUpdate,
   onAddImages,
+  onDeleteImage
 }) => {
   const [form] = Form.useForm();
-  const [fileList, setFileList] = React.useState<UploadFile[]>([]);
-  const [loading, setLoading] = React.useState(false);
-  const [uploadProgress, setUploadProgress] = React.useState<
-    Record<string, number>
-  >({});
+  const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
+  const [thumbFile, setThumbFile] = useState<UploadFile | null>(null);
+  const [carouselUrls, setCarouselUrls] = useState<string[]>([]);
+  const [updating, setUpdating] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("info");
 
-  React.useEffect(() => {
-    if (group) {
-      const tagsString = Array.isArray(group.tags) ? group.tags.join(", ") : "";
+  // Reset form on open
+  useEffect(() => {
+    if (visible && group) {
       form.setFieldsValue({
-        description: group.description,
-        tags: tagsString,
+        identifier: group.identifier,
+        description: group.description || "",
+        carouselUrls: "",
       });
+      setUploadedFiles([]);
+      setThumbFile(null);
+      setCarouselUrls([]);
     }
-    // Limpiar estado al abrir/cerrar modal
-    return () => {
-      setFileList([]);
-      setUploadProgress({});
-    };
-  }, [group, form, visible]);
+  }, [visible, group, form]);
 
+  // Handle form submit
   const handleSubmit = async () => {
+    if (!group) return;
+    
     try {
-      setLoading(true);
-      const values = await form.validateFields();
-
-      // Formatear tags
-      const formattedTags = values.tags
-        ? values.tags
-            .split(",")
-            .map((tag: string) => tag.trim())
-            .filter(Boolean)
-        : [];
-
-      // Actualizar grupo
+      setUpdating(true);
+      const values = await form.validateFields(['description']);
+      
+      // Solo enviar la descripción para actualizar
       await onUpdate({
-        description: values.description,
-        tags: formattedTags,
+        description: values.description
       });
-
-      // Subir imágenes si hay nuevas
-      if (fileList.length > 0) {
-        const files = fileList
-          .filter((file) => file.originFileObj)
-          .map((file) => file.originFileObj as File);
-
-        // Inicializar progreso para cada archivo
-        files.forEach((file) => {
-          setUploadProgress((prev) => ({
-            ...prev,
-            [file.name]: 0,
-          }));
-        });
-
-        await onAddImages(files);
-      }
-
+      
       notification.success({
         message: "Grupo actualizado",
-        description: "Los cambios se guardaron correctamente",
+        description: "La información del grupo se actualizó correctamente",
       });
-
-      setFileList([]);
-      setUploadProgress({});
-      form.resetFields();
-      onClose();
+      setActiveTab("info");
     } catch (error: any) {
       notification.error({
-        message: "Error",
-        description: error.message || "Error al actualizar el grupo",
+        message: "Error al actualizar",
+        description: error.message || "No se pudo actualizar el grupo",
       });
     } finally {
-      setLoading(false);
+      setUpdating(false);
     }
   };
 
-  const uploadProps = {
+  // Handle carousel files upload
+  const handleUploadCarouselFiles = async () => {
+    if (!group || uploadedFiles.length === 0) {
+      notification.warning({
+        message: "No hay imágenes seleccionadas",
+        description: "Por favor, seleccione al menos una imagen para subir",
+      });
+      return;
+    }
+    try {
+      setUploading(true);
+      // Extraer los archivos de File de los UploadFile
+      const files = uploadedFiles
+        .filter((file) => file.originFileObj)
+        .map((file) => file.originFileObj as File);
+
+      // Validar que haya archivos válidos
+      if (files.length === 0) {
+        notification.warning({
+          message: "No hay archivos válidos",
+          description: "Los archivos seleccionados no son válidos",
+        });
+        setUploading(false);
+        return;
+      }
+
+      // Llamar a la función de añadir imágenes
+      await onAddImages(files);
+      
+      notification.success({
+        message: "Imágenes subidas",
+        description: "Las imágenes se subieron correctamente al carrusel",
+      });
+      setUploadedFiles([]);
+    } catch (error: any) {
+      notification.error({
+        message: "Error al subir imágenes",
+        description: error.message || "No se pudieron subir las imágenes",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Handle thumbnail upload
+  const handleUploadThumb = async () => {
+    if (!thumbFile?.originFileObj || !group) {
+      notification.warning({
+        message: "No hay imagen seleccionada",
+        description: "Por favor, seleccione una imagen para la miniatura",
+      });
+      return;
+    }
+    try {
+      setUploading(true);
+      // Crear un FormData y añadir el archivo de miniatura
+      const formData = new FormData();
+      formData.append('thumb', thumbFile.originFileObj);
+      
+      // Pasar el archivo directamente
+      await onUpdate({
+        thumb: thumbFile.originFileObj
+      });
+      
+      notification.success({
+        message: "Miniatura actualizada",
+        description: "La imagen de miniatura se actualizó correctamente",
+      });
+      setThumbFile(null);
+    } catch (error: any) {
+      notification.error({
+        message: "Error al actualizar miniatura",
+        description: error.message || "No se pudo actualizar la miniatura",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+  
+  // Handle carousel URL upload
+  const handleAddCarouselUrls = async () => {
+    if (!group) return;
+
+    try {
+      const values = await form.validateFields(['carouselUrls']);
+      if (!values.carouselUrls) {
+        notification.warning({
+          message: "No hay URLs ingresadas",
+          description: "Por favor, ingrese al menos una URL de imagen para añadir al carrusel"
+        });
+        return;
+      }
+      
+      setUploading(true);
+      const urlsArray = values.carouselUrls
+        .split('\n')
+        .map((url: string) => url.trim())
+        .filter((url: string) => url);
+        
+      if (urlsArray.length === 0) {
+        notification.warning({
+          message: "No hay URLs válidas",
+          description: "Por favor, ingrese URLs válidas (una por línea)"
+        });
+        setUploading(false);
+        return;
+      }
+      
+      // Pasar el array de URLs al servicio
+      await onUpdate({ 
+        carousel: urlsArray 
+      });
+      
+      notification.success({
+        message: "URLs añadidas",
+        description: `Se añadieron ${urlsArray.length} imágenes al carrusel desde URLs`
+      });
+      
+      form.resetFields(['carouselUrls']);
+    } catch (error: any) {
+      notification.error({
+        message: "Error al añadir URLs",
+        description: error.message || "No se pudieron añadir las URLs al carrusel"
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Handle delete carousel image
+  const handleDeleteCarouselImage = async (index: number) => {
+    if (!onDeleteImage || !group) return;
+    
+    try {
+      await onDeleteImage('carousel', index);
+      notification.success({
+        message: "Imagen eliminada",
+        description: "La imagen se eliminó correctamente del carrusel"
+      });
+    } catch (error: any) {
+      notification.error({
+        message: "Error al eliminar imagen",
+        description: error.message || "No se pudo eliminar la imagen"
+      });
+    }
+  };
+
+  // Validate image file
+  const validateImageFile = (file: RcFile) => {
+    const isImage = /^image\/(jpeg|png|gif|webp)$/.test(file.type);
+    const isLt2M = file.size / 1024 / 1024 < 2;
+
+    if (!isImage) {
+      notification.error({
+        message: "Tipo de archivo no válido",
+        description: "Solo se permiten imágenes (JPG, PNG, GIF, WEBP)",
+      });
+      return false;
+    }
+    if (!isLt2M) {
+      notification.error({
+        message: "Archivo demasiado grande",
+        description: "La imagen debe ser menor a 2MB",
+      });
+      return false;
+    }
+    
+    return isImage && isLt2M;
+  };
+
+  // Carousel file upload props
+  const carouselUploadProps = {
     name: "file",
     multiple: true,
-    fileList,
-    listType: "picture-card" as const,
-    accept: "image/*",
-    beforeUpload: (file: File) => {
-      if (file.size > 2 * 1024 * 1024) {
-        notification.error({
-          message: "Error",
-          description: `${file.name} excede el tamaño máximo de 2MB`,
-        });
-        return false;
-      }
-
-      if (!file.type.startsWith("image/")) {
-        notification.error({
-          message: "Error",
-          description: `${file.name} no es un archivo de imagen válido`,
-        });
-        return false;
-      }
-
-      return false; // Prevenir upload automático
-    },
-    onChange: ({ fileList: newFileList }: any) => {
-      setFileList(newFileList);
-    },
+    listType: "picture" as const,
     onRemove: (file: UploadFile) => {
-      setFileList((prev) => prev.filter((item) => item.uid !== file.uid));
-      setUploadProgress((prev) => {
-        const newProgress = { ...prev };
-        delete newProgress[file.name];
-        return newProgress;
-      });
-      return true;
+      setUploadedFiles((prev) => prev.filter((f) => f.uid !== file.uid));
     },
+    beforeUpload: (file: RcFile) => {
+      if (!validateImageFile(file)) {
+        return Upload.LIST_IGNORE;
+      }
+      setUploadedFiles((prev) => [...prev, file as UploadFile]);
+      return false;
+    },
+    fileList: uploadedFiles,
+  };
+
+  // Thumbnail upload props
+  const thumbUploadProps = {
+    name: "thumb",
+    listType: "picture-card" as const,
+    showUploadList: true,
+    maxCount: 1,
+    onRemove: () => {
+      setThumbFile(null);
+    },
+    beforeUpload: (file: RcFile) => {
+      if (!validateImageFile(file)) {
+        return Upload.LIST_IGNORE;
+      }
+      // Crear objeto URL para previsualización
+      const thumbUrl = URL.createObjectURL(file);
+      setThumbFile({
+        uid: file.uid,
+        name: file.name,
+        status: 'done',
+        url: thumbUrl,
+        originFileObj: file,
+      });
+      return false;
+    },
+    fileList: thumbFile ? [thumbFile] : [],
   };
 
   return (
     <Modal
       title={
-        <div className="flex items-center gap-2 text-lg">
-          <EditOutlined className="text-blue-500" />
-          <span>Editar Grupo de Imágenes</span>
-        </div>
+        <Space>
+          <EditOutlined /> Editar Grupo: {group?.identifier}
+        </Space>
       }
       open={visible}
-      onCancel={() => {
-        setFileList([]);
-        setUploadProgress({});
-        form.resetFields();
-        onClose();
-      }}
-      onOk={handleSubmit}
-      confirmLoading={loading}
-      okText="Guardar cambios"
-      cancelText="Cancelar"
-      width={700}
-      className="edit-group-modal"
+      onCancel={onClose}
+      footer={null}
+      width={800}
+      destroyOnClose
     >
-      <div className="bg-gray-50 p-4 mb-4 rounded-lg">
-        <div className="font-medium text-gray-700">ID del grupo:</div>
-        <code className="block bg-white p-3 rounded border text-sm mt-1">
-          {group?.identifier}
-        </code>
-      </div>
-
-      <Form form={form} layout="vertical" className="space-y-4">
-      <Form.Item
-          name="description"
-          label={
-            <span className="flex items-center gap-2">
-              <FileImageOutlined />
-              Descripción del grupo
-            </span>
-          }
-          rules={[
-            {
-              max: 500,
-              message: "La descripción no puede exceder los 500 caracteres",
-            },
-          ]}
+      <Tabs activeKey={activeTab} onChange={setActiveTab} className="mt-4">
+        <TabPane 
+          tab={<span><EditOutlined /> Información</span>} 
+          key="info"
         >
-          <Input.TextArea
-            rows={3}
-            placeholder="Describe el propósito o contenido de este grupo de imágenes..."
-            className="resize-none"
-          />
-        </Form.Item>
-
-        <Form.Item
-          name="tags"
-          label={
-            <span className="flex items-center gap-2">
-              <TagOutlined />
-              Etiquetas
-            </span>
-          }
-          help="Separa las etiquetas con comas (ej: producto, banner, promoción)"
-        >
-          <Input
-            placeholder="producto, banner, promoción..."
-            className="rounded-md"
-          />
-        </Form.Item>
-        <Form.Item
-          label={
-            <span className="flex items-center gap-2">
-              <PlusOutlined />
-              Añadir imágenes
-            </span>
-          }
-        >
-          <Dragger {...uploadProps} className="upload-area">
-            <p className="ant-upload-drag-icon">
-              <InboxOutlined className="text-4xl text-blue-500" />
-            </p>
-            <p className="ant-upload-text font-medium">
-              Haz clic o arrastra imágenes aquí
-            </p>
-            <p className="ant-upload-hint text-gray-500">
-              Soporta múltiples archivos. Máximo 2MB por imagen
-            </p>
-          </Dragger>
-
-          {/* Preview de imágenes con barra de progreso */}
-          {fileList.length > 0 && (
-            <div className="space-y-4 mt-4">
-              {fileList.map((file) => (
-                <div
-                  key={file.uid}
-                  className="flex items-center gap-4 bg-gray-50 p-3 rounded"
+          <Form form={form} layout="vertical" className="mt-4">
+            <Card>
+              <Form.Item label="Identificador" name="identifier">
+                <Input disabled />
+              </Form.Item>
+              <Form.Item 
+                label="Descripción" 
+                name="description"
+                rules={[
+                  { max: 200, message: "La descripción no puede exceder los 200 caracteres" }
+                ]}
+              >
+                <TextArea 
+                  rows={3} 
+                  maxLength={200} 
+                  showCount
+                  placeholder="Descripción del grupo de imágenes"
+                />
+              </Form.Item>
+              <div className="flex justify-end">
+                <Button 
+                  type="primary" 
+                  onClick={handleSubmit} 
+                  loading={updating}
                 >
-                  <img
-                    src={
-                      file.thumbUrl ||
-                      (file.originFileObj &&
-                        URL.createObjectURL(file.originFileObj))
-                    }
-                    alt={file.name}
-                    className="w-16 h-16 object-cover rounded"
-                  />
-                  <div className="flex-1">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium truncate">
-                        {file.name}
-                      </span>
-                      <Button
-                        type="text"
-                        danger
-                        icon={<DeleteOutlined />}
-                        onClick={() => uploadProps.onRemove(file)}
-                        size="small"
-                      />
+                  Actualizar Información
+                </Button>
+              </div>
+            </Card>
+          </Form>
+        </TabPane>
+        
+        <TabPane 
+          tab={<span><PictureOutlined /> Miniatura</span>} 
+          key="thumb"
+        >
+          <div className="mt-4">
+            <Card title="Actualizar Imagen Principal (Miniatura)">
+              <Row gutter={[16, 16]}>
+                {group?.thumb && (
+                  <Col xs={24} md={12}>
+                    <Card title="Miniatura Actual" className="h-full">
+                      <div className="flex justify-center">
+                        <Image 
+                          src={group.thumb} 
+                          alt="Miniatura actual" 
+                          style={{ maxWidth: '100%', maxHeight: '200px' }}
+                        />
+                      </div>
+                      <Text type="secondary" className="block text-center mt-2">
+                        La nueva imagen reemplazará a esta (300x300px)
+                      </Text>
+                    </Card>
+                  </Col>
+                )}
+                
+                <Col xs={24} md={group?.thumb ? 12 : 24}>
+                  <Card title="Nueva Miniatura" className="h-full">
+                    <Text type="secondary" className="mb-4 block">
+                      Suba una nueva imagen para reemplazar la miniatura actual (se redimensionará a 300x300px).
+                    </Text>
+                    <Upload {...thumbUploadProps}>
+                      {!thumbFile && (
+                        <div>
+                          <PlusOutlined />
+                          <div style={{ marginTop: 8 }}>Subir</div>
+                        </div>
+                      )}
+                    </Upload>
+                    <div className="flex justify-end mt-4">
+                      <Button 
+                        type="primary" 
+                        icon={<UploadOutlined />} 
+                        disabled={!thumbFile} 
+                        loading={uploading}
+                        onClick={handleUploadThumb}
+                      >
+                        Actualizar Miniatura
+                      </Button>
                     </div>
-                    {uploadProgress[file.name] !== undefined && (
-                      <Progress
-                        percent={uploadProgress[file.name]}
-                        size="small"
-                        status={
-                          uploadProgress[file.name] === 100
-                            ? "success"
-                            : "active"
-                        }
-                      />
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Form.Item>
-      </Form>
+                  </Card>
+                </Col>
+              </Row>
+            </Card>
+          </div>
+        </TabPane>
+        
+        <TabPane 
+          tab={<span><FileImageOutlined /> Imágenes del Carrusel</span>} 
+          key="carousel-all"
+        >
+          <div className="mt-2">
+            <Row gutter={[12, 12]}>
+              {/* Columna izquierda: Imágenes existentes */}
+              <Col xs={24} md={12}>
+                <Card 
+                  title="Imágenes Existentes" 
+                  className="h-full" 
+                  style={{ maxHeight: "50vh", overflow: "auto" }}
+                  bodyStyle={{ padding: '8px' }}
+                  size="small"
+                >
+                  {group?.carousel && group.carousel.length > 0 ? (
+                    <Row gutter={[8, 8]}>
+                      {group.carousel.map((imageUrl, idx) => (
+                        <Col key={`carousel-${idx}`} xs={24} sm={12}>
+                          <Card
+                            size="small"
+                            style={{ marginBottom: '0' }}
+                            cover={
+                              <div className="flex justify-center items-center" style={{ height: '100px', overflow: 'hidden' }}>
+                                <Image
+                                  src={imageUrl}
+                                  alt={`Carrusel ${idx + 1}`}
+                                  style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
+                                  preview={{
+                                    mask: <EyeOutlined />,
+                                  }}
+                                />
+                              </div>
+                            }
+                            actions={[
+                              <Popconfirm
+                                key="delete"
+                                title="¿Eliminar esta imagen?"
+                                description="Esta acción no se puede deshacer"
+                                onConfirm={() => handleDeleteCarouselImage(idx)}
+                                okText="Sí, eliminar"
+                                cancelText="Cancelar"
+                                okButtonProps={{ danger: true }}
+                              >
+                                <Button 
+                                  type="text" 
+                                  danger 
+                                  icon={<DeleteOutlined />}
+                                  size="small"
+                                >
+                                  Eliminar
+                                </Button>
+                              </Popconfirm>
+                            ]}
+                          >
+                            <Card.Meta
+                              title={`Imagen ${idx + 1}`}
+                              description={<Text type="secondary" ellipsis className="block text-xs">600x600px</Text>}
+                              style={{ padding: '0', margin: '0' }}
+                            />
+                          </Card>
+                        </Col>
+                      ))}
+                    </Row>
+                  ) : (
+                    <div className="text-center py-2">
+                      <Text type="secondary">No hay imágenes en el carrusel</Text>
+                    </div>
+                  )}
+                </Card>
+              </Col>
+
+              {/* Columna derecha: Añadir nuevas imágenes */}
+              <Col xs={24} md={12}>
+                <Card 
+                  title="Añadir Nuevas Imágenes" 
+                  className="h-full"
+                  bodyStyle={{ padding: '8px' }}
+                  size="small"
+                >
+                  <Tabs defaultActiveKey="files" size="small" tabBarStyle={{ marginBottom: '4px' }}>
+                    <TabPane tab="Archivos" key="files">
+                      <Upload.Dragger {...carouselUploadProps} style={{ minHeight: '80px', padding: '8px 0' }}>
+                        <p className="ant-upload-drag-icon m-0">
+                          <InboxOutlined />
+                        </p>
+                        <p className="ant-upload-text m-0">
+                          Haga clic o arrastre archivos
+                        </p>
+                        <p className="ant-upload-hint text-xs m-0">
+                          JPG, PNG, GIF, WEBP. Máx. 2MB
+                        </p>
+                      </Upload.Dragger>
+                      <div className="flex justify-end mt-1">
+                        <Button
+                          type="primary"
+                          size="small"
+                          icon={<UploadOutlined />}
+                          onClick={handleUploadCarouselFiles}
+                          loading={uploading}
+                          disabled={uploadedFiles.length === 0}
+                        >
+                          {uploading ? "Subiendo..." : "Subir"}
+                        </Button>
+                      </div>
+                    </TabPane>
+                    
+                    <TabPane tab="URLs" key="urls">
+                      <Form.Item 
+                        name="carouselUrls" 
+                        rules={[
+                          { 
+                            pattern: /^(https?:\/\/.*\.(jpeg|jpg|png|gif|webp))$/im, 
+                            message: "Ingrese URLs válidas", 
+                            validateTrigger: "onBlur" 
+                          }
+                        ]}
+                        style={{ marginBottom: '4px' }}
+                      >
+                        <TextArea
+                          rows={2}
+                          placeholder="https://ejemplo.com/imagen1.jpg&#10;https://ejemplo.com/imagen2.jpg"
+                        />
+                      </Form.Item>
+                      <div className="flex justify-end">
+                        <Button
+                          type="primary"
+                          size="small"
+                          icon={<LinkOutlined />}
+                          onClick={handleAddCarouselUrls}
+                          loading={uploading}
+                        >
+                          Añadir URLs
+                        </Button>
+                      </div>
+                    </TabPane>
+                  </Tabs>
+                </Card>
+              </Col>
+            </Row>
+          </div>
+        </TabPane>
+      </Tabs>
     </Modal>
   );
 };

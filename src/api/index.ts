@@ -457,19 +457,19 @@ const ENDPOINTS: Endpoints = {
         method: "GET",
       },
       UPDATE_GROUP: {
-        url: `${BASE_URL}/dashboard/files/groups`,
+        url: `${BASE_URL}/dashboard/files/groups/:identifier`,
         method: "PATCH",
       },
       DELETE_GROUP: {
-        url: `${BASE_URL}/dashboard/files/groups`,
+        url: `${BASE_URL}/dashboard/files/groups/:identifier`,
         method: "DELETE",
       },
-      ADD_IMAGES: {
-        url: `${BASE_URL}/dashboard/files/groups`,
-        method: "POST",
+      DELETE_THUMB: {
+        url: `${BASE_URL}/dashboard/files/groups/:identifier/thumb`,
+        method: "DELETE",
       },
-      DELETE_IMAGE: {
-        url: `${BASE_URL}/dashboard/files/groups`,
+      DELETE_CAROUSEL_IMAGE: {
+        url: `${BASE_URL}/dashboard/files/groups/:identifier/carousel/:index`,
         method: "DELETE",
       },
     },

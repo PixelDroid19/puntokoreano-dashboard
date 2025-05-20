@@ -238,8 +238,8 @@ export interface Endpoints {
       GET_GROUPS: ApiEndpoint;
       UPDATE_GROUP: ApiEndpoint;
       DELETE_GROUP: ApiEndpoint;
-      ADD_IMAGES: ApiEndpoint;
-      DELETE_IMAGE: ApiEndpoint;
+      DELETE_THUMB: ApiEndpoint;
+      DELETE_CAROUSEL_IMAGE: ApiEndpoint;
     };
     FILTERS: {
       CREATE: ApiEndpoint;
