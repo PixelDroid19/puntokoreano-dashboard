@@ -154,7 +154,7 @@ interface CreateFamilyPayload {
 interface CreateModel {
   name?: string;
   family_id: string;
-  year: string;
+  years: number[];
   engine_type: string;
   active: boolean;
 }
@@ -517,15 +517,22 @@ class VehicleFamiliesService {
     if (!payload.engine_type || typeof payload.engine_type !== 'string' || !payload.engine_type.trim()) {
       throw new Error("Tipo de motor inválido");
     }
-    console.log(!payload.year || isNaN(parseInt(payload.year)) || payload.year.length !== 4);
   
-    if (!payload.year || isNaN(parseInt(payload.year)) || payload.year.toString().length !== 4) {
-      throw new Error("Año inválido");
+    // Validación para el array de años
+    if (!payload.years || !Array.isArray(payload.years) || payload.years.length === 0) {
+      throw new Error("Debe proporcionar al menos un año para el modelo.");
+    }
+
+    const currentYear = new Date().getFullYear();
+    for (const year of payload.years) {
+      if (!Number.isInteger(year) || year < 1900 || year > currentYear + 2) {
+        throw new Error(`Año inválido: ${year}. Los años deben ser enteros entre 1900 y ${currentYear + 2}.`);
+      }
     }
 
     const data: any = {
       family_id: payload.family_id,
-      year: parseInt(payload.year),
+      years: payload.years, // Se envía el array de años directamente
       engine_type: payload.engine_type.trim(),
       active: payload.active !== undefined ? payload.active : true,
     };

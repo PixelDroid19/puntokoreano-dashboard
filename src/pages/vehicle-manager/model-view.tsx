@@ -212,6 +212,7 @@ const ModelView: React.FC = () => {
       dataIndex: "year",
       key: "year",
       sorter: true,
+      render: (year: number) => <>{year.toString()}</>,
     },
     {
       title: "Tipo de Motor",
