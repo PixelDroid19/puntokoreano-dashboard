@@ -94,11 +94,11 @@ const menuItems = [
         label: <Link to="/model-management">Modelos</Link>,
         title: "Configuración de Modelos",
       },
-      {
+    /*   {
         key: "/line-management",
         label: <Link to="/line-management">Líneas</Link>,
         title: "Configuración de Líneas",
-      },
+      }, */
       {
         key: "/transmission-management",
         label: <Link to="/transmission-management">Transmisiones</Link>,

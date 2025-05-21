@@ -412,11 +412,10 @@ class VehicleFamiliesService {
   static async addVehicle(vehicleData: VehicleData): Promise<any> {
     if (
       !vehicleData.transmission_id ||
-      !vehicleData.fuel_id ||
-      !vehicleData.line_id
+      !vehicleData.fuel_id 
     ) {
       throw new Error(
-        "Los campos transmisión, combustible y línea son requeridos"
+        "Los campos transmisión, combustible son requeridos"
       );
     }
 
