@@ -1,19 +1,31 @@
 import {
   Badge, // <-- Importar Badge
   Button,
+  Col,
+  DatePicker,
+  Descriptions,
+  Divider,
   Flex,
   Form,
   GetProp,
+  InputNumber,
   Modal,
+  Row,
+  Select,
+  Space,
   Tabs,
   UploadFile,
   UploadProps,
   notification,
+  Input,
+  Typography,
+  Upload,
+  type UploadFile as AntdUploadFile,
 } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
-import React from "react";
+import React, { useState } from "react";
 import { RcFile } from "antd/es/upload";
 import { getGroups } from "../../../helpers/queries.helper";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -31,6 +43,12 @@ import axios from "axios";
 const { TabPane } = Tabs;
 
 type FileType = Parameters<GetProp<UploadProps, "beforeUpload">>[0];
+
+// Extender la interfaz UploadFile para incluir delete_url
+interface ExtendedUploadFile extends UploadFile<any> {
+  delete_url?: string;
+  preview?: string;
+}
 
 const getBase64 = (file: FileType): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -74,11 +92,13 @@ const AddProduct = () => {
   const [form] = Form.useForm();
   const [previewOpen, setPreviewOpen] = React.useState<boolean>(false);
   const [previewImage, setPreviewImage] = React.useState("");
-  const [fileList, setFileList] = React.useState<UploadFile[]>([]);
+  const [fileList, setFileList] = React.useState<ExtendedUploadFile[]>([]);
   const [useGroupImages, setUseGroupImages] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("1");
   const [subgroups, setSubgroups] = React.useState<Array<{ name: string }>>([]);
   const [tabErrors, setTabErrors] = React.useState<Record<string, number>>({}); // <-- Estado para errores por pestaña
+  const [videoUrl, setVideoUrl] = React.useState("");
+  const [previewTitle, setPreviewTitle] = React.useState("");
 
   const { data: groups } = useQuery({
     queryKey: ["groups"],
@@ -111,11 +131,14 @@ const AddProduct = () => {
     },
   });
 
-  const handleUpload: UploadProps["beforeUpload"] = async (file: RcFile) => {
+  const handleUpload = async (file: RcFile) => {
     const formData = new FormData();
     formData.append("image", file);
 
     try {
+      // Obtener vista previa antes de la carga
+      const previewBase64 = await getBase64(file);
+
       const response = await axios.post(
         `https://api.imgbb.com/1/upload?key=${
           import.meta.env.VITE_IMGBB_API_KEY
@@ -123,36 +146,53 @@ const AddProduct = () => {
         formData
       );
 
-      const newFile: UploadFile = {
-        uid: file.uid,
-        name: file.name,
-        status: "done",
-        url: response.data.data.url,
-         thumbUrl: response.data.data.thumb.url, // Opcional: si la API provee miniatura
-      };
+      console.log("Respuesta ImgBB:", response.data);
 
-      setFileList((prevFileList) => [...prevFileList, newFile]);
+      if (response.data.success) {
+        const newFile: ExtendedUploadFile = {
+          uid: file.uid,
+          name: file.name,
+          status: "done",
+          url: response.data.data.url,
+          thumbUrl: response.data.data.thumb.url,
+          delete_url: response.data.data.delete_url,
+          preview: previewBase64,
+        };
 
-      notification.success({
-        message: "Imagen subida",
-        description: `"${file.name}" se ha subido correctamente.`,
-        placement: "bottomRight",
-      });
+        setFileList((prevFileList) => [...prevFileList, newFile]);
+
+        notification.success({
+          message: "Imagen subida",
+          description: `"${file.name}" se ha subido correctamente.`,
+          placement: "bottomRight",
+        });
+        
+        // Devolver un objeto con toda la información de la imagen
+        return {
+          uid: file.uid,
+          name: file.name,
+          url: response.data.data.url,
+          thumbUrl: response.data.data.thumb.url,
+          delete_url: response.data.data.delete_url,
+          preview: previewBase64,
+        };
+      } else {
+        throw new Error(response.data?.error?.message || "Error desconocido en la subida");
+      }
     } catch (error) {
+      console.error("Error uploading to ImgBB:", error);
       notification.error({
         message: "Error de subida",
         description: `Error al subir "${file.name}". ${
-          error instanceof Error ? error.message : ""
+          error instanceof Error ? error.message : "Error desconocido"
         }`,
         placement: "bottomRight",
       });
-      console.error("Error uploading to ImgBB:", error);
+      return false;
     }
-
-    return false;
   };
 
-  const handlePreview = async (file: UploadFile) => {
+  const handlePreview = async (file: ExtendedUploadFile) => {
     if (!file.url && !file.preview) {
       if (file.originFileObj) {
         try {
@@ -308,30 +348,43 @@ const AddProduct = () => {
       }
     }
 
-    const finalImages = useGroupImages
-      ? []
-      : fileList.map((file) => file.url).filter((url): url is string => !!url); // Obtener URLs válidas
+    // Extraer directamente thumb y carousel del formulario
+    let thumbUrl = values.thumb || undefined;
+    let carouselUrls = values.carousel || [];
 
-    // Validar si se requieren imágenes y no se han proporcionado
-    if (!useGroupImages && finalImages.length === 0) {
+    // Validar que tengamos imágenes si no usamos un grupo
+    if (!useGroupImages) {
+      if (!thumbUrl && fileList.length === 0) {
         notification.error({
-            message: "Error de Validación",
-            description: "Debe subir al menos una imagen manualmente si no usa un grupo.",
+          message: "Error de Validación",
+          description: "Debe subir al menos una imagen manualmente si no usa un grupo.",
         });
         setTabErrors(prev => ({ ...prev, "2": (prev["2"] || 0) + 1 }));
         setActiveTab("2");
         return;
+      }
+      
+      // Si no hay thumb en values pero hay fileList, tomamos el primero como thumb
+      if (!thumbUrl && fileList.length > 0 && fileList[0].url) {
+        thumbUrl = fileList[0].url;
+      }
+      
+      // Si no hay carousel en values pero hay más de una imagen en fileList, las usamos
+      if (carouselUrls.length === 0 && fileList.length > 1) {
+        carouselUrls = fileList.slice(1).map(file => file.url as string).filter(Boolean);
+      }
+    } else if (useGroupImages && !values.imageGroup) {
+      notification.error({
+        message: "Error de Validación",
+        description: "Debe seleccionar un grupo de imágenes si la opción está activada.",
+      });
+      setTabErrors(prev => ({ ...prev, "2": (prev["2"] || 0) + 1 }));
+      setActiveTab("2");
+      return;
     }
-    // Validar si se seleccionó un grupo cuando la opción está activa
-    if (useGroupImages && !values.imageGroup) {
-        notification.error({
-            message: "Error de Validación",
-            description: "Debe seleccionar un grupo de imágenes si la opción está activada.",
-        });
-        setTabErrors(prev => ({ ...prev, "2": (prev["2"] || 0) + 1 }));
-        setActiveTab("2");
-        return;
-    }
+
+    // Log para depuración
+    console.log("Imágenes que se enviarán:", { thumbUrl, carouselUrls });
 
     const productData: ProductCreateInput = {
       name: values.name,
@@ -348,10 +401,11 @@ const AddProduct = () => {
       // Multimedia
       useGroupImages: useGroupImages,
       imageGroup: useGroupImages ? values.imageGroup : undefined,
-      images: finalImages,
-      videoUrl: values.videoUrl || undefined,
+      thumb: !useGroupImages ? thumbUrl : undefined,
+      carousel: !useGroupImages ? carouselUrls : undefined,
 
       // Otros
+      videoUrl: values.videoUrl || undefined,
       shipping: values.shipping || [],
       warranty: values.warranty || "",
       discount: discountData,
@@ -420,15 +474,15 @@ const AddProduct = () => {
         form={form}
         layout="vertical"
         onFinish={onFinish}
-        onFinishFailed={onFinishFailed} // <-- Añadir manejador de fallo
+        onFinishFailed={onFinishFailed}
         className="space-y-8"
         initialValues={{
           active: true,
           discount: { isActive: false, type: "permanent", percentage: 0 },
-          // Asegurarse de que los campos de imagen/grupo estén inicializados si es necesario
           useGroupImages: false,
           imageGroup: undefined,
           images: [],
+          videoUrl: "", // Asegurarse de inicializar el videoUrl
         }}
       >
         <Tabs activeKey={activeTab} onChange={setActiveTab} type="card">
@@ -443,28 +497,26 @@ const AddProduct = () => {
 
           <TabPane tab={renderTabTitle("2. Multimedia", "2")} key="2">
             <MultimediaInformation
-              form={form} // Pasar form si es necesario dentro del componente
               useGroupImages={useGroupImages}
               setUseGroupImages={setUseGroupImages}
               fileList={fileList}
-              setFileList={setFileList} // Pasar setFileList
-              handleUpload={handleUpload} // Pasar handleUpload
-              handlePreview={handlePreview} // Pasar handlePreview
+              setFileList={setFileList}
+              handleUpload={handleUpload}
+              handlePreview={handlePreview}
               imageGroups={imageGroups}
-              // videoUrl y setVideoUrl ya no se manejan aquí directamente, sino a través del form
+              form={form}
             />
           </TabPane>
 
           <TabPane tab={renderTabTitle("3. Descripción y Detalles", "3")} key="3">
             <DescriptionInformation
-              form={form} // Pasar form si es necesario
               quillModules={quillModules}
               quillFormats={quillFormats}
             />
           </TabPane>
 
           <TabPane tab={renderTabTitle("4. SEO", "4")} key="4">
-            <SeoInformation form={form} /> // Pasar form si es necesario
+            <SeoInformation />
           </TabPane>
         </Tabs>
 

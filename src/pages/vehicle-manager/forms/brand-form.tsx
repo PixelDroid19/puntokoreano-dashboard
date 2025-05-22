@@ -70,7 +70,7 @@ export default function BrandForm() {
   });
 
   const onSubmit = (data: BrandFormData) => {
-    mutate(data);
+      mutate(data);
   };
 
   return (
@@ -105,49 +105,49 @@ export default function BrandForm() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 gap-4">
             <div>
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
                 <label htmlFor="name" className="block text-sm font-medium mb-1 text-gray-700">
                   * Nombre de la marca
-                </label>
+              </label>
                 <Tooltip title="Ingresa el nombre de la marca del vehículo. Este campo es obligatorio.">
-                  <InfoCircleOutlined className="text-blue-500 cursor-help" />
-                </Tooltip>
-              </div>
-              <div className="relative">
-                <Input
+                <InfoCircleOutlined className="text-blue-500 cursor-help" />
+              </Tooltip>
+            </div>
+            <div className="relative">
+              <Input
                   id="name"
                   placeholder="Ssangyong"
-                  {...register("name", {
-                    required: "El nombre de la marca es requerido",
-                  })}
+                {...register("name", {
+                  required: "El nombre de la marca es requerido",
+                })}
                   className={`${errors.name ? "border-red-300 focus:border-red-500 pr-10" : "border-gray-300"}`}
-                />
-                {errors.name && (
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 500, damping: 15 }}>
-                      <AlertCircle className="h-5 w-5 text-red-500" />
-                    </motion.div>
-                  </div>
-                )}
-              </div>
+              />
               {errors.name && (
-                <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-sm text-red-500 mt-1">
-                  {errors.name.message}
-                </motion.p>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 500, damping: 15 }}>
+                    <AlertCircle className="h-5 w-5 text-red-500" />
+                  </motion.div>
+                </div>
               )}
             </div>
-            
+            {errors.name && (
+                <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-sm text-red-500 mt-1">
+                {errors.name.message}
+              </motion.p>
+            )}
+          </div>
+
             <div>
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
                 <label htmlFor="origin_country" className="block text-sm font-medium mb-1 text-gray-700">
                   * País de origen
-                </label>
+              </label>
                 <Tooltip title="Ingresa el país de origen de la marca. Este campo es obligatorio.">
-                  <InfoCircleOutlined className="text-blue-500 cursor-help" />
-                </Tooltip>
-              </div>
+                <InfoCircleOutlined className="text-blue-500 cursor-help" />
+              </Tooltip>
+            </div>
               <div className="relative">
-                <Input
+            <Input
                   id="origin_country"
                   placeholder="Corea"
                   {...register("origin_country", {

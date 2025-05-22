@@ -261,7 +261,7 @@ export default function ModelForm({
                       <div className="border-t border-gray-200 mt-2 pt-2 px-2">
                         {inputYearVisible ? (
                           <div className="flex space-x-2">
-                            <Input
+            <Input
                               placeholder="Añadir año (1950-2025)"
                               value={inputYearValue}
                               onChange={(e) => setInputYearValue(e.target.value)}

@@ -53,7 +53,7 @@ export default function VehicleForm() {
             >
               Caja de velocidades
             </TabsTrigger>
-            <TabsTrigger 
+              <TabsTrigger
               value="combustible" 
               className="border-r py-2 px-4 text-center transition-all duration-200 hover:bg-gray-100 data-[state=active]:bg-purple-50 data-[state=active]:text-purple-600 data-[state=active]:border-b-2 data-[state=active]:border-b-purple-600"
             >
@@ -64,7 +64,7 @@ export default function VehicleForm() {
               className="py-2 px-4 text-center transition-all duration-200 hover:bg-gray-100 data-[state=active]:bg-purple-50 data-[state=active]:text-purple-600 data-[state=active]:border-b-2 data-[state=active]:border-b-purple-600"
             >
               Vehículo
-            </TabsTrigger>
+              </TabsTrigger>
           </TabsList>
 
           <AnimatePresence mode="wait">

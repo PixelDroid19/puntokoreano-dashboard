@@ -1,5 +1,5 @@
 import type React from "react";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Card,
   Col,
@@ -9,13 +9,14 @@ import {
   Select,
   Switch,
   Upload,
-  type UploadFile,
+  type UploadFile as AntdUploadFile,
   Typography,
   Badge,
   Tooltip,
   notification,
   Modal,
   Button,
+  Alert,
 } from "antd";
 import {
   PictureOutlined,
@@ -27,10 +28,18 @@ import {
   QuestionCircleOutlined,
 } from "@ant-design/icons";
 import { motion, AnimatePresence } from "framer-motion";
+import { RcFile } from "antd/es/upload";
 
 const { Title, Text } = Typography;
 const { Dragger } = Upload;
 
+// Extender la interfaz UploadFile para incluir delete_url
+interface UploadFile extends AntdUploadFile<any> {
+  delete_url?: string;
+  preview?: string;
+}
+
+// Interfaz para la imagen individual (compatible con files.service.ts)
 interface ImageFile {
   _id: string;
   name: string;
@@ -44,37 +53,56 @@ interface ImageFile {
   updatedAt?: string;
 }
 
+// Interfaz para grupo de imágenes (compatible con files.service.ts)
 interface ImageGroup {
   _id: string;
   identifier: string;
-  images: ImageFile[];
-  // Add other group properties if needed
+  description?: string;
+  thumb?: string;
+  carousel?: string[];
+  active?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Interfaz para la respuesta del servicio
+interface ImageGroupsResponse {
+  success: boolean;
+  data: {
+    groups: ImageGroup[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      pages: number;
+    };
+  };
 }
 
 interface MultimediaInformationProps {
   useGroupImages: boolean;
   setUseGroupImages: React.Dispatch<React.SetStateAction<boolean>>;
   fileList: UploadFile[];
-  handleUpload: (options: {
-    file: any;
-    fileList?: UploadFile[];
-  }) => boolean | void; // Adjusted signature based on typical Ant Design usage
-  handlePreview: (file: UploadFile) => void; // Assuming this is for individual uploads preview modal
-  imageGroups: { data?: { groups?: ImageGroup[] } } | null | undefined;
-  setVideoUrl: React.Dispatch<React.SetStateAction<string>>;
-  videoUrl: string;
+  setFileList: React.Dispatch<React.SetStateAction<UploadFile[]>>;
+  handleUpload: (file: RcFile) => boolean | void | Promise<boolean | any>;
+  handlePreview: (file: UploadFile) => void;
+  imageGroups: { success?: boolean; data?: { groups?: ImageGroup[] } } | null | undefined;
+  setVideoUrl?: React.Dispatch<React.SetStateAction<string>>;
+  videoUrl?: string;
+  form?: any; // Form instance opcional
 }
 
 const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
   useGroupImages,
   setUseGroupImages,
   fileList,
+  setFileList,
   handleUpload,
-  // handlePreview is used for individual file uploads modal, renaming handleImagePreview for clarity
-  // handlePreview,
+  handlePreview,
   imageGroups,
   setVideoUrl,
-  videoUrl,
+  videoUrl = "",
+  form,
 }) => {
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewImage, setPreviewImage] = useState("");
@@ -83,11 +111,60 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
   const [videoPreviewVisible, setVideoPreviewVisible] = useState(false);
   const [currentVideoUrl, setCurrentVideoUrl] = useState("");
   const [dragActive, setDragActive] = useState(false);
-  const [selectedGroupImages, setSelectedGroupImages] = useState<ImageFile[]>(
-    []
-  );
-  const formRef = Form.useFormInstance(); // Get form instance if needed for resetting
+  const [selectedGroup, setSelectedGroup] = useState<ImageGroup | null>(null);
+  const [mainImageIndex, setMainImageIndex] = useState<number>(0);
+  const formRef = form || Form.useFormInstance(); // Get form instance if needed for resetting
   const videoUrlRef = useRef(videoUrl);
+  
+  // Estado separado para la imagen principal y las imágenes del carrusel
+  const [thumbImage, setThumbImage] = useState<UploadFile | null>(null);
+  const [carouselImages, setCarouselImages] = useState<UploadFile[]>([]);
+  
+  // Actualizar fileList cuando cambien thumbImage o carouselImages
+  useEffect(() => {
+    const newFileList: UploadFile[] = [];
+    if (thumbImage) {
+      newFileList.push(thumbImage);
+    }
+    if (carouselImages.length > 0) {
+      newFileList.push(...carouselImages);
+    }
+    setFileList(newFileList);
+  }, [thumbImage, carouselImages, setFileList]);
+
+  // Inicializar thumbImage y carouselImages desde fileList al montar el componente
+  useEffect(() => {
+    if (fileList.length > 0 && !thumbImage) {
+      setThumbImage(fileList[0]);
+      if (fileList.length > 1) {
+        setCarouselImages(fileList.slice(1));
+      }
+    }
+  }, []);
+
+  // Agregar un campo oculto para almacenar las URLs de las imágenes
+  useEffect(() => {
+    // Si tenemos una imagen principal, actualizar el campo thumb
+    if (thumbImage && thumbImage.url) {
+      formRef?.setFieldsValue({ thumb: thumbImage.url });
+    }
+
+    // Si tenemos imágenes de carrusel, actualizar el campo carousel
+    if (carouselImages.length > 0) {
+      const carouselUrls = carouselImages
+        .filter(img => img.url) // Solo incluir imágenes con URL
+        .map(img => img.url);
+      
+      formRef?.setFieldsValue({ carousel: carouselUrls });
+    }
+  }, [thumbImage, carouselImages]);
+
+  // Hook personalizado para manejar eventos de arrastrar y soltar
+  const dragProps = {
+    onDragEnter: () => setDragActive(true),
+    onDragLeave: () => setDragActive(false),
+    onDrop: () => setDragActive(false)
+  };
 
   const fieldAnimation = {
     inactive: { scale: 1 },
@@ -118,7 +195,7 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
 
   const handleImagePreview = async (file: UploadFile) => {
     if (!file.url && !file.preview) {
-      file.preview = await getBase64(file.originFileObj as File);
+      file.preview = await getBase64(file.originFileObj as RcFile);
     }
     setPreviewImage(file.url || (file.preview as string));
     setPreviewVisible(true);
@@ -127,13 +204,19 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
     );
   };
 
-  const getBase64 = (file: File): Promise<string> => {
+  const getBase64 = (file: RcFile): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => resolve(reader.result as string);
       reader.onerror = (error) => reject(error);
     });
+  };
+
+  const handleGroupImagePreview = (url: string, title: string) => {
+    setPreviewImage(url);
+    setPreviewTitle(title);
+    setPreviewVisible(true);
   };
 
   const handleVideoPreview = (url: string) => {
@@ -158,33 +241,219 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
 
   const handleVideoUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const url = e.target.value;
+    if (setVideoUrl) {
     setVideoUrl(url);
+    }
+    formRef?.setFieldsValue({ videoUrl: url });
     videoUrlRef.current = url;
+  };
 
-    if (url && (url.includes("youtube.com") || url.includes("youtu.be"))) {
-      // Optional: Keep validation notification or remove if redundant
-      // notification.success({
-      //   message: "URL de video válida",
-      //   description: "La URL del video ha sido validada correctamente.",
-      //   placement: "bottomRight",
-      // });
+  // Manejar subida de imagen principal
+  const handleThumbUpload = async (file: RcFile) => {
+    try {
+      // Mostrar una vista previa antes de subir
+      const previewUrl = await getBase64(file);
+      
+      // Crear un objeto de archivo temporal para mostrar mientras se sube
+      const tempFile: UploadFile = {
+        uid: file.uid,
+        name: file.name,
+        status: 'uploading',
+        percent: 0,
+        preview: previewUrl as string,
+      };
+      
+      // Establecer como imagen principal temporal
+      setThumbImage(tempFile);
+      
+      // Ahora subir el archivo
+      console.log("Iniciando carga de imagen principal...");
+      const result = await handleUpload(file);
+      console.log("Resultado de la carga:", result);
+      
+      if (result && typeof result === 'object' && 'url' in result) {
+        // Si recibimos un objeto con una URL, utilizamos esa información
+        const updatedFile: UploadFile = {
+          ...tempFile,
+          status: 'done',
+          percent: 100,
+          url: result.url,
+          thumbUrl: result.thumbUrl || result.url,
+          delete_url: result.delete_url,
+          preview: previewUrl as string,
+        };
+        
+        setThumbImage(updatedFile);
+        
+        // Actualizar el estado para reflejar que tenemos una nueva imagen principal
+        notification.success({
+          message: "Imagen principal",
+          description: "Se ha establecido la imagen principal correctamente",
+          placement: "bottomRight",
+        });
+      } else if (result === true) {
+        // Si solo recibimos true, mantenemos el archivo temporal pero lo marcamos como completado
+        const updatedFile: UploadFile = {
+          ...tempFile,
+          status: 'done',
+          percent: 100,
+        };
+        
+        setThumbImage(updatedFile);
+        
+        // Actualizar el estado para reflejar que tenemos una nueva imagen principal
+        notification.success({
+          message: "Imagen principal",
+          description: "Se ha establecido la imagen principal correctamente",
+          placement: "bottomRight",
+        });
+      } else {
+        // Si la subida falló, eliminamos la imagen temporal
+        console.error("La carga falló, eliminando imagen temporal");
+        setThumbImage(null);
+      }
+    } catch (error) {
+      console.error("Error al subir la imagen principal:", error);
+      setThumbImage(null);
+      notification.error({
+        message: "Error de subida",
+        description: "No se pudo subir la imagen principal. Por favor, inténtelo de nuevo.",
+        placement: "bottomRight",
+      });
+    }
+    
+    return false; // Prevenir comportamiento por defecto
+  };
+
+  // Manejar subida de imágenes de carrusel
+  const handleCarouselUpload = async (file: RcFile) => {
+    try {
+      // Mostrar una vista previa antes de subir
+      const previewUrl = await getBase64(file);
+      
+      // Crear un objeto de archivo temporal para mostrar mientras se sube
+      const tempFile: UploadFile = {
+        uid: file.uid,
+        name: file.name,
+        status: 'uploading',
+        percent: 0,
+        preview: previewUrl as string,
+      };
+      
+      // Agregar al carrusel temporalmente
+      setCarouselImages(prev => [...prev, tempFile]);
+      
+      // Ahora subir el archivo
+      console.log("Iniciando carga de imagen de carrusel...");
+      const result = await handleUpload(file);
+      console.log("Resultado de la carga de carrusel:", result);
+      
+      if (result && typeof result === 'object' && 'url' in result) {
+        // Si recibimos un objeto con una URL, utilizamos esa información
+        const updatedFile: UploadFile = {
+          ...tempFile,
+          status: 'done',
+          percent: 100,
+          url: result.url,
+          thumbUrl: result.thumbUrl || result.url,
+          delete_url: result.delete_url,
+          preview: previewUrl as string,
+        };
+        
+        // Reemplazar la imagen temporal con la imagen actualizada
+        setCarouselImages(prev => 
+          prev.map(img => img.uid === file.uid ? updatedFile : img)
+        );
+      } else if (result === true) {
+        // Si solo recibimos true, mantenemos el archivo temporal pero lo marcamos como completado
+        const updatedFile: UploadFile = {
+          ...tempFile,
+          status: 'done',
+          percent: 100,
+        };
+        
+        // Reemplazar la imagen temporal con la imagen actualizada
+        setCarouselImages(prev => 
+          prev.map(img => img.uid === file.uid ? updatedFile : img)
+        );
+      } else {
+        // Si la subida falló, eliminamos la imagen temporal
+        console.error("La carga de carrusel falló, eliminando imagen temporal");
+        setCarouselImages(prev => prev.filter(img => img.uid !== file.uid));
+      }
+    } catch (error) {
+      console.error("Error al subir la imagen de carrusel:", error);
+      setCarouselImages(prev => prev.filter(img => img.uid !== file.uid));
+      notification.error({
+        message: "Error de subida",
+        description: "No se pudo subir la imagen de carrusel. Por favor, inténtelo de nuevo.",
+        placement: "bottomRight",
+      });
+    }
+    
+    return false; // Prevenir comportamiento por defecto
+  };
+
+  // Eliminar imagen principal
+  const handleRemoveThumb = () => {
+    if (thumbImage) {
+      // Intentar eliminar la imagen del servidor imgbb si existe la URL de eliminación
+      if (thumbImage.delete_url) {
+        // Navegar a la URL de eliminación en una nueva pestaña
+        window.open(thumbImage.delete_url, '_blank');
+      }
+      
+      setThumbImage(null);
+      notification.info({
+        message: "Imagen eliminada",
+        description: "Se ha eliminado la imagen principal",
+        placement: "bottomRight",
+      });
     }
   };
 
-  // Specific handler for removing files from the individual upload list
-  const handleRemoveFile = (fileToRemove: UploadFile) => {
-    console.log("Removing file:", fileToRemove, fileList);  
-    const newFileList = fileList.filter(
-      (file) => file.uid !== fileToRemove.uid
-    );
-    // Notify the parent or form state about the change
-    // This depends on how handleUpload is implemented, assuming it updates the list
-    if (typeof handleUpload === "function") {
-      // Ant Design's beforeUpload expects a file, but we are managing the list externally
-      // We might need a separate prop like 'onFileListChange'
-      // For now, let's assume handleUpload can take a fileList option
-      handleUpload({ file: fileToRemove, fileList: newFileList });
+  // Eliminar imagen de carrusel
+  const handleRemoveCarouselImage = (uid: string) => {
+    // Encontrar la imagen para obtener su URL de eliminación
+    const imageToRemove = carouselImages.find(img => img.uid === uid);
+    
+    // Intentar eliminar la imagen del servidor imgbb si existe la URL de eliminación
+    if (imageToRemove && imageToRemove.delete_url) {
+      // Navegar a la URL de eliminación en una nueva pestaña
+      window.open(imageToRemove.delete_url, '_blank');
     }
+    
+    setCarouselImages(prev => prev.filter(img => img.uid !== uid));
+    notification.info({
+      message: "Imagen eliminada",
+      description: "Se ha eliminado la imagen del carrusel",
+      placement: "bottomRight",
+    });
+  };
+
+  // Promover imagen de carrusel a principal
+  const promoteToThumb = (index: number) => {
+    const selectedImage = carouselImages[index];
+    const oldThumb = thumbImage;
+    
+    // Establecer la imagen seleccionada como principal
+    setThumbImage(selectedImage);
+    
+    // Eliminar la imagen seleccionada del carrusel
+    const newCarousel = carouselImages.filter((_, i) => i !== index);
+    
+    // Si había una imagen principal, añadirla al carrusel
+    if (oldThumb) {
+      newCarousel.unshift(oldThumb);
+    }
+    
+    setCarouselImages(newCarousel);
+    
+    notification.success({
+      message: "Imagen principal actualizada",
+      description: "Se ha cambiado la imagen principal",
+      placement: "bottomRight",
+    });
   };
 
   return (
@@ -198,6 +467,14 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
           Multimedia del Producto
         </Title>
       </motion.div>
+
+      {/* Campos ocultos para almacenar las URLs */}
+      <Form.Item name="thumb" hidden>
+        <Input />
+      </Form.Item>
+      <Form.Item name="carousel" hidden>
+        <Input />
+      </Form.Item>
 
       <Row gutter={[24, 24]}>
         <Col xs={24}>
@@ -231,6 +508,8 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
                   activeField === "useGroupImages" ? "active" : "inactive"
                 }
                 variants={fieldAnimation}
+                onFocus={() => setActiveField("useGroupImages")}
+                onBlur={() => setActiveField(null)}
               >
                 <Form.Item
                   label={
@@ -242,8 +521,8 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
                       )}
                     </div>
                   }
-                  name="useGroupImages" // Make sure this name matches your form structure if using Form context
-                  valuePropName="checked" // For Switch component with Form.Item
+                  name="useGroupImages"
+                  valuePropName="checked"
                 >
                   <div className="flex items-center">
                     <motion.div whileTap={{ scale: 0.9 }}>
@@ -253,7 +532,7 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
                           setUseGroupImages(checked);
                           if (!checked) {
                             formRef?.setFieldsValue({ imageGroup: undefined });
-                            setSelectedGroupImages([]);
+                            setSelectedGroup(null);
                           }
                           notification.info({
                             message: checked
@@ -265,8 +544,6 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
                             placement: "bottomRight",
                           });
                         }}
-                        onFocus={() => setActiveField("useGroupImages")}
-                        onBlur={() => setActiveField(null)}
                       />
                     </motion.div>
                     <Text className="ml-2 text-sm text-gray-500">
@@ -286,6 +563,10 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.3 }}
+                  >
+                    <div
+                      onFocus={() => setActiveField("imageGroup")}
+                      onBlur={() => setActiveField(null)}
                   >
                     <Form.Item
                       name="imageGroup"
@@ -309,27 +590,24 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
                             value: group._id,
                           })
                         )}
-                        onFocus={() => setActiveField("imageGroup")}
-                        onBlur={() => setActiveField(null)}
                         onChange={(selectedGroupId) => {
-                          const selectedGroup = imageGroups?.data?.groups?.find(
+                            const selected = imageGroups?.data?.groups?.find(
                             (group: ImageGroup) => group._id === selectedGroupId
                           );
-                          setSelectedGroupImages(
-                            selectedGroup ? selectedGroup.images : []
-                          );
+                            setSelectedGroup(selected || null);
                           notification.success({
                             message: "Grupo de Imágenes Seleccionado",
                             description: `Grupo '${
-                              selectedGroup?.identifier || ""
+                                selected?.identifier || ""
                             }' seleccionado.`,
                             placement: "bottomRight",
                           });
                         }}
-                        allowClear // Allow deselecting
-                        onClear={() => setSelectedGroupImages([])} // Clear preview on deselect
+                          allowClear
+                          onClear={() => setSelectedGroup(null)}
                       />
                     </Form.Item>
+                    </div>
 
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-4">
                       <div className="flex items-center mb-2">
@@ -344,44 +622,149 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
                       </Text>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-4">
-                      {selectedGroupImages.length > 0
-                        ? selectedGroupImages.map((image) => (
+                    {selectedGroup && (
                             <motion.div
-                              key={image._id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="mt-4"
+                      >
+                        <div className="flex justify-between items-center mb-2">
+                          <Text strong>Vista previa de imágenes del grupo</Text>
+                          <Badge
+                            count={`${(selectedGroup.carousel?.length || 0) + (selectedGroup.thumb ? 1 : 0)} imágenes`}
+                            style={{ backgroundColor: "#1890ff" }}
+                          />
+                        </div>
+                        
+                        {/* Thumbnail (Main image) */}
+                        {selectedGroup.thumb && (
+                          <div className="mb-4">
+                            <Text strong className="mb-2 block">Imagen Principal (Miniatura)</Text>
+                            <motion.div
                               whileHover={{ scale: 1.05 }}
-                              className="relative rounded-lg overflow-hidden border border-gray-200 aspect-square bg-gray-100"
+                              className="relative w-full max-w-xs mx-auto"
+                            >
+                              <div
+                                className="rounded-lg overflow-hidden border border-green-500 aspect-square bg-gray-100 cursor-pointer shadow-md"
+                                onClick={() => handleGroupImagePreview(selectedGroup.thumb!, "Imagen Principal")}
                             >
                               <img
-                                src={image.display_url || image.url}
-                                alt={image.original_name || `Imagen de grupo`}
+                                  src={selectedGroup.thumb}
+                                  alt="Imagen Principal"
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement;
-                                  // target.src = '/placeholder.svg'; // Path to your placeholder
-                                  target.style.display = "none"; // Hide broken image icon
-                                  // Optionally show a placeholder icon instead
+                                    target.style.display = "none";
                                   const parent = target.parentElement;
                                   if (parent) {
-                                    const placeholder =
-                                      document.createElement("div");
-                                    placeholder.className =
-                                      "w-full h-full flex items-center justify-center bg-gray-200";
+                                      const placeholder = document.createElement("div");
+                                      placeholder.className = "w-full h-full flex items-center justify-center bg-gray-200";
                                     placeholder.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>`;
                                     parent.appendChild(placeholder);
                                   }
-                                  target.onerror = null;
                                 }}
                               />
                               <div className="absolute top-2 right-2">
                                 <Badge
-                                  count="Grupo"
+                                    count="Principal"
+                                    style={{ backgroundColor: "#52c41a" }}
+                                  />
+                                </div>
+                                <div className="absolute bottom-2 right-2">
+                                  <motion.div
+                                    whileHover={{ scale: 1.2 }}
+                                    whileTap={{ scale: 0.9 }}
+                                  >
+                                    <Tooltip title="Ver imagen">
+                                      <button
+                                        type="button"
+                                        className="bg-white rounded-full p-1 shadow-md text-blue-500 hover:text-blue-700"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleGroupImagePreview(selectedGroup.thumb!, "Imagen Principal");
+                                        }}
+                                      >
+                                        <EyeOutlined />
+                                      </button>
+                                    </Tooltip>
+                                  </motion.div>
+                                </div>
+                              </div>
+                            </motion.div>
+                          </div>
+                        )}
+                        
+                        {/* Carousel images */}
+                        {selectedGroup.carousel && selectedGroup.carousel.length > 0 && (
+                          <div>
+                            <Text strong className="mb-2 block">Imágenes de Carrusel</Text>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                              {selectedGroup.carousel.map((imageUrl, index) => (
+                                <motion.div
+                                  key={`carousel-${index}`}
+                                  whileHover={{ scale: 1.05 }}
+                                  className="relative rounded-lg overflow-hidden border border-gray-200 aspect-square bg-gray-100 cursor-pointer"
+                                  onClick={() => handleGroupImagePreview(imageUrl, `Imagen de carrusel ${index + 1}`)}
+                                >
+                                  <img
+                                    src={imageUrl}
+                                    alt={`Imagen de carrusel ${index + 1}`}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = "none";
+                                      const parent = target.parentElement;
+                                      if (parent) {
+                                        const placeholder = document.createElement("div");
+                                        placeholder.className = "w-full h-full flex items-center justify-center bg-gray-200";
+                                        placeholder.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>`;
+                                        parent.appendChild(placeholder);
+                                      }
+                                    }}
+                                  />
+                                  <div className="absolute top-2 right-2">
+                                    <Badge
+                                      count={`#${index + 1}`}
                                   style={{ backgroundColor: "#1890ff" }}
                                 />
                               </div>
+                                  <div className="absolute bottom-2 right-2">
+                                    <motion.div
+                                      whileHover={{ scale: 1.2 }}
+                                      whileTap={{ scale: 0.9 }}
+                                    >
+                                      <Tooltip title="Ver imagen">
+                                        <button
+                                          type="button"
+                                          className="bg-white rounded-full p-1 shadow-md text-blue-500 hover:text-blue-700"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleGroupImagePreview(imageUrl, `Imagen de carrusel ${index + 1}`);
+                                          }}
+                                        >
+                                          <EyeOutlined />
+                                        </button>
+                                      </Tooltip>
                             </motion.div>
-                          ))
-                        : Array.from({ length: 4 }).map((_, index) => (
+                                  </div>
+                                </motion.div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {!selectedGroup.thumb && (!selectedGroup.carousel || selectedGroup.carousel.length === 0) && (
+                          <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <Text type="secondary">Este grupo no tiene imágenes definidas.</Text>
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                    
+                    {!selectedGroup && (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-4">
+                        {Array.from({ length: 4 }).map((_, index) => (
                             <motion.div
                               key={`placeholder-${index}`}
                               className="relative rounded-lg overflow-hidden border border-gray-200"
@@ -394,6 +777,7 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
                             </motion.div>
                           ))}
                     </div>
+                    )}
                   </motion.div>
                 ) : (
                   <motion.div
@@ -403,95 +787,165 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.3 }}
                   >
+                    <Row gutter={[24, 24]}>
+                      {/* Columna de Imagen Principal (Thumb) */}
+                      <Col xs={24} md={12}>
+                        <Card 
+                          title={
+                            <div className="flex items-center">
+                              <PictureOutlined className="mr-2 text-green-500" />
+                              <span>Imagen Principal</span>
+                              <Badge 
+                                count="Thumb" 
+                                style={{ 
+                                  backgroundColor: '#52c41a',
+                                  marginLeft: '8px'
+                                }} 
+                              />
+                            </div>
+                          }
+                          className="shadow-sm hover:shadow-md transition-all duration-300"
+                        >
+                          <div className="mb-2">
+                            <Text type="secondary">
+                              Esta imagen se usará como miniatura principal del producto (300x300px)
+                            </Text>
+                          </div>
+                          
                     <Form.Item
-                      name="images"
+                            name="thumb"
                       rules={[
                         {
-                          validator: async (_, value) => {
-                            if (!useGroupImages && (!fileList || fileList.length === 0)) {
-                              return Promise.reject('Por favor suba al menos una imagen');
-                            }
-                            return Promise.resolve();
-                          },
+                                required: !useGroupImages && !thumbImage,
+                                message: "Por favor suba una imagen principal",
                         },
                       ]}
-                      valuePropName="fileList"
-                      getValueFromEvent={(e) => {
-                        if (Array.isArray(e)) {
-                          return e;
-                        }
-                        return e?.fileList;
-                      }}
-                    >
-                      <motion.div
-                        animate={{
-                          boxShadow: dragActive
-                            ? "0 0 0 2px rgba(24, 144, 255, 0.5)"
-                            : "none",
-                        }}
-                        transition={{ duration: 0.2 }}
+                          >
+                            {thumbImage ? (
+                              <div className="mb-4">
+                                <div className="relative">
+                                  <div 
+                                    className="aspect-square rounded-lg overflow-hidden border-2 border-green-500 bg-gray-50 cursor-pointer"
+                                    onClick={() => handlePreview(thumbImage)}
                       >
-                        <Dragger
-                          listType="picture-card"
-                          fileList={fileList}
-                          beforeUpload={(file) => {
-                            // Prevent default upload behavior, handle manually via handleUpload prop
-                            handleUpload(file);
-                            return false; // Must return false to prevent default upload
-                          }}
-                          onPreview={handleImagePreview} // Use the modal preview handler
-                          onRemove={handleRemoveFile} // Use custom remove handler
-                          multiple={true}
+                                    <img
+                                      src={thumbImage.url || thumbImage.thumbUrl || (thumbImage.preview as string)}
+                                      alt="Imagen principal"
+                                      className="w-full h-full object-contain"
+                                    />
+                                  </div>
+                                  <div className="absolute top-2 right-2 flex space-x-1">
+                                    <Tooltip title="Ver imagen">
+                                      <Button
+                                        type="default"
+                                        shape="circle"
+                                        icon={<EyeOutlined />}
+                                        onClick={() => handlePreview(thumbImage)}
+                                        className="shadow-md"
+                                      />
+                                    </Tooltip>
+                                    <Tooltip title="Eliminar imagen">
+                                      <Button
+                                        type="default"
+                                        shape="circle"
+                                        icon={<DeleteOutlined />}
+                                        onClick={handleRemoveThumb}
+                                        className="shadow-md"
+                                        danger
+                                      />
+                                    </Tooltip>
+                                  </div>
+                                </div>
+                                <Text type="secondary" className="block mt-2 text-center">
+                                  {thumbImage.name}
+                                </Text>
+                              </div>
+                            ) : (
+                              <Upload.Dragger
+                                beforeUpload={handleThumbUpload}
+                                showUploadList={false}
                           accept="image/*"
-                          onDragEnter={() => setDragActive(true)}
-                          onDragLeave={() => setDragActive(false)}
-                          onDrop={() => setDragActive(false)}
-                          className="rounded-lg border-dashed"
-                          style={{ padding: "20px" }}
-                          onFocus={() => setActiveField("images")}
-                          onBlur={() => setActiveField(null)}
-                        >
-                          <div className="p-4">
-                            <motion.div
-                              animate={{ scale: dragActive ? 1.1 : 1 }}
-                              transition={{ duration: 0.2 }}
+                                className="bg-gray-50 hover:bg-gray-100 transition-colors"
+                                multiple={false}
                             >
                               <p className="ant-upload-drag-icon">
-                                <CloudUploadOutlined
-                                  style={{ fontSize: 48, color: "#1890ff" }}
-                                />
+                                  <CloudUploadOutlined style={{ fontSize: 48, color: "#52c41a" }} />
                               </p>
-                            </motion.div>
-                            <p className="ant-upload-text font-medium text-lg mt-2">
-                              Haga clic o arrastre archivos a esta área para
-                              subirlos
+                                <p className="ant-upload-text">
+                                  Haga clic o arrastre una imagen aquí
                             </p>
-                            <p className="ant-upload-hint text-gray-500 mt-1">
-                              Soporte para imágenes JPG, PNG o GIF. Tamaño
-                              máximo: 5MB
+                                <p className="ant-upload-hint">
+                                  Soporte para JPG, PNG o GIF. Tamaño recomendado: 300x300px
                             </p>
-                          </div>
-                        </Dragger>
-                      </motion.div>
+                              </Upload.Dragger>
+                            )}
                     </Form.Item>
-
-                    {/* Preview area for individually uploaded files remains the same */}
-                    {fileList.length > 0 && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="mt-4"
-                      >
-                        <div className="flex justify-between items-center mb-2">
-                          <Text strong>Vista previa de imágenes subidas</Text>
+                        </Card>
+                      </Col>
+                      
+                      {/* Columna de Imágenes del Carrusel */}
+                      <Col xs={24} md={12}>
+                        <Card 
+                          title={
+                            <div className="flex items-center">
+                              <PictureOutlined className="mr-2 text-blue-500" />
+                              <span>Imágenes del Carrusel</span>
                           <Badge
-                            count={`${fileList.length} imágenes`}
-                            style={{ backgroundColor: "#1890ff" }}
+                                count={`Máx. 8`} 
+                                style={{ 
+                                  backgroundColor: '#1890ff',
+                                  marginLeft: '8px'
+                                }} 
                           />
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                          {fileList.map((file, index) => (
+                          }
+                          className="shadow-sm hover:shadow-md transition-all duration-300"
+                        >
+                          <div className="mb-2">
+                            <Text type="secondary">
+                              Estas imágenes se mostrarán en el carrusel del producto (600x600px)
+                            </Text>
+                          </div>
+                          
+                          <Form.Item name="carousel">
+                            <Upload.Dragger
+                              beforeUpload={handleCarouselUpload}
+                              showUploadList={false}
+                              accept="image/*"
+                              className="bg-gray-50 hover:bg-gray-100 transition-colors"
+                              disabled={carouselImages.length >= 8}
+                              multiple={true}
+                            >
+                              <p className="ant-upload-drag-icon">
+                                <CloudUploadOutlined style={{ fontSize: 48, color: "#1890ff" }} />
+                              </p>
+                              <p className="ant-upload-text">
+                                Haga clic o arrastre imágenes aquí
+                              </p>
+                              <p className="ant-upload-hint">
+                                Soporte para JPG, PNG o GIF. Tamaño recomendado: 600x600px
+                              </p>
+                              {carouselImages.length >= 8 && (
+                                <Alert
+                                  message="Límite alcanzado"
+                                  description="Has alcanzado el máximo de 8 imágenes para el carrusel"
+                                  type="warning"
+                                  showIcon
+                                  className="mt-4"
+                                />
+                              )}
+                            </Upload.Dragger>
+                          </Form.Item>
+                          
+                          {/* Previsualización de imágenes del carrusel */}
+                          {carouselImages.length > 0 && (
+                            <div className="mt-4">
+                              <div className="flex justify-between items-center mb-2">
+                                <Text strong>Imágenes del carrusel</Text>
+                                <Badge count={`${carouselImages.length}/8`} style={{ backgroundColor: "#1890ff" }} />
+                              </div>
+                              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {carouselImages.map((file, index) => (
                             <motion.div
                               key={file.uid}
                               whileHover={{ scale: 1.05 }}
@@ -499,61 +953,66 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
                             >
                               <div
                                 className="aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-50 cursor-pointer"
-                                onClick={() => handleImagePreview(file)}
+                                      onClick={() => handlePreview(file)}
                               >
                                 <img
-                                  src={
-                                    file.url ||
-                                    file.thumbUrl ||
-                                    (file.preview as string)
-                                  } // Use thumbUrl if available
+                                        src={file.url || file.thumbUrl || (file.preview as string)}
                                   alt={file.name}
                                   className="w-full h-full object-cover"
                                 />
                               </div>
                               <div className="absolute top-2 right-2 flex space-x-1">
-                                <motion.div
-                                  whileHover={{ scale: 1.2 }}
-                                  whileTap={{ scale: 0.9 }}
-                                >
                                   <Tooltip title="Ver imagen">
-                                    <button
-                                      type="button"
-                                      className="bg-white rounded-full p-1 shadow-md text-blue-500 hover:text-blue-700"
-                                      onClick={() => handleImagePreview(file)}
-                                    >
-                                      <EyeOutlined />
-                                    </button>
+                                        <Button
+                                          type="default"
+                                          shape="circle"
+                                          size="small"
+                                          icon={<EyeOutlined />}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handlePreview(file);
+                                          }}
+                                          className="shadow-md"
+                                        />
                                   </Tooltip>
-                                </motion.div>
-                                <motion.div
-                                  whileHover={{ scale: 1.2 }}
-                                  whileTap={{ scale: 0.9 }}
-                                >
                                   <Tooltip title="Eliminar imagen">
-                                    <button
-                                      type="button"
-                                      className="bg-white rounded-full p-1 shadow-md text-red-500 hover:text-red-700"
-                                      onClick={() => handleRemoveFile(file)}
-                                    >
-                                      <DeleteOutlined />
-                                    </button>
+                                        <Button
+                                          type="default"
+                                          shape="circle"
+                                          size="small"
+                                          icon={<DeleteOutlined />}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleRemoveCarouselImage(file.uid);
+                                          }}
+                                          className="shadow-md"
+                                          danger
+                                        />
                                   </Tooltip>
-                                </motion.div>
                               </div>
-                              {index === 0 && (
                                 <div className="absolute bottom-2 left-2">
-                                  <Badge
-                                    count="Principal"
-                                    style={{ backgroundColor: "#52c41a" }}
-                                  />
+                                      <Tooltip title="Establecer como imagen principal">
+                                        <Button
+                                          type="primary"
+                                          size="small"
+                                          icon={<PictureOutlined />}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            promoteToThumb(index);
+                                          }}
+                                        >
+                                          Principal
+                                        </Button>
+                                      </Tooltip>
                                 </div>
-                              )}
                             </motion.div>
                           ))}
                         </div>
-                      </motion.div>
+                            </div>
                     )}
+                        </Card>
+                      </Col>
+                    </Row>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -588,6 +1047,8 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
               <motion.div
                 animate={activeField === "videoUrl" ? "active" : "inactive"}
                 variants={fieldAnimation}
+                onFocus={() => setActiveField("videoUrl")}
+                onBlur={() => setActiveField(null)}
               >
                 <Form.Item
                   name="videoUrl"
@@ -649,9 +1110,7 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
                         </Tooltip>
                       ) : null
                     }
-                    onFocus={() => setActiveField("videoUrl")}
-                    onBlur={() => setActiveField(null)}
-                    value={videoUrl} // Ensure controlled component if managing state outside Form
+                    value={videoUrl}
                   />
                 </Form.Item>
               </motion.div>
@@ -718,7 +1177,7 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
       </Row>
 
       <Modal
-        open={previewVisible} // Use 'open' instead of 'visible' for newer Ant Design versions
+        open={previewVisible}
         title={previewTitle}
         footer={null}
         onCancel={() => setPreviewVisible(false)}
@@ -733,13 +1192,13 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
       </Modal>
 
       <Modal
-        open={videoPreviewVisible} // Use 'open' instead of 'visible'
+        open={videoPreviewVisible}
         title="Vista previa del video"
         footer={null}
         onCancel={() => setVideoPreviewVisible(false)}
         width={800}
         centered
-        destroyOnClose // Destroy iframe when modal closes to stop video playback
+        destroyOnClose
       >
         <div
           style={{

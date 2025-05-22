@@ -1,4 +1,4 @@
-import React, { useState } from "react"; 
+import React, { useState, useRef, useEffect } from "react"; 
 import {
   Modal,
   Image,
@@ -8,7 +8,6 @@ import {
   Row,
   Col,
   Typography,
-  Carousel,
   Tabs,
   Badge,
   Button,
@@ -16,9 +15,12 @@ import {
   Alert,
   Tooltip, 
   Rate,
-  Divider
+  Divider,
+  Upload,
+  notification
 } from "antd";
 import type { Product } from "../../../api/types";
+import type { UploadFile, RcFile } from 'antd/es/upload/interface';
 import {
   ShoppingCartOutlined,
   TagOutlined,
@@ -35,7 +37,10 @@ import {
   ShareAltOutlined,
   ZoomInOutlined,
   RightCircleOutlined,
-  EyeOutlined
+  EyeOutlined,
+  DeleteOutlined,
+  PictureOutlined,
+  CloudUploadOutlined
 } from "@ant-design/icons";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
@@ -50,17 +55,64 @@ interface ProductViewProps {
   productId: string;
 }
 
+// Función auxiliar para convertir un archivo a base64
+const getBase64 = (file: RcFile): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+};
+
 const ProductDetails: React.FC<{ product: Product }> = ({ product }) => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string>('');
+  const [previewTitle, setPreviewTitle] = useState<string>('');
   const [isFavorite, setIsFavorite] = useState(false);
+  const [videoPreviewVisible, setVideoPreviewVisible] = useState(false);
+  const [currentVideoUrl, setCurrentVideoUrl] = useState('');
 
-  // Fijamos la primera imagen como seleccionada inicialmente si hay imágenes
-  React.useEffect(() => {
-    if (product?.images?.length > 0 && !selectedImage) {
-      setSelectedImage(product.images[0]);
+  // Preparar las imágenes para la galería
+  const thumbImage = product.thumb || null;
+  const carouselImages = product.carousel || [];
+  
+  // Todas las imágenes disponibles
+  const allImages = thumbImage ? [thumbImage, ...carouselImages.filter(img => img !== thumbImage)] : carouselImages;
+
+  // Fijar la primera imagen como seleccionada inicialmente si hay imágenes
+  useEffect(() => {
+    if (allImages.length > 0 && !selectedImage) {
+      setSelectedImage(allImages[0]);
     }
-  }, [product, selectedImage]);
+  }, [allImages, selectedImage]);
+
+  const handleImagePreview = (image: string, title: string = 'Imagen') => {
+    setPreviewImage(image);
+    setPreviewTitle(title);
+    setPreviewVisible(true);
+  };
+
+  const handleVideoPreview = (url: string) => {
+    let videoId = "";
+    if (url.includes("youtube.com/watch?v=")) {
+      videoId = url.split("v=")[1].split("&")[0];
+    } else if (url.includes("youtu.be/")) {
+      videoId = url.split("youtu.be/")[1].split("?")[0];
+    }
+
+    if (videoId) {
+      setCurrentVideoUrl(`https://www.youtube.com/embed/${videoId}`);
+      setVideoPreviewVisible(true);
+    } else {
+      notification.error({
+        message: "URL de video inválida",
+        description: "Por favor ingrese una URL válida de YouTube.",
+        placement: "bottomRight",
+      });
+    }
+  };
 
   const statusColor = product.active ? "green" : "red";
   const stockColor = product.stock > 10 ? "green" : product.stock > 0 ? "orange" : "red";
@@ -82,8 +134,6 @@ const ProductDetails: React.FC<{ product: Product }> = ({ product }) => {
     // Calcularlo manualmente 
     finalPrice = Math.round(product.price * (1 - product.discount.percentage / 100));
   }
-  
-
 
   const toggleFavorite = () => {
     setIsFavorite(!isFavorite);
@@ -151,7 +201,7 @@ const ProductDetails: React.FC<{ product: Product }> = ({ product }) => {
             className="images-card shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl overflow-hidden"
             bodyStyle={{ padding: '16px' }}
           >
-            {product?.images && product.images.length > 0 ? (
+            {allImages.length > 0 ? (
               <>
                 {/* Imagen Principal */}
                 <div className="main-image-container relative overflow-hidden rounded-xl mb-4 bg-gradient-to-tr from-gray-50 to-white">
@@ -162,11 +212,11 @@ const ProductDetails: React.FC<{ product: Product }> = ({ product }) => {
                     className="flex justify-center items-center h-[400px] w-full"
                   >
                     <Image
-                      src={selectedImage || product.images[0] || "/placeholder.svg"}
+                      src={selectedImage || allImages[0] || "/placeholder.svg"}
                       alt={product.name}
                       className="object-contain max-h-[380px]"
                       preview={false}
-                      onClick={() => setPreviewVisible(true)}
+                      onClick={() => handleImagePreview(selectedImage || allImages[0], 'Vista ampliada')}
                       fallback="/placeholder.svg"
                       style={{ 
                         transition: 'all 0.3s ease',
@@ -178,7 +228,7 @@ const ProductDetails: React.FC<{ product: Product }> = ({ product }) => {
                         type="primary"
                         shape="circle"
                         icon={<ZoomInOutlined />}
-                        onClick={() => setPreviewVisible(true)}
+                        onClick={() => handleImagePreview(selectedImage || allImages[0], 'Vista ampliada')}
                         className="shadow-md hover:shadow-lg"
                         size="large"
                       />
@@ -198,13 +248,20 @@ const ProductDetails: React.FC<{ product: Product }> = ({ product }) => {
                         </motion.div>
                       </div>
                     )}
+                    {selectedImage === product.thumb && product.thumb && (
+                      <div className="absolute bottom-4 left-4">
+                        <Tag color="green" icon={<PictureOutlined />} className="px-3 py-1 shadow-sm">
+                          Imagen Principal
+                        </Tag>
+                      </div>
+                    )}
                   </motion.div>
                 </div>
 
                 {/* Miniaturas */}
                 <div className="thumbnail-container mt-4 overflow-x-auto scrollbar-hide pb-2">
                   <div className="flex space-x-3">
-                    {product.images.map((image, index) => (
+                    {allImages.map((image, index) => (
                       <motion.div
                         key={`thumb-${index}`}
                         whileHover={{ scale: 1.05 }}
@@ -228,6 +285,13 @@ const ProductDetails: React.FC<{ product: Product }> = ({ product }) => {
                             preview={false}
                             fallback="/placeholder.svg"
                           />
+                          {image === product.thumb && (
+                            <div className="absolute top-0 left-0 w-full">
+                              <Tag color="green" className="m-0 rounded-none text-xs px-1">
+                                Principal
+                              </Tag>
+                            </div>
+                          )}
                         </div>
                       </motion.div>
                     ))}
@@ -276,7 +340,6 @@ const ProductDetails: React.FC<{ product: Product }> = ({ product }) => {
                               className="ml-1"
                             />
                           </div>
-                        
                         </>
                       ) : (
                         <Title level={2} className="text-blue-700 m-0 mr-3 font-bold">
@@ -590,6 +653,7 @@ const ProductDetails: React.FC<{ product: Product }> = ({ product }) => {
       {/* Modal de preview de imagen */}
       <Modal
         open={previewVisible}
+        title={previewTitle}
         footer={null}
         onCancel={() => setPreviewVisible(false)}
         width="80vw"
@@ -599,12 +663,47 @@ const ProductDetails: React.FC<{ product: Product }> = ({ product }) => {
       >
         <div className="flex justify-center items-center h-full">
           <Image
-            alt="Preview"
-            src={selectedImage || ""}
+            alt={previewTitle}
+            src={previewImage || ""}
             style={{ width: "100%", maxHeight: "80vh", objectFit: "contain" }}
             preview={false}
             className="rounded-lg"
             fallback="/placeholder.svg"
+          />
+        </div>
+      </Modal>
+
+      {/* Modal de preview de video */}
+      <Modal
+        open={videoPreviewVisible}
+        title="Vista previa del video"
+        footer={null}
+        onCancel={() => setVideoPreviewVisible(false)}
+        width={800}
+        centered
+        destroyOnClose
+      >
+        <div
+          style={{
+            position: "relative",
+            paddingBottom: "56.25%",
+            height: 0,
+            overflow: "hidden",
+          }}
+        >
+          <iframe
+            src={currentVideoUrl}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+            }}
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            title="Video Preview"
           />
         </div>
       </Modal>

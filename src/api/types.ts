@@ -17,7 +17,8 @@ export interface Product {
   long_description: string;
   useGroupImages: boolean;
   imageGroup?: string | null;
-  images: string[];
+  thumb?: string;
+  carousel?: string[];
   discount: {
     isActive: boolean;
     type: "permanent" | "temporary";
@@ -294,46 +295,34 @@ export interface Endpoints {
 // Tipos para los productos
 export interface ProductCreateInput {
   name: string;
+  code: string;
   price: number;
-  reservedStock?: number;
+  stock: number;
+  reservedStock: number;
   group: string;
   subgroup: string;
-  stock: number;
-  code: number;
-  shipping: string[];
-  videoUrl?: string;
-  warranty?: string;
-  discount?: {
-    isActive: boolean;
-    type: "permanent" | "temporary";
-    startDate?: string;
-    endDate?: string;
-    percentage: number;
-  },
-  seoTitle?: string;
-  seoDescription?: string;
-  seoKeywords?: string[];
-  variants?: Array<{
-    name: string;
-    value: string;
-    price: number;
-  }>;
-  compatible_vehicles?: any[];
-  images: string[];
   short_description: string;
   long_description: string;
-  specifications?: Array<{
-    key: string;
-    value: string;
-  }>;
-  seo?: {
-    title?: string;
-    description?: string;
-    keywords?: string[];
-  };
-  useGroupImages?: boolean;
-  imageGroup?: string;
   active: boolean;
+  useGroupImages: boolean;
+  imageGroup?: string;
+  thumb?: string;
+  carousel?: string[];
+  shipping: string[];
+  videoUrl?: string;
+  warranty: string;
+  discount: {
+    isActive: boolean;
+    type?: string;
+    percentage?: number;
+    startDate?: Date;
+    endDate?: Date;
+  };
+  compatible_vehicles: string[];
+  seoTitle: string;
+  seoDescription: string;
+  seoKeywords: string[];
+  variants: any[];
 }
 
 export interface ProductResponse {
@@ -345,7 +334,8 @@ export interface ProductResponse {
   stock: number;
   code: number;
   shipping: string[];
-  images: string[];
+  thumb?: string;
+  carousel?: string[];
   active: boolean;
   short_description?: string;
   long_description?: string;

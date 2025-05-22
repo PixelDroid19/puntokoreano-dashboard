@@ -34,7 +34,6 @@ class ProductsService {
       });
 
       return response.data;
-      // Modified to access response.data directly instead of response.data?.data
     } catch (error) {
       if (axios.isAxiosError(error)) {
         throw new Error(
