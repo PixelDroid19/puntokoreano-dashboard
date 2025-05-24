@@ -60,6 +60,7 @@ export interface OrderPayment {
   method: string;
   total: number;
   transaction_id?: string;
+  isDevelopment?: boolean;
 }
 
 export interface OrderShipping {

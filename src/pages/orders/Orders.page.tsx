@@ -1,5 +1,3 @@
-// src/pages/orders/Orders.page.tsx
-
 import React, { useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -7,6 +5,7 @@ import {
   Tag,
   Button,
   Space,
+  Typography,
   DatePicker,
   Select,
   Modal,
@@ -15,6 +14,9 @@ import {
   message,
   Timeline,
   Tooltip,
+  Badge,
+  Card,
+  Statistic,
 } from "antd";
 import {
   DownloadOutlined,
@@ -22,6 +24,11 @@ import {
   EyeOutlined,
   SyncOutlined,
   MailOutlined,
+  WifiOutlined,
+  ShoppingCartOutlined,
+  DollarOutlined,
+  ClockCircleOutlined,
+  CheckCircleOutlined,
 } from "@ant-design/icons";
 import type { RangePickerProps } from "antd/es/date-picker";
 import { Order, OrderStatus, PaymentStatus } from "../../types/orders";
@@ -31,6 +38,7 @@ import { useOrdersWebSocket } from "../../hooks/useOrdersWebSocket";
 import { ACCESS_TOKEN_KEY } from "../../api";
 
 const { RangePicker } = DatePicker;
+const { Title, Text } = Typography;
 
 // Mapa de colores para estados
 const STATUS_COLORS: Record<OrderStatus, string> = {
@@ -151,8 +159,13 @@ const Orders = () => {
 
   // Mutación para enviar factura por correo
   const sendInvoiceByEmail = useMutation({
-    mutationFn: ({ orderId, emailAddress }: { orderId: string; emailAddress?: string }) =>
-      OrdersService.sendInvoiceByEmail(orderId, emailAddress),
+    mutationFn: ({
+      orderId,
+      emailAddress,
+    }: {
+      orderId: string;
+      emailAddress?: string;
+    }) => OrdersService.sendInvoiceByEmail(orderId, emailAddress),
     onSuccess: () => {
       message.success("Factura enviada correctamente por correo electrónico");
       setIsEmailModalOpen(false);
@@ -186,7 +199,7 @@ const Orders = () => {
 
   const handleSendInvoiceEmail = async () => {
     if (!selectedOrder) return;
-    
+
     try {
       const values = await emailForm.validateFields();
       sendInvoiceByEmail.mutate({
@@ -245,34 +258,49 @@ const Orders = () => {
     }
   };
 
-
   const { isConnected } = useOrdersWebSocket({
-    token, // Pasar el token directamente, sin "Bearer"
+    token,
     onPaymentUpdate: (data) => {
-      console.log('Payment updated:', data);
+      console.log("Payment updated:", data);
     },
     onConnectionChange: (connected) => {
-      console.log('WebSocket connection status:', connected);
-    }
+      console.log("WebSocket connection status:", connected);
+    },
   });
 
-  
-
+  // Calcular estadísticas
+  const orders = ordersData?.data?.orders || [];
+  const totalOrders = orders.length;
+  const totalRevenue = orders.reduce(
+    (sum: number, order: Order) => sum + (order.payment?.total || 0),
+    0
+  );
+  const pendingOrders = orders.filter(
+    (order: Order) => order.status === "pending"
+  ).length;
+  const completedOrders = orders.filter(
+    (order: Order) => order.status === "completed"
+  ).length;
 
   const columns = [
     {
       title: "Número de Orden",
       dataIndex: "orderNumber",
       key: "orderNumber",
+      render: (orderNumber: string) => (
+        <Text strong className="text-blue-600">
+          #{orderNumber}
+        </Text>
+      ),
     },
     {
       title: "Cliente",
       dataIndex: "customer",
       key: "customer",
       render: (customer: { name: string; email: string }) => (
-        <div>
-          <div>{customer.name}</div>
-          <div className="text-gray-500 text-sm">{customer.email}</div>
+        <div className="space-y-1">
+          <div className="font-medium text-gray-900">{customer.name}</div>
+          <div className="text-sm text-gray-500">{customer.email}</div>
         </div>
       ),
     },
@@ -280,18 +308,26 @@ const Orders = () => {
       title: "Total",
       dataIndex: ["payment", "total"],
       key: "total",
-      render: (total: number) =>
-        total?.toLocaleString("es-CO", {
-          style: "currency",
-          currency: "COP",
-        }) || "N/A",
+      render: (total: number) => (
+        <Text strong className="text-green-600 text-lg">
+          {total?.toLocaleString("es-CO", {
+            style: "currency",
+            currency: "COP",
+          }) || "N/A"}
+        </Text>
+      ),
     },
     {
       title: "Estado",
       dataIndex: "status",
       key: "status",
       render: (status: OrderStatus) => (
-        <Tag color={STATUS_COLORS[status]}>{status.toUpperCase()}</Tag>
+        <Tag
+          color={STATUS_COLORS[status]}
+          className="px-3 py-1 rounded-full font-medium"
+        >
+          {status.toUpperCase()}
+        </Tag>
       ),
     },
     {
@@ -299,76 +335,130 @@ const Orders = () => {
       dataIndex: ["payment", "status"],
       key: "paymentStatus",
       render: (status: PaymentStatus, record: Order) => (
-        <Space>
-          <Tag color={PAYMENT_STATUS_COLORS[status]}>
-            {status.toUpperCase()}
-          </Tag>
-          {status === "pending" && (
-            <Tooltip title="Verificar pago">
-              <Button
-                icon={<SyncOutlined />}
-                size="small"
-                loading={verifyPayment.isPending}
-                onClick={() => verifyPayment.mutate(record.id)}
-              />
-            </Tooltip>
-          )}
-        </Space>
+        <div>
+          {" "}
+          <Space align="center" size={4}>
+            {" "}
+            <Tag
+              color={PAYMENT_STATUS_COLORS[status]}
+              className="px-3 py-1 rounded-full font-medium m-0"
+            >
+              {" "}
+              {status.toUpperCase()}{" "}
+            </Tag>{" "}
+            {record.payment?.isDevelopment && (
+              <Tooltip title="Esta orden fue creada en ambiente de pruebas">
+                {" "}
+                <Tag
+                  color="purple"
+                  className="px-3 py-1 rounded-full font-medium m-0"
+                >
+                  {" "}
+                  PRUEBA{" "}
+                </Tag>{" "}
+              </Tooltip>
+            )}{" "}
+            {status === "pending" && (
+              <Tooltip title="Verificar pago">
+                {" "}
+                <Button
+                  icon={<SyncOutlined />}
+                  size="small"
+                  type="primary"
+                  ghost
+                  loading={verifyPayment.isPending}
+                  onClick={() => verifyPayment.mutate(record.id)}
+                  className="border-blue-500 text-blue-500 hover:bg-blue-50"
+                />{" "}
+              </Tooltip>
+            )}{" "}
+          </Space>{" "}
+        </div>
       ),
     },
     {
       title: "Fecha",
       dataIndex: ["dates", "created"],
       key: "created",
-      render: (date: string) => dayjs(date).format("DD/MM/YYYY HH:mm"),
+      render: (date: string) => (
+        <div className="text-gray-600">
+          {dayjs(date).format("DD/MM/YYYY")}
+          <br />
+          <span className="text-sm text-gray-400">
+            {dayjs(date).format("HH:mm")}
+          </span>
+        </div>
+      ),
     },
     {
       title: "Acciones",
       key: "actions",
       render: (_: any, record: Order) => (
-        <Space>
-          <Button
-            icon={<EyeOutlined />}
-            onClick={() => {
-              setSelectedOrder(record);
-              setIsViewModalOpen(true);
-            }}
-          />
-          <Button
-            icon={<EditOutlined />}
-            onClick={() => {
-              setSelectedOrder(record);
-              form.setFieldsValue({
-                status: record.status,
-                tracking_number: record.shipping?.tracking || "",
-                comment: "",
-              });
-              setIsEditModalOpen(true);
-            }}
-          />
-          <Button
-            icon={<DownloadOutlined />}
-            onClick={() => handleInvoiceAction(record.id)}
-            disabled={
-              record.status === "pending" ||
-              record.payment.status !== "completed"
-            }
-          />
-          <Button
-            icon={<MailOutlined />}
-            onClick={() => handleEmailModal(record)}
-            disabled={
-              record.status === "pending" ||
-              record.payment.status !== "completed"
-            }
-            title="Enviar factura por correo"
-          />
+        <Space size="small" className="flex flex-wrap">
+          <Tooltip title="Ver detalles">
+            <Button
+              icon={<EyeOutlined />}
+              type="primary"
+              ghost
+              size="small"
+              onClick={() => {
+                setSelectedOrder(record);
+                setIsViewModalOpen(true);
+              }}
+              className="border-blue-500 text-blue-500 hover:bg-blue-50"
+            />
+          </Tooltip>
+          <Tooltip title="Editar">
+            <Button
+              icon={<EditOutlined />}
+              type="default"
+              size="small"
+              onClick={() => {
+                setSelectedOrder(record);
+                form.setFieldsValue({
+                  status: record.status,
+                  tracking_number: record.shipping?.tracking || "",
+                  comment: "",
+                });
+                setIsEditModalOpen(true);
+              }}
+              className="border-orange-500 text-orange-500 hover:bg-orange-50"
+            />
+          </Tooltip>
+          <Tooltip title="Descargar factura">
+            <Button
+              icon={<DownloadOutlined />}
+              type="default"
+              size="small"
+              onClick={() => handleInvoiceAction(record.id)}
+              disabled={
+                record.status === "pending" ||
+                record.payment.status !== "completed"
+              }
+              className="border-green-500 text-green-500 hover:bg-green-50 disabled:border-gray-300 disabled:text-gray-400"
+            />
+          </Tooltip>
+          <Tooltip title="Enviar factura por correo">
+            <Button
+              icon={<MailOutlined />}
+              type="default"
+              size="small"
+              onClick={() => handleEmailModal(record)}
+              disabled={
+                record.status === "pending" ||
+                record.payment.status !== "completed"
+              }
+              className="border-purple-500 text-purple-500 hover:bg-purple-50 disabled:border-gray-300 disabled:text-gray-400"
+            />
+          </Tooltip>
           {record.payment.status === "completed" && (
             <Tooltip title="Procesar reembolso">
               <Button
                 danger
+                size="small"
                 onClick={() => handleRefundModal(record)}
                 disabled={["refunded", "cancelled"].includes(record.status)}
+                className="bg-red-50 border-red-500 text-red-500 hover:bg-red-100 disabled:bg-gray-50 disabled:border-gray-300 disabled:text-gray-400"
               >
                 Reembolsar
               </Button>
@@ -380,291 +470,507 @@ const Orders = () => {
   ];
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex justify-between items-center">
-        <Space>
-        <div>Estado de conexión: {isConnected ? 'Conectado' : 'Desconectado'}</div>
-          <Button
-            type="primary"
-            icon={<SyncOutlined />}
-            loading={verifyPendingPayments.isPending}
-            onClick={() => verifyPendingPayments.mutate()}
-          >
-            Verificar Pagos Pendientes
-          </Button>
-        </Space>
-        <Space>
-          <RangePicker onChange={handleDateRangeChange} />
-          <Select
-            placeholder="Filtrar por estado"
-            allowClear
-            style={{ width: 200 }}
-            onChange={(value) => setStatusFilter(value as OrderStatus)}
-            options={STATUS_OPTIONS}
-          />
-        </Space>
-      </div>
-
-      <Table
-        columns={columns}
-        dataSource={ordersData?.data?.orders}
-        loading={isLoading}
-        rowKey="id"
-        pagination={{
-          total: ordersData?.data?.pagination?.total,
-          pageSize: 10,
-          showSizeChanger: true,
-          showTotal: (total) => `Total ${total} pedidos`,
-        }}
-      />
-
-      {/* Modal de Vista */}
-      <Modal
-        title={`Detalles del Pedido #${selectedOrder?.orderNumber}`}
-        open={isViewModalOpen}
-        onCancel={() => {
-          setIsViewModalOpen(false);
-          setSelectedOrder(null);
-        }}
-        footer={null}
-        width={800}
-      >
-        {selectedOrder && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h3 className="font-bold mb-2">Información del Cliente</h3>
-                <p>Nombre: {selectedOrder.customer.name}</p>
-                <p>Email: {selectedOrder.customer.email}</p>
-              </div>
-              <div>
-                <h3 className="font-bold mb-2">Información del Pedido</h3>
-                <p>
-                  Estado:
-                  <Tag
-                    color={STATUS_COLORS[selectedOrder.status]}
-                    className="ml-2"
-                  >
-                    {selectedOrder.status.toUpperCase()}
-                  </Tag>
-                </p>
-                <p>
-                  Estado de Pago:
-                  <Tag
-                    color={PAYMENT_STATUS_COLORS[selectedOrder.payment.status]}
-                    className="ml-2"
-                  >
-                    {selectedOrder.payment.status.toUpperCase()}
-                  </Tag>
-                </p>
-                <p>
-                  Fecha:{" "}
-                  {dayjs(selectedOrder.dates.created).format(
-                    "DD/MM/YYYY HH:mm"
-                  )}
-                </p>
-                {selectedOrder.shipping?.tracking && (
-                  <p>
-                    Número de Seguimiento: {selectedOrder.shipping.tracking}
-                  </p>
-                )}
+    <div className="">
+      <div className=" mx-auto space-y-6">
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <Title level={2} className="!mb-2 text-gray-800">
+                Gestión de Órdenes
+              </Title>
+              <div className="flex items-center space-x-4">
+                <Badge
+                  status={isConnected ? "success" : "error"}
+                  text={
+                    <span className="text-sm text-gray-600">
+                      {isConnected
+                        ? "Conectado en tiempo real"
+                        : "Desconectado"}
+                    </span>
+                  }
+                />
+                <WifiOutlined
+                  className={isConnected ? "text-green-500" : "text-red-500"}
+                />
               </div>
             </div>
+            <Button
+              type="primary"
+              icon={<SyncOutlined />}
+              loading={verifyPendingPayments.isPending}
+              onClick={() => verifyPendingPayments.mutate()}
+              size="large"
+              className="bg-blue-600 hover:bg-blue-700 border-0 shadow-md"
+            >
+              Verificar Pagos Pendientes
+            </Button>
+          </div>
+        </div>
 
-            <div>
-              <h3 className="font-bold mb-2">Productos</h3>
-              <Table
-                dataSource={selectedOrder.items}
-                pagination={false}
-                columns={[
-                  {
-                    title: "Producto",
-                    dataIndex: ["product", "name"],
-                    key: "name",
-                  },
-                  {
-                    title: "Código",
-                    dataIndex: ["product", "code"],
-                    key: "code",
-                  },
-                  {
-                    title: "Cantidad",
-                    dataIndex: "quantity",
-                    key: "quantity",
-                  },
-                  {
-                    title: "Precio",
-                    dataIndex: ["product", "price"],
-                    key: "price",
-                    render: (price: number) =>
-                      price?.toLocaleString("es-CO", {
-                        style: "currency",
-                        currency: "COP",
-                      }),
-                  },
-                  {
-                    title: "Total",
-                    key: "total",
-                    render: (_, record: any) =>
-                      (record.quantity * record.product.price).toLocaleString(
-                        "es-CO",
-                        {
-                          style: "currency",
-                          currency: "COP",
-                        }
-                      ),
-                  },
-                ]}
-                summary={() => (
-                  <Table.Summary.Row>
-                    <Table.Summary.Cell index={0} colSpan={4}>
-                      Total
-                    </Table.Summary.Cell>
-                    <Table.Summary.Cell index={1}>
-                      {selectedOrder.payment.total.toLocaleString("es-CO", {
-                        style: "currency",
-                        currency: "COP",
-                      })}
-                    </Table.Summary.Cell>
-                  </Table.Summary.Row>
-                )}
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card className="shadow-sm hover:shadow-md transition-shadow">
+            <Statistic
+              title="Total de Órdenes"
+              value={totalOrders}
+              prefix={<ShoppingCartOutlined className="text-blue-500" />}
+              valueStyle={{ color: "#1890ff" }}
+            />
+          </Card>
+          <Card className="shadow-sm hover:shadow-md transition-shadow">
+            <Statistic
+              title="Ingresos Totales"
+              value={totalRevenue}
+              prefix={<DollarOutlined className="text-green-500" />}
+              valueStyle={{ color: "#52c41a" }}
+              formatter={(value) => `$${Number(value).toLocaleString("es-CO")}`}
+            />
+          </Card>
+          <Card className="shadow-sm hover:shadow-md transition-shadow">
+            <Statistic
+              title="Órdenes Pendientes"
+              value={pendingOrders}
+              prefix={<ClockCircleOutlined className="text-orange-500" />}
+              valueStyle={{ color: "#fa8c16" }}
+            />
+          </Card>
+          <Card className="shadow-sm hover:shadow-md transition-shadow">
+            <Statistic
+              title="Órdenes Completadas"
+              value={completedOrders}
+              prefix={<CheckCircleOutlined className="text-green-500" />}
+              valueStyle={{ color: "#52c41a" }}
+            />
+          </Card>
+        </div>
+
+        {/* Filters */}
+        <Card className="shadow-sm">
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex-1">
+              <Text strong className="block mb-2 text-gray-700">
+                Rango de Fechas
+              </Text>
+              <RangePicker
+                onChange={handleDateRangeChange}
+                size="large"
+                className="w-full"
+                placeholder={["Fecha inicio", "Fecha fin"]}
               />
             </div>
-
-            {selectedOrder.status_history &&
-              selectedOrder.status_history.length > 0 && (
-                <div>
-                  <h3 className="font-bold mb-2">Historial de Estados</h3>
-                  <Timeline>
-                    {selectedOrder.status_history.map((history, index) => (
-                      <Timeline.Item key={index}>
-                        <p>{history.status.toUpperCase()}</p>
-                        {history.comment && (
-                          <p className="text-gray-500">{history.comment}</p>
-                        )}
-                        <p className="text-sm text-gray-400">
-                          {dayjs(history.date).format("DD/MM/YYYY HH:mm")}
-                        </p>
-                      </Timeline.Item>
-                    ))}
-                  </Timeline>
-                </div>
-              )}
+            <div className="flex-1">
+              <Text strong className="block mb-2 text-gray-700">
+                Estado
+              </Text>
+              <Select
+                placeholder="Filtrar por estado"
+                allowClear
+                size="large"
+                className="w-full"
+                onChange={(value) => setStatusFilter(value as OrderStatus)}
+                options={STATUS_OPTIONS}
+              />
+            </div>
           </div>
-        )}
-      </Modal>
+        </Card>
 
-      {/* Modal de Edición */}
-      <Modal
-        title={`Actualizar Estado - Pedido #${selectedOrder?.orderNumber}`}
-        open={isEditModalOpen}
-        onOk={handleStatusUpdate}
-        onCancel={() => {
-          setIsEditModalOpen(false);
-          setSelectedOrder(null);
-          form.resetFields();
-        }}
-        confirmLoading={updateStatus.isPending}
-      >
-        <Form form={form} layout="vertical">
-          <Form.Item
-            name="status"
-            label="Estado"
-            rules={[
-              { required: true, message: "Por favor seleccione un estado" },
-            ]}
-          >
-            <Select options={STATUS_OPTIONS} />
-          </Form.Item>
+        {/* Orders Table */}
+        <Card className="shadow-sm">
+          <Table
+            columns={columns}
+            dataSource={ordersData?.data?.orders}
+            loading={isLoading}
+            rowKey="id"
+            className="custom-table"
+            scroll={{ x: 1200 }}
+            pagination={{
+              total: ordersData?.data?.pagination?.total,
+              pageSize: 10,
+              showSizeChanger: true,
+              showTotal: (total, range) =>
+                `${range[0]}-${range[1]} de ${total} pedidos`,
+              className: "px-4 py-4",
+            }}
+          />
+        </Card>
 
-          <Form.Item name="tracking_number" label="Número de Seguimiento">
-            <Input placeholder="Ingrese el número de seguimiento" />
-          </Form.Item>
+        {/* Modal de Vista */}
+        <Modal
+          title={
+            <div className="flex items-center space-x-2">
+              <EyeOutlined className="text-blue-500" />
+              <span>Detalles del Pedido #{selectedOrder?.orderNumber}</span>
+            </div>
+          }
+          open={isViewModalOpen}
+          onCancel={() => {
+            setIsViewModalOpen(false);
+            setSelectedOrder(null);
+          }}
+          footer={null}
+          width={900}
+          className="custom-modal"
+        >
+          {selectedOrder && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card size="small" className="shadow-sm">
+                  <Title level={4} className="!mb-4 text-gray-800">
+                    Información del Cliente
+                  </Title>
+                  <div className="space-y-2">
+                    <div>
+                      <Text strong>Nombre: </Text>
+                      <Text>{selectedOrder.customer.name}</Text>
+                    </div>
+                    <div>
+                      <Text strong>Email: </Text>
+                      <Text className="text-blue-600">
+                        {selectedOrder.customer.email}
+                      </Text>
+                    </div>
+                  </div>
+                </Card>
 
-          <Form.Item name="comment" label="Comentario">
-            <Input.TextArea
-              rows={4}
-              placeholder="Agregue un comentario sobre el cambio de estado"
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
+                <Card size="small" className="shadow-sm">
+                  <Title level={4} className="!mb-4 text-gray-800">
+                    Información del Pedido
+                  </Title>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Text strong>Estado:</Text>
+                      <Tag
+                        color={STATUS_COLORS[selectedOrder.status]}
+                        className="px-3 py-1 rounded-full"
+                      >
+                        {selectedOrder.status.toUpperCase()}
+                      </Tag>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      {" "}
+                      <Text strong>Estado de Pago:</Text>{" "}
+                      <Space align="center" size={4}>
+                        {" "}
+                        <Tag
+                          color={
+                            PAYMENT_STATUS_COLORS[selectedOrder.payment.status]
+                          }
+                          className="px-3 py-1 rounded-full m-0"
+                        >
+                          {" "}
+                          {selectedOrder.payment.status.toUpperCase()}{" "}
+                        </Tag>{" "}
+                        {selectedOrder.payment.isDevelopment && (
+                          <Tooltip title="Esta orden fue creada en ambiente de pruebas">
+                            {" "}
+                            <Tag
+                              color="purple"
+                              className="px-2 py-0 rounded-full text-xs m-0"
+                            >
+                              {" "}
+                              PRUEBA{" "}
+                            </Tag>{" "}
+                          </Tooltip>
+                        )}{" "}
+                      </Space>{" "}
+                    </div>
+                    <div>
+                      <Text strong>Fecha: </Text>
+                      <Text>
+                        {dayjs(selectedOrder.dates.created).format(
+                          "DD/MM/YYYY HH:mm"
+                        )}
+                      </Text>
+                    </div>
+                    {selectedOrder.shipping?.tracking && (
+                      <div>
+                        <Text strong>Número de Seguimiento: </Text>
+                        <Text className="font-mono bg-gray-100 px-2 py-1 rounded">
+                          {selectedOrder.shipping.tracking}
+                        </Text>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </div>
 
-      {/* Modal de Reembolso */}
-      <Modal
-        title={`Procesar Reembolso - Pedido #${selectedOrder?.orderNumber}`}
-        open={isRefundModalOpen}
-        onOk={handleRefundSubmit}
-        onCancel={() => {
-          setIsRefundModalOpen(false);
-          setSelectedOrder(null);
-          refundForm.resetFields();
-        }}
-        confirmLoading={processRefund.isPending}
-      >
-        <Form form={refundForm} layout="vertical">
-          <Form.Item
-            name="amount"
-            label="Monto a reembolsar"
-            rules={[
-              { required: true, message: "El monto es requerido" },
-              {
-                type: "number",
-                min: 1,
-                max: selectedOrder?.payment.total || 0,
-                message:
-                  "El monto debe ser mayor a 0 y menor o igual al total del pedido",
-              },
-            ]}
-          >
-            <Input
-              type="number"
-              prefix="$"
-              placeholder="Ingrese el monto a reembolsar"
-            />
-          </Form.Item>
+              <Card size="small" className="shadow-sm">
+                <Title level={4} className="!mb-4 text-gray-800">
+                  Productos
+                </Title>
+                <Table
+                  dataSource={selectedOrder.items}
+                  pagination={false}
+                  size="small"
+                  columns={[
+                    {
+                      title: "Producto",
+                      dataIndex: ["product", "name"],
+                      key: "name",
+                      render: (name: string) => <Text strong>{name}</Text>,
+                    },
+                    {
+                      title: "Código",
+                      dataIndex: ["product", "code"],
+                      key: "code",
+                      render: (code: string) => (
+                        <Text className="font-mono bg-gray-100 px-2 py-1 rounded text-sm">
+                          {code}
+                        </Text>
+                      ),
+                    },
+                    {
+                      title: "Cantidad",
+                      dataIndex: "quantity",
+                      key: "quantity",
+                      render: (quantity: number) => <Badge count={quantity} />,
+                    },
+                    {
+                      title: "Precio",
+                      dataIndex: ["product", "price"],
+                      key: "price",
+                      render: (price: number) => (
+                        <Text strong className="text-green-600">
+                          {price?.toLocaleString("es-CO", {
+                            style: "currency",
+                            currency: "COP",
+                          })}
+                        </Text>
+                      ),
+                    },
+                    {
+                      title: "Total",
+                      key: "total",
+                      render: (_, record: any) => (
+                        <Text strong className="text-green-600 text-lg">
+                          {(
+                            record.quantity * record.product.price || 0
+                          ).toLocaleString("es-CO", {
+                            style: "currency",
+                            currency: "COP",
+                          })}
+                        </Text>
+                      ),
+                    },
+                  ]}
+                  summary={() => (
+                    <Table.Summary.Row className="bg-gray-50">
+                      <Table.Summary.Cell index={0} colSpan={4}>
+                        <Text strong className="text-lg">
+                          Total
+                        </Text>
+                      </Table.Summary.Cell>
+                      <Table.Summary.Cell index={1}>
+                        <Text strong className="text-xl text-green-600">
+                          {selectedOrder.payment.total.toLocaleString("es-CO", {
+                            style: "currency",
+                            currency: "COP",
+                          })}
+                        </Text>
+                      </Table.Summary.Cell>
+                    </Table.Summary.Row>
+                  )}
+                />
+              </Card>
 
-          <Form.Item
-            name="reason"
-            label="Razón del reembolso"
-            rules={[{ required: true, message: "La razón es requerida" }]}
-          >
-            <Input.TextArea
-              rows={4}
-              placeholder="Ingrese la razón del reembolso"
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
+              {selectedOrder.status_history &&
+                selectedOrder.status_history.length > 0 && (
+                  <Card size="small" className="shadow-sm">
+                    <Title level={4} className="!mb-4 text-gray-800">
+                      Historial de Estados
+                    </Title>
+                    <Timeline>
+                      {selectedOrder.status_history.map((history, index) => (
+                        <Timeline.Item
+                          key={index}
+                          color={STATUS_COLORS[history.status as OrderStatus]}
+                        >
+                          <div className="space-y-1">
+                            <Text strong className="text-gray-800">
+                              {history.status.toUpperCase()}
+                            </Text>
+                            {history.comment && (
+                              <div className="text-gray-600 bg-gray-50 p-2 rounded">
+                                {history.comment}
+                              </div>
+                            )}
+                            <div className="text-sm text-gray-400">
+                              {dayjs(history.date).format("DD/MM/YYYY HH:mm")}
+                            </div>
+                          </div>
+                        </Timeline.Item>
+                      ))}
+                    </Timeline>
+                  </Card>
+                )}
+            </div>
+          )}
+        </Modal>
 
-      {/* Modal para Enviar Factura por Correo */}
-      <Modal
-        title={`Enviar Factura por Correo - Pedido #${selectedOrder?.orderNumber}`}
-        open={isEmailModalOpen}
-        onOk={handleSendInvoiceEmail}
-        onCancel={() => {
-          setIsEmailModalOpen(false);
-          setSelectedOrder(null);
-          emailForm.resetFields();
-        }}
-        confirmLoading={sendInvoiceByEmail.isPending}
-      >
-        <Form form={emailForm} layout="vertical">
-          <Form.Item
-            name="emailAddress"
-            label="Correo Electrónico"
-            rules={[
-              { required: true, message: "El correo es requerido" },
-              { type: "email", message: "Ingrese un correo electrónico válido" }
-            ]}
-          >
-            <Input placeholder="Ingrese el correo electrónico del destinatario" />
-          </Form.Item>
-          <p className="text-gray-500">
-            La factura será enviada al correo electrónico especificado.
-          </p>
-        </Form>
-      </Modal>
+        {/* Modal de Edición */}
+        <Modal
+          title={
+            <div className="flex items-center space-x-2">
+              <EditOutlined className="text-orange-500" />
+              <span>
+                Actualizar Estado - Pedido #{selectedOrder?.orderNumber}
+              </span>
+            </div>
+          }
+          open={isEditModalOpen}
+          onOk={handleStatusUpdate}
+          onCancel={() => {
+            setIsEditModalOpen(false);
+            setSelectedOrder(null);
+            form.resetFields();
+          }}
+          confirmLoading={updateStatus.isPending}
+          okText="Actualizar"
+          cancelText="Cancelar"
+          className="custom-modal"
+        >
+          <Form form={form} layout="vertical" className="space-y-4">
+            <Form.Item
+              name="status"
+              label={<Text strong>Estado</Text>}
+              rules={[
+                { required: true, message: "Por favor seleccione un estado" },
+              ]}
+            >
+              <Select options={STATUS_OPTIONS} size="large" />
+            </Form.Item>
+
+            <Form.Item
+              name="tracking_number"
+              label={<Text strong>Número de Seguimiento</Text>}
+            >
+              <Input
+                placeholder="Ingrese el número de seguimiento"
+                size="large"
+                className="font-mono"
+              />
+            </Form.Item>
+
+            <Form.Item name="comment" label={<Text strong>Comentario</Text>}>
+              <Input.TextArea
+                rows={4}
+                placeholder="Agregue un comentario sobre el cambio de estado"
+                className="resize-none"
+              />
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        {/* Modal de Reembolso */}
+        <Modal
+          title={
+            <div className="flex items-center space-x-2">
+              <DollarOutlined className="text-red-500" />
+              <span>
+                Procesar Reembolso - Pedido #{selectedOrder?.orderNumber}
+              </span>
+            </div>
+          }
+          open={isRefundModalOpen}
+          onOk={handleRefundSubmit}
+          onCancel={() => {
+            setIsRefundModalOpen(false);
+            setSelectedOrder(null);
+            refundForm.resetFields();
+          }}
+          confirmLoading={processRefund.isPending}
+          okText="Procesar Reembolso"
+          cancelText="Cancelar"
+          okButtonProps={{ danger: true }}
+          className="custom-modal"
+        >
+          <Form form={refundForm} layout="vertical" className="space-y-4">
+            <Form.Item
+              name="amount"
+              label={<Text strong>Monto a reembolsar</Text>}
+              rules={[
+                { required: true, message: "El monto es requerido" },
+                {
+                  type: "number",
+                  min: 1,
+                  max: selectedOrder?.payment.total || 0,
+                  message:
+                    "El monto debe ser mayor a 0 y menor o igual al total del pedido",
+                },
+              ]}
+            >
+              <Input
+                type="number"
+                prefix="$"
+                placeholder="Ingrese el monto a reembolsar"
+                size="large"
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="reason"
+              label={<Text strong>Razón del reembolso</Text>}
+              rules={[{ required: true, message: "La razón es requerida" }]}
+            >
+              <Input.TextArea
+                rows={4}
+                placeholder="Ingrese la razón del reembolso"
+                className="resize-none"
+              />
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        {/* Modal para Enviar Factura por Correo */}
+        <Modal
+          title={
+            <div className="flex items-center space-x-2">
+              <MailOutlined className="text-purple-500" />
+              <span>
+                Enviar Factura por Correo - Pedido #{selectedOrder?.orderNumber}
+              </span>
+            </div>
+          }
+          open={isEmailModalOpen}
+          onOk={handleSendInvoiceEmail}
+          onCancel={() => {
+            setIsEmailModalOpen(false);
+            setSelectedOrder(null);
+            emailForm.resetFields();
+          }}
+          confirmLoading={sendInvoiceByEmail.isPending}
+          okText="Enviar Factura"
+          cancelText="Cancelar"
+          className="custom-modal"
+        >
+          <Form form={emailForm} layout="vertical" className="space-y-4">
+            <Form.Item
+              name="emailAddress"
+              label={<Text strong>Correo Electrónico</Text>}
+              rules={[
+                { required: true, message: "El correo es requerido" },
+                {
+                  type: "email",
+                  message: "Ingrese un correo electrónico válido",
+                },
+              ]}
+            >
+              <Input
+                placeholder="Ingrese el correo electrónico del destinatario"
+                size="large"
+                prefix={<MailOutlined className="text-gray-400" />}
+              />
+            </Form.Item>
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <Text className="text-blue-700">
+                La factura será enviada al correo electrónico especificado en
+                formato PDF.
+              </Text>
+            </div>
+          </Form>
+        </Modal>
+      </div>
     </div>
   );
 };
