@@ -29,6 +29,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { RcFile } from "antd/es/upload";
 import ConfigService from "../../services/config.service";
 import "./styles/highlighted-services.css";
+import UploadComponent from "../../components/buttons/UploadComponent";
 
 const { Title, Text } = Typography;
 
@@ -51,121 +52,13 @@ interface Achievement {
   title: string;
   value: string;
   icon: string; // URL de la imagen del icono
+  icon_url?: string; // URL de la imagen en el backend
   iconFile?: File; // Archivo para subida
   color: string;
   active: boolean;
   order: number;
   id?: string;
 }
-
-// Componente para subir imágenes
-const UploadComponent = ({
-  value,
-  onChange,
-  label,
-  required = false,
-  maxSize = 2, // tamaño máximo en MB
-  dimensions = { width: 300, height: 300 }, // dimensiones por defecto
-}: {
-  value?: string;
-  onChange?: (url: string | undefined, file?: File) => void;
-  label: string;
-  required?: boolean;
-  maxSize?: number;
-  dimensions?: { width: number; height: number };
-}) => {
-  const [previewUrl, setPreviewUrl] = useState<string | undefined>(value);
-  const [loading, setLoading] = useState(false);
-
-  const handleUpload = async (file: RcFile) => {
-    try {
-      const isValidFileType = ["image/jpeg", "image/png", "image/gif", "image/svg+xml"].includes(
-        file.type
-      );
-      const isValidFileSize = file.size / 1024 / 1024 < maxSize;
-
-      if (!isValidFileType) {
-        message.error(`Por favor, sube un archivo de imagen (JPG, PNG, GIF, SVG)`);
-        return Upload.LIST_IGNORE;
-      }
-
-      if (!isValidFileSize) {
-        message.error(`La imagen debe ser menor a ${maxSize}MB`);
-        return Upload.LIST_IGNORE;
-      }
-
-      setLoading(true);
-      
-      // Para SVG no validamos dimensiones
-      if (file.type !== "image/svg+xml") {
-        const image = new Image();
-        image.src = URL.createObjectURL(file);
-        await new Promise<void>((resolve, reject) => {
-          image.onload = () => resolve();
-          image.onerror = (err) => reject(err);
-        });
-        
-        URL.revokeObjectURL(image.src);
-      }
-
-      const url = await ConfigService.uploadImage(file);
-
-      if (!url) {
-        throw new Error("No se recibió URL del servicio de carga");
-      }
-
-      setPreviewUrl(url);
-      onChange?.(url, file);
-      return false;
-    } catch (error) {
-      console.error("Error de carga:", error);
-      message.error("Error al subir la imagen");
-      return Upload.LIST_IGNORE;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRemove = () => {
-    setPreviewUrl(undefined);
-    onChange?.(undefined);
-  };
-
-  return (
-    <Form.Item label={label} required={required} className="upload-component">
-      <Upload
-        listType="picture-card"
-        showUploadList={false}
-        beforeUpload={handleUpload}
-      >
-        {previewUrl ? (
-          <div className="preview-container">
-            <img
-              src={previewUrl}
-              alt="Vista previa"
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-            <div className="preview-actions">
-              <Button
-                type="text"
-                icon={<DeleteOutlined />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRemove();
-                }}
-              />
-            </div>
-          </div>
-        ) : (
-          <div>
-            {loading ? <LoadingOutlined /> : <PlusOutlined />}
-            <div style={{ marginTop: 8 }}>Subir</div>
-          </div>
-        )}
-      </Upload>
-    </Form.Item>
-  );
-};
 
 // Componente para cada tarjeta de servicio
 const ServiceCard = ({
@@ -367,19 +260,73 @@ const AchievementCard = ({
   index,
   onRemove,
   onChange,
+  setChangedAchievements,
 }: {
   achievement: Achievement;
   index: number;
   onRemove: (index: number) => void;
   onChange: (index: number, field: keyof Achievement, value: any) => void;
   onIconFileChange?: (index: number, file: File) => void;
+  setChangedAchievements?: React.Dispatch<React.SetStateAction<Set<string>>>;
 }) => {
-  const handleIconChange = (url: string | undefined, file?: File) => {
-    onChange(index, "icon", url || "");
-    if (file) {
-      const updatedAchievement = { ...achievement, iconFile: file };
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | undefined>(
+    achievement.icon && !achievement.icon.startsWith("http") 
+      ? achievement.icon 
+      : undefined
+  );
+  
+    const handleIconChange = (url: string | undefined, file?: File) => {
+    // Si recibimos una URL vacía, significa que es una vista previa local
+    if (url === "" && file) {
+      // Crear una URL local para vista previa
+      const objectUrl = URL.createObjectURL(file);
+      setLocalPreviewUrl(objectUrl);
+      
+      // Guardar el archivo para subida posterior
       onChange(index, "iconFile", file);
+      // No actualizar el campo icon todavía, se hará al guardar
+      
+      // Marcar el elemento como cambiado inmediatamente
+      if (achievement.id && !achievement.id.startsWith('temp-') && setChangedAchievements) {
+        console.log(`Marcando logro ${achievement.id} como modificado al cambiar imagen (vista previa)`);
+        setChangedAchievements(prev => new Set([...prev, achievement.id!]));
+      }
+    } else {
+      // Si es una URL real o undefined, actualizar normalmente
+      setLocalPreviewUrl(undefined);
+      onChange(index, "icon", url || "");
+      onChange(index, "icon_url", url || ""); // También actualizar icon_url
+      if (file) {
+        onChange(index, "iconFile", file);
+        
+        // Marcar el elemento como cambiado inmediatamente
+        if (achievement.id && !achievement.id.startsWith('temp-') && setChangedAchievements) {
+          console.log(`Marcando logro ${achievement.id} como modificado al cambiar imagen (URL directa)`);
+          setChangedAchievements(prev => new Set([...prev, achievement.id!]));
+        }
+      } else if (url === undefined) {
+        // Si estamos eliminando la imagen, también eliminar el archivo
+        onChange(index, "iconFile", undefined);
+        onChange(index, "icon_url", ""); // También actualizar icon_url
+        console.log(`Eliminando imagen del logro ${achievement.title}`);
+        
+        // Marcar el elemento como cambiado inmediatamente
+        if (achievement.id && !achievement.id.startsWith('temp-') && setChangedAchievements) {
+          console.log(`Marcando logro ${achievement.id} como modificado al eliminar imagen`);
+          setChangedAchievements(prev => new Set([...prev, achievement.id!]));
+        }
+      }
     }
+  };
+  
+  // Función para eliminar explícitamente la imagen
+  const handleDeleteImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLocalPreviewUrl(undefined);
+    onChange(index, "icon", "");
+    onChange(index, "icon_url", ""); // También actualizar icon_url
+    onChange(index, "iconFile", undefined);
+    console.log(`Imagen eliminada del logro ${achievement.title}`);
   };
 
   return (
@@ -499,14 +446,34 @@ const AchievementCard = ({
             help={!achievement.icon ? "El ícono es requerido" : ""}
             className="mb-1"
           >
-            <UploadComponent
-              value={achievement.icon}
-              onChange={handleIconChange}
-              label=""
-              required={true}
-              maxSize={1}
-              dimensions={{ width: 64, height: 64 }}
-            />
+            <div className="upload-with-actions">
+              <UploadComponent
+                value={localPreviewUrl || achievement.icon}
+                onChange={handleIconChange}
+                label=""
+                required={true}
+                maxSize={1}
+                dimensions={{ width: 64, height: 64 }}
+                allowedDimensions={[
+                  { width: 64, height: 64 },
+                  { width: 48, height: 48 }
+                ]}
+                validateDimensions={true}
+                immediateUpload={false}
+              />
+              {(localPreviewUrl || achievement.icon) && (
+                <Button 
+                  type="primary" 
+                  danger 
+                  icon={<DeleteOutlined />} 
+                  size="small"
+                  onClick={handleDeleteImage}
+                  style={{ marginTop: '8px' }}
+                >
+                  Eliminar imagen
+                </Button>
+              )}
+            </div>
           </Form.Item>
         </div>
         
@@ -535,11 +502,13 @@ const AchievementsSection = ({
   onAchievementChange,
   onAddAchievement,
   onRemoveAchievement,
+  setChangedAchievements,
 }: {
   achievements: Achievement[];
   onAchievementChange: (index: number, field: keyof Achievement, value: any) => void;
   onAddAchievement: () => void;
   onRemoveAchievement: (index: number) => void;
+  setChangedAchievements: React.Dispatch<React.SetStateAction<Set<string>>>;
 }) => {
   return (
     <div className="section-container">
@@ -565,6 +534,7 @@ const AchievementsSection = ({
             index={index}
             onRemove={onRemoveAchievement}
             onChange={onAchievementChange}
+            setChangedAchievements={setChangedAchievements}
           />
         ))}
 
@@ -587,6 +557,12 @@ const AchievementsSection = ({
 const HighlightedServicesSettings = () => {
   const [services, setServices] = useState<HighlightedService[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [originalServices, setOriginalServices] = useState<HighlightedService[]>([]);
+  const [originalAchievements, setOriginalAchievements] = useState<Achievement[]>([]);
+  const [changedServices, setChangedServices] = useState<Set<string>>(new Set());
+  const [changedAchievements, setChangedAchievements] = useState<Set<string>>(new Set());
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [uploadingImages, setUploadingImages] = useState<boolean>(false);
   const queryClient = useQueryClient();
 
   const {
@@ -609,13 +585,28 @@ const HighlightedServicesSettings = () => {
 
   useEffect(() => {
     if (servicesSuccess && !servicesFetching && servicesData) {
-      setServices(servicesData.data || []);
+      const servicesWithIds = (servicesData.data || []).map((service: any) => ({
+        ...service,
+        id: service._id || service.identifier
+      }));
+      setServices(servicesWithIds);
+      setOriginalServices(JSON.parse(JSON.stringify(servicesWithIds)));
+      setChangedServices(new Set());
     }
   }, [servicesSuccess, servicesFetching, servicesData]);
 
   useEffect(() => {
     if (achievementsSuccess && !achievementsFetching && achievementsData) {
-      setAchievements(achievementsData.data || []);
+      const achievementsWithIds = (achievementsData.data || []).map((achievement: any, index: number) => ({
+        ...achievement,
+        id: achievement._id || index.toString(),
+        icon: achievement.icon_url // Mapear icon_url a icon para que el componente pueda mostrar la imagen
+      }));
+      console.log('Logros recibidos del backend:', achievementsData.data);
+      console.log('Logros mapeados con icon:', achievementsWithIds);
+      setAchievements(achievementsWithIds);
+      setOriginalAchievements(JSON.parse(JSON.stringify(achievementsWithIds)));
+      setChangedAchievements(new Set());
     }
   }, [achievementsSuccess, achievementsFetching, achievementsData]);
 
@@ -632,8 +623,8 @@ const HighlightedServicesSettings = () => {
   });
 
   const updateServiceMutation = useMutation({
-    mutationFn: ({ identifier, service }: { identifier: string; service: Partial<HighlightedService> }) =>
-      ConfigService.updateHighlightedService(identifier, service),
+    mutationFn: ({ identifier, service, changedFields }: { identifier: string; service: Partial<HighlightedService>; changedFields?: string[] }) =>
+      ConfigService.updateHighlightedService(identifier, service, changedFields),
     onSuccess: () => {
       message.success("Servicio actualizado exitosamente");
       queryClient.invalidateQueries({ queryKey: ["highlighted-services"] });
@@ -679,16 +670,16 @@ const HighlightedServicesSettings = () => {
   });
 
   const updateAchievementMutation = useMutation({
-    mutationFn: async ({ id, achievement }: { id: string; achievement: Partial<Achievement> }) => {
+    mutationFn: async ({ id, achievement, changedFields }: { id: string; achievement: Partial<Achievement>; changedFields?: string[] }) => {
       // Si tenemos un archivo de icono, primero lo subimos
       if (achievement.iconFile) {
         const iconUrl = await ConfigService.uploadImage(achievement.iconFile);
         return ConfigService.updateAchievement(id, {
           ...achievement,
           icon: iconUrl,
-        });
+        }, changedFields);
       }
-      return ConfigService.updateAchievement(id, achievement);
+      return ConfigService.updateAchievement(id, achievement, changedFields);
     },
     onSuccess: () => {
       message.success("Logro actualizado exitosamente");
@@ -712,36 +703,424 @@ const HighlightedServicesSettings = () => {
     },
   });
 
-  const handleSubmit = () => {
-    // Update services
-    services.forEach((service) => {
-      if (service.identifier) {
-        updateServiceMutation.mutate({
-          identifier: service.identifier,
-          service,
-        });
-      } else {
-        createServiceMutation.mutate(service);
+  const handleSubmit = async () => {
+    console.log('=== SUBMIT DEBUG ===');
+    console.log('Changed services:', Array.from(changedServices));
+    console.log('Changed achievements:', Array.from(changedAchievements));
+    
+    // Check if there are any new or changed items to process
+    const newServices = services.filter(s => !s.identifier || s.identifier.startsWith('temp-'));
+    const newAchievements = achievements.filter(a => !a.id || a.id.startsWith('temp-'));
+    
+    // Identificar logros con imágenes pendientes de subir o eliminar
+    const achievementsWithPendingImages = achievements.filter(a => 
+      // Imágenes nuevas para subir
+      (a.iconFile && (!a.icon || a.icon === "" || !a.icon.startsWith('http'))) || 
+      // Imágenes para eliminar (icon vacío pero tenía una imagen antes)
+      (a.icon === "" && originalAchievements.find(orig => orig.id === a.id)?.icon) ||
+      // También verificar si la URL de la imagen ha cambiado
+      (a.icon && a.id && originalAchievements.find(orig => orig.id === a.id)?.icon !== a.icon)
+    );
+    
+    // Marcar como cambiados todos los elementos que tienen imágenes pendientes
+    achievementsWithPendingImages.forEach(achievement => {
+      if (achievement.id && !achievement.id.startsWith('temp-')) {
+        setChangedAchievements(prev => new Set([...prev, achievement.id!]));
+        console.log(`Marcando logro ${achievement.id} como modificado por tener imagen pendiente`);
       }
     });
+    
+    console.log('Logros con imágenes pendientes:', achievementsWithPendingImages);
+    
+    if (changedServices.size === 0 && changedAchievements.size === 0 && 
+        newServices.length === 0 && newAchievements.length === 0 &&
+        achievementsWithPendingImages.length === 0) {
+      console.log('No changes detected, nothing to submit');
+      message.info('No se detectaron cambios');
+      return;
+    }
+    
+    // Verificar explícitamente si hay cambios en las imágenes
+    let imageChangesDetected = false;
+    for (const achievement of achievements) {
+      if (achievement.id && !achievement.id.startsWith('temp-')) {
+        const original = originalAchievements.find(a => a.id === achievement.id);
+        if (original && original.icon !== achievement.icon) {
+          imageChangesDetected = true;
+          console.log(`Cambio de imagen detectado en logro ${achievement.id}: ${original.icon} -> ${achievement.icon}`);
+          // Asegurarse de que este logro esté marcado como cambiado
+          setChangedAchievements(prev => new Set([...prev, achievement.id!]));
+        }
+      }
+    }
+    
+    if (imageChangesDetected) {
+      console.log('Se detectaron cambios en imágenes');
+    }
+    
+    // Check for duplicate IDs in arrays
+    const serviceIds = new Set<string>();
+    const duplicateServices = services
+      .filter(s => s.identifier && !s.identifier.startsWith('temp-'))
+      .filter(s => {
+        if (serviceIds.has(s.identifier!)) return true;
+        serviceIds.add(s.identifier!);
+        return false;
+      });
+      
+    const achievementIds = new Set<string>();
+    const duplicateAchievements = achievements
+      .filter(a => a.id && !a.id.startsWith('temp-'))
+      .filter(a => {
+        if (achievementIds.has(a.id!)) return true;
+        achievementIds.add(a.id!);
+        return false;
+      });
+    
+    if (duplicateServices.length > 0 || duplicateAchievements.length > 0) {
+      console.error('Duplicate items detected:', {
+        services: duplicateServices.map(s => s.identifier),
+        achievements: duplicateAchievements.map(a => a.id)
+      });
+      message.error('Error: Se detectaron elementos duplicados');
+      return;
+    }
+    
+    setSubmitting(true);
+    const processedServices = new Set<string>();
+    const processedAchievements = new Set<string>();
+    let changesMade = false;
 
-    // Update achievements
-    achievements.forEach((achievement) => {
-      if (achievement.id) {
-        updateAchievementMutation.mutate({
-          id: achievement.id,
-          achievement,
-        });
-      } else {
-        createAchievementMutation.mutate(achievement);
+    try {
+            // Primero subir todas las imágenes pendientes
+      if (achievementsWithPendingImages.length > 0) {
+        setUploadingImages(true);
+        message.loading('Procesando imágenes...', 0);
+        
+        const updatedAchievements = [...achievements];
+        let achievementsToUpdate = []; // Array para almacenar los logros que necesitan actualizarse en el backend
+        
+        for (const achievement of achievementsWithPendingImages) {
+          const index = updatedAchievements.findIndex(a => 
+            (a.id && a.id === achievement.id) || 
+            (!a.id && a.title === achievement.title)
+          );
+          
+          if (index === -1) continue;
+          
+          // Caso 1: Subir nueva imagen
+          if (achievement.iconFile) {
+            try {
+              console.log(`Subiendo imagen para logro: ${achievement.title}`);
+              const imageUrl = await ConfigService.uploadImage(achievement.iconFile);
+              
+                          if (imageUrl) {
+              updatedAchievements[index] = {
+                ...updatedAchievements[index],
+                icon: imageUrl,
+                icon_url: imageUrl // Asegurarse de que también se actualice icon_url para mantener consistencia
+              };
+              console.log(`Imagen subida exitosamente: ${imageUrl}`);
+              
+              // Marcar el elemento como cambiado para que se detecte al guardar
+              if (achievement.id && !achievement.id.startsWith('temp-')) {
+                setChangedAchievements(prev => new Set([...prev, achievement.id!]));
+                console.log(`Marcando logro ${achievement.id} como modificado después de subir imagen`);
+                
+                // Agregar a la lista de logros para actualizar en el backend
+                achievementsToUpdate.push({
+                  id: achievement.id,
+                  achievement: { 
+                    ...updatedAchievements[index],
+                    icon_url: imageUrl // Asegurarse de que se envía icon_url al backend
+                  },
+                  changedFields: ['icon', 'icon_url'] // Especificar que han cambiado ambos campos
+                });
+              }
+            }
+            } catch (error) {
+              console.error(`Error al subir imagen para ${achievement.title}:`, error);
+              message.error(`Error al subir imagen para ${achievement.title}`);
+            }
+          } 
+          // Caso 2: Eliminar imagen existente
+          else if (achievement.icon === "") {
+            console.log(`Eliminando imagen del logro: ${achievement.title}`);
+            // La eliminación real ocurre en el backend, aquí solo aseguramos que se envía el valor vacío
+            updatedAchievements[index] = {
+              ...updatedAchievements[index],
+              icon: "",
+              icon_url: "" // También actualizar icon_url para mantener consistencia
+            };
+            
+            // Marcar como cambiado si no lo está ya
+            if (achievement.id && !changedAchievements.has(achievement.id)) {
+              setChangedAchievements(prev => new Set([...prev, achievement.id!]));
+              
+              // Agregar a la lista de logros para actualizar en el backend
+              achievementsToUpdate.push({
+                id: achievement.id,
+                achievement: { 
+                  ...updatedAchievements[index],
+                  icon_url: "" // Asegurarse de que se envía icon_url vacío al backend
+                },
+                changedFields: ['icon', 'icon_url'] // Especificar que han cambiado ambos campos
+              });
+            }
+          }
+        }
+        
+        setAchievements(updatedAchievements);
+        message.destroy();
+        setUploadingImages(false);
+        
+        // Actualizar inmediatamente los logros con imágenes en el backend
+        if (achievementsToUpdate.length > 0) {
+          console.log(`Actualizando ${achievementsToUpdate.length} logros con imágenes en el backend:`, achievementsToUpdate);
+          
+          // Actualizar cada logro en el backend
+          for (const { id, achievement, changedFields } of achievementsToUpdate) {
+            try {
+              await new Promise((resolve, reject) => {
+                updateAchievementMutation.mutate({
+                  id,
+                  achievement,
+                  changedFields
+                }, {
+                  onSuccess: () => {
+                    console.log(`Logro ${id} actualizado exitosamente en el backend`);
+                    resolve(undefined);
+                  },
+                  onError: (error) => {
+                    console.error(`Error al actualizar logro ${id} en el backend:`, error);
+                    reject(error);
+                  }
+                });
+              });
+            } catch (error) {
+              console.error(`Error al actualizar logro ${id}:`, error);
+              message.error(`Error al actualizar logro con ID ${id}`);
+            }
+          }
+          
+          // Limpiar el conjunto de logros cambiados después de actualizarlos
+          setChangedAchievements(new Set());
+          message.success('Imágenes guardadas exitosamente');
+          
+          // Recargar los datos para asegurar que todo esté sincronizado
+          queryClient.invalidateQueries({ queryKey: ["achievements"] });
+        }
       }
-    });
+
+      // Process new services first
+      for (const service of newServices) {
+        const newService = { ...service };
+        if (newService.identifier?.startsWith('temp-')) {
+          delete newService.identifier;
+        }
+        console.log('Creating new service:', newService.title);
+        await new Promise((resolve, reject) => {
+          createServiceMutation.mutate(newService, {
+            onSuccess: () => {
+              changesMade = true;
+              resolve(undefined);
+            },
+            onError: reject
+          });
+        });
+      }
+
+      // Then process changed services
+      for (const serviceId of changedServices) {
+        const service = services.find(s => s.identifier === serviceId);
+        if (!service) {
+          console.log(`Service ${serviceId} not found in current list`);
+          continue;
+        }
+        
+        const original = originalServices.find(s => s.identifier === serviceId);
+        if (!original) {
+          console.log(`Original service ${serviceId} not found`);
+          continue;
+        }
+        
+        const changedFields: string[] = [];
+        Object.keys(service).forEach(key => {
+          if (key !== 'id' && JSON.stringify(service[key as keyof HighlightedService]) !== 
+              JSON.stringify(original[key as keyof HighlightedService])) {
+            changedFields.push(key);
+          }
+        });
+        
+        if (changedFields.length > 0) {
+          console.log(`Updating service ${serviceId}, fields:`, changedFields);
+          await new Promise((resolve, reject) => {
+            updateServiceMutation.mutate({
+              identifier: serviceId,
+              service,
+              changedFields
+            }, {
+              onSuccess: () => {
+                changesMade = true;
+                resolve(undefined);
+              },
+              onError: reject
+            });
+          });
+        } else {
+          console.log(`No actual changes for service ${serviceId}`);
+        }
+      }
+
+      // Process new achievements
+      for (const achievement of newAchievements) {
+        // Asegurarnos de que estamos usando la versión actualizada con la URL de la imagen
+        const updatedAchievement = achievements.find(a => 
+          (!a.id && a.title === achievement.title) || 
+          (a.id && a.id === achievement.id)
+        ) || achievement;
+        
+        console.log('Creating new achievement:', updatedAchievement.title);
+        
+        // Eliminar el archivo de imagen ya que ya subimos la imagen
+        const achievementToSend = { ...updatedAchievement };
+        delete achievementToSend.iconFile;
+        
+        await new Promise((resolve, reject) => {
+          createAchievementMutation.mutate(achievementToSend, {
+            onSuccess: () => {
+              changesMade = true;
+              resolve(undefined);
+            },
+            onError: reject
+          });
+        });
+      }
+
+      // Process changed achievements
+      for (const achievementId of changedAchievements) {
+        const achievement = achievements.find(a => a.id === achievementId);
+        if (!achievement) {
+          console.log(`Achievement ${achievementId} not found in current list`);
+          continue;
+        }
+        
+        const original = originalAchievements.find(a => a.id === achievementId);
+        if (!original) {
+          console.log(`Original achievement ${achievementId} not found`);
+          continue;
+        }
+        
+        const changedFields: string[] = [];
+        Object.keys(achievement).forEach(key => {
+          if (key !== 'id' && key !== '_id' && key !== 'iconFile' && 
+              JSON.stringify(achievement[key as keyof Achievement]) !== 
+              JSON.stringify(original[key as keyof Achievement])) {
+            changedFields.push(key);
+          }
+        });
+        
+        // Verificar específicamente si la imagen ha cambiado
+        if (achievement.icon !== original.icon) {
+          if (!changedFields.includes('icon')) {
+            changedFields.push('icon');
+          }
+          console.log(`Detectado cambio en la imagen del logro ${achievementId}`);
+        }
+        
+        if (changedFields.length > 0) {
+          console.log(`Updating achievement ${achievementId}, fields:`, changedFields);
+          
+          // Eliminar el archivo de imagen ya que ya subimos la imagen
+          const achievementToSend = { ...achievement };
+          delete achievementToSend.iconFile;
+          
+          await new Promise((resolve, reject) => {
+            updateAchievementMutation.mutate({
+              id: achievementId,
+              achievement: achievementToSend,
+              changedFields
+            }, {
+              onSuccess: (data) => {
+                console.log(`Logro ${achievementId} actualizado exitosamente:`, data);
+                changesMade = true;
+                resolve(undefined);
+              },
+              onError: (error) => {
+                console.error(`Error al actualizar logro ${achievementId}:`, error);
+                reject(error);
+              }
+            });
+          });
+        } else {
+          console.log(`No actual changes for achievement ${achievementId}`);
+        }
+      }
+
+      // Clear change tracking after successful submission
+      setChangedServices(new Set());
+      setChangedAchievements(new Set());
+      
+      if (changesMade) {
+        message.success('Cambios guardados exitosamente');
+      } else {
+        message.info('No se realizaron cambios');
+      }
+      
+    } catch (error) {
+      console.error('Error during submit:', error);
+      message.error('Error al guardar los cambios');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleAchievementChange = (index: number, field: keyof Achievement, value: any) => {
     const newAchievements = [...achievements];
+    const oldValue = newAchievements[index][field];
     newAchievements[index] = { ...newAchievements[index], [field]: value };
     setAchievements(newAchievements);
+    
+    // Only mark as changed if it has a real id and the value actually changed
+    if (newAchievements[index].id && !newAchievements[index].id.startsWith('temp-')) {
+      const original = originalAchievements.find(a => a.id === newAchievements[index].id);
+      
+      // Para cambios de imagen, marcar siempre como cambiado
+      if (field === 'icon' || field === 'iconFile') {
+        console.log(`Achievement ${newAchievements[index].id} marked as changed (image field: ${String(field)})`);
+        setChangedAchievements(prev => new Set([...prev, newAchievements[index].id!]));
+        return;
+      }
+      
+      // Verificar si el valor realmente cambió
+      let valueChanged = false;
+      
+      if (original) {
+        try {
+          // Comparar valores primitivos o convertir objetos a JSON para comparación
+          const originalValue = original[field];
+          
+          if (typeof value !== typeof originalValue) {
+            valueChanged = true;
+          } else if (typeof value === 'object' && value !== null) {
+            valueChanged = JSON.stringify(value) !== JSON.stringify(originalValue);
+          } else {
+            valueChanged = value !== originalValue;
+          }
+          
+          if (valueChanged) {
+            setChangedAchievements(prev => new Set([...prev, newAchievements[index].id!]));
+            console.log(`Achievement ${newAchievements[index].id} marked as changed (field: ${String(field)}, from:`, originalValue, 'to:', value, ')');
+          } else {
+            console.log(`No actual change for achievement ${newAchievements[index].id} (field: ${String(field)})`);
+          }
+        } catch (error) {
+          console.error('Error comparing values:', error);
+          // Si hay error en la comparación, marcarlo como cambiado por seguridad
+          setChangedAchievements(prev => new Set([...prev, newAchievements[index].id!]));
+        }
+      }
+    }
   };
 
   const handleAddAchievement = () => {
@@ -752,6 +1131,7 @@ const HighlightedServicesSettings = () => {
       color: "",
       active: true,
       order: achievements.length,
+      id: `temp-${Date.now()}` // Temporary ID for new items
     }]);
   };
 
@@ -783,7 +1163,7 @@ const HighlightedServicesSettings = () => {
       stats: [],
       active: true,
       order: services.length,
-      identifier: "",
+      identifier: `temp-${Date.now()}`, // Temporary identifier for new items
     }]);
   };
 
@@ -809,8 +1189,50 @@ const HighlightedServicesSettings = () => {
 
   const handleServiceChange = (index: number, field: keyof HighlightedService, value: any) => {
     const newServices = [...services];
+    const oldValue = newServices[index][field];
     newServices[index] = { ...newServices[index], [field]: value };
     setServices(newServices);
+    
+    // Only mark as changed if it has a real identifier and the value actually changed
+    if (newServices[index].identifier && !newServices[index].identifier.startsWith('temp-')) {
+      const original = originalServices.find(s => s.identifier === newServices[index].identifier);
+      
+      // Para cambios de imagen, marcar siempre como cambiado
+      if (field === 'image') {
+        console.log(`Service ${newServices[index].identifier} marked as changed (image field)`);
+        setChangedServices(prev => new Set([...prev, newServices[index].identifier!]));
+        return;
+      }
+      
+      // Verificar si el valor realmente cambió
+      let valueChanged = false;
+      
+      if (original) {
+        try {
+          // Comparar valores primitivos o convertir objetos a JSON para comparación
+          const originalValue = original[field];
+          
+          if (typeof value !== typeof originalValue) {
+            valueChanged = true;
+          } else if (typeof value === 'object' && value !== null) {
+            valueChanged = JSON.stringify(value) !== JSON.stringify(originalValue);
+          } else {
+            valueChanged = value !== originalValue;
+          }
+          
+          if (valueChanged) {
+            setChangedServices(prev => new Set([...prev, newServices[index].identifier!]));
+            console.log(`Service ${newServices[index].identifier} marked as changed (field: ${String(field)}, from:`, originalValue, 'to:', value, ')');
+          } else {
+            console.log(`No actual change for service ${newServices[index].identifier} (field: ${String(field)})`);
+          }
+        } catch (error) {
+          console.error('Error comparing values:', error);
+          // Si hay error en la comparación, marcarlo como cambiado por seguridad
+          setChangedServices(prev => new Set([...prev, newServices[index].identifier!]));
+        }
+      }
+    }
   };
 
   return (
@@ -827,18 +1249,19 @@ const HighlightedServicesSettings = () => {
         onAchievementChange={handleAchievementChange}
         onAddAchievement={handleAddAchievement}
         onRemoveAchievement={handleRemoveAchievement}
+        setChangedAchievements={setChangedAchievements}
       />
 
       <Row justify="center" style={{ marginTop: '32px', marginBottom: '48px' }}>
         <Button
           type="primary"
           onClick={handleSubmit}
-          loading={updateServiceMutation.isPending || updateAchievementMutation.isPending || createServiceMutation.isPending || createAchievementMutation.isPending}
-          icon={<SaveOutlined />}
+          loading={submitting || updateServiceMutation.isPending || updateAchievementMutation.isPending || createServiceMutation.isPending || createAchievementMutation.isPending}
+          icon={uploadingImages ? <LoadingOutlined /> : <SaveOutlined />}
           size="large"
           className="save-button"
         >
-          Guardar Cambios
+          {uploadingImages ? 'Subiendo imágenes...' : submitting ? 'Guardando...' : 'Guardar Cambios'}
         </Button>
       </Row>
     </div>
