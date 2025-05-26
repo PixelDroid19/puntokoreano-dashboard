@@ -33,6 +33,19 @@ import { RcFile } from "antd/es/upload";
 const { Title, Text } = Typography;
 const { Dragger } = Upload;
 
+// Constantes para validación de imágenes
+const THUMB_WIDTH = 300;
+const THUMB_HEIGHT = 300;
+const CAROUSEL_WIDTH = 600;
+const CAROUSEL_HEIGHT = 600;
+const MAX_IMAGE_SIZE_MB = 2;
+const ALLOWED_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+];
+
 // Extender la interfaz UploadFile para incluir delete_url
 interface UploadFile extends AntdUploadFile<any> {
   delete_url?: string;
@@ -213,6 +226,65 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
     });
   };
 
+  // Función para validar dimensiones y tipo de imagen
+  const validateImage = async (
+    file: RcFile,
+    expectedWidth: number,
+    expectedHeight: number,
+    maxSizeMB: number = MAX_IMAGE_SIZE_MB
+  ): Promise<boolean> => {
+    // Validar tipo de archivo
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      notification.error({
+        message: "Formato no permitido",
+        description: `${file.name} no es un formato válido (JPG, PNG, GIF, WEBP).`,
+        placement: "bottomRight",
+      });
+      return false;
+    }
+
+    // Validar tamaño del archivo
+    if (file.size > maxSizeMB * 1024 * 1024) {
+      notification.error({
+        message: "Archivo muy grande",
+        description: `${file.name} excede el tamaño máximo de ${maxSizeMB}MB.`,
+        placement: "bottomRight",
+      });
+      return false;
+    }
+
+    // Validar dimensiones de la imagen
+    return new Promise<boolean>((resolve) => {
+      const image = new Image();
+      image.src = URL.createObjectURL(file);
+      
+      image.onload = () => {
+        URL.revokeObjectURL(image.src);
+        
+        if (image.width !== expectedWidth || image.height !== expectedHeight) {
+          notification.error({
+            message: "Dimensiones incorrectas",
+            description: `${file.name} debe tener exactamente ${expectedWidth}x${expectedHeight}px. Dimensiones actuales: ${image.width}x${image.height}px.`,
+            placement: "bottomRight",
+          });
+          resolve(false);
+        } else {
+          resolve(true);
+        }
+      };
+      
+      image.onerror = () => {
+        URL.revokeObjectURL(image.src);
+        notification.error({
+          message: "Error al procesar imagen",
+          description: `No se pudo leer el archivo ${file.name} para validación.`,
+          placement: "bottomRight",
+        });
+        resolve(false);
+      };
+    });
+  };
+
   const handleGroupImagePreview = (url: string, title: string) => {
     setPreviewImage(url);
     setPreviewTitle(title);
@@ -251,6 +323,12 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
   // Manejar subida de imagen principal
   const handleThumbUpload = async (file: RcFile) => {
     try {
+      // Validar la imagen
+      const isValid = await validateImage(file, THUMB_WIDTH, THUMB_HEIGHT);
+      if (!isValid) {
+        return false;
+      }
+      
       // Mostrar una vista previa antes de subir
       const previewUrl = await getBase64(file);
       
@@ -328,6 +406,22 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
   // Manejar subida de imágenes de carrusel
   const handleCarouselUpload = async (file: RcFile) => {
     try {
+      // Verificar límite de imágenes
+      if (carouselImages.length >= 8) {
+        notification.warning({
+          message: "Límite alcanzado",
+          description: "Has alcanzado el máximo de 8 imágenes para el carrusel.",
+          placement: "bottomRight",
+        });
+        return false;
+      }
+      
+      // Validar la imagen
+      const isValid = await validateImage(file, CAROUSEL_WIDTH, CAROUSEL_HEIGHT);
+      if (!isValid) {
+        return false;
+      }
+      
       // Mostrar una vista previa antes de subir
       const previewUrl = await getBase64(file);
       
@@ -808,7 +902,7 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
                         >
                           <div className="mb-2">
                             <Text type="secondary">
-                              Esta imagen se usará como miniatura principal del producto (300x300px)
+                              Esta imagen se usará como miniatura principal del producto. Debe tener exactamente 300x300px.
                             </Text>
                           </div>
                           
@@ -875,7 +969,7 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
                                   Haga clic o arrastre una imagen aquí
                             </p>
                                 <p className="ant-upload-hint">
-                                  Soporte para JPG, PNG o GIF. Tamaño recomendado: 300x300px
+                                  Soporte para JPG, PNG, GIF o WEBP. Debe ser exactamente de 300x300px. Máx. 2MB
                             </p>
                               </Upload.Dragger>
                             )}
@@ -903,7 +997,7 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
                         >
                           <div className="mb-2">
                             <Text type="secondary">
-                              Estas imágenes se mostrarán en el carrusel del producto (600x600px)
+                              Estas imágenes se mostrarán en el carrusel del producto. Cada imagen debe tener exactamente 600x600px.
                             </Text>
                           </div>
                           
@@ -923,7 +1017,7 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
                                 Haga clic o arrastre imágenes aquí
                               </p>
                               <p className="ant-upload-hint">
-                                Soporte para JPG, PNG o GIF. Tamaño recomendado: 600x600px
+                                Soporte para JPG, PNG, GIF o WEBP. Debe ser exactamente de 600x600px. Máx. 2MB
                               </p>
                               {carouselImages.length >= 8 && (
                                 <Alert

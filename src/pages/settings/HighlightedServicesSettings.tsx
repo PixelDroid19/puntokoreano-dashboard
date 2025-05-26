@@ -50,13 +50,540 @@ interface HighlightedService {
 interface Achievement {
   title: string;
   value: string;
-  icon: string;
+  icon: string; // URL de la imagen del icono
+  iconFile?: File; // Archivo para subida
   color: string;
   active: boolean;
   order: number;
   id?: string;
 }
 
+// Componente para subir imágenes
+const UploadComponent = ({
+  value,
+  onChange,
+  label,
+  required = false,
+  maxSize = 2, // tamaño máximo en MB
+  dimensions = { width: 300, height: 300 }, // dimensiones por defecto
+}: {
+  value?: string;
+  onChange?: (url: string | undefined, file?: File) => void;
+  label: string;
+  required?: boolean;
+  maxSize?: number;
+  dimensions?: { width: number; height: number };
+}) => {
+  const [previewUrl, setPreviewUrl] = useState<string | undefined>(value);
+  const [loading, setLoading] = useState(false);
+
+  const handleUpload = async (file: RcFile) => {
+    try {
+      const isValidFileType = ["image/jpeg", "image/png", "image/gif", "image/svg+xml"].includes(
+        file.type
+      );
+      const isValidFileSize = file.size / 1024 / 1024 < maxSize;
+
+      if (!isValidFileType) {
+        message.error(`Por favor, sube un archivo de imagen (JPG, PNG, GIF, SVG)`);
+        return Upload.LIST_IGNORE;
+      }
+
+      if (!isValidFileSize) {
+        message.error(`La imagen debe ser menor a ${maxSize}MB`);
+        return Upload.LIST_IGNORE;
+      }
+
+      setLoading(true);
+      
+      // Para SVG no validamos dimensiones
+      if (file.type !== "image/svg+xml") {
+        const image = new Image();
+        image.src = URL.createObjectURL(file);
+        await new Promise<void>((resolve, reject) => {
+          image.onload = () => resolve();
+          image.onerror = (err) => reject(err);
+        });
+        
+        URL.revokeObjectURL(image.src);
+      }
+
+      const url = await ConfigService.uploadImage(file);
+
+      if (!url) {
+        throw new Error("No se recibió URL del servicio de carga");
+      }
+
+      setPreviewUrl(url);
+      onChange?.(url, file);
+      return false;
+    } catch (error) {
+      console.error("Error de carga:", error);
+      message.error("Error al subir la imagen");
+      return Upload.LIST_IGNORE;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemove = () => {
+    setPreviewUrl(undefined);
+    onChange?.(undefined);
+  };
+
+  return (
+    <Form.Item label={label} required={required} className="upload-component">
+      <Upload
+        listType="picture-card"
+        showUploadList={false}
+        beforeUpload={handleUpload}
+      >
+        {previewUrl ? (
+          <div className="preview-container">
+            <img
+              src={previewUrl}
+              alt="Vista previa"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+            <div className="preview-actions">
+              <Button
+                type="text"
+                icon={<DeleteOutlined />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRemove();
+                }}
+              />
+            </div>
+          </div>
+        ) : (
+          <div>
+            {loading ? <LoadingOutlined /> : <PlusOutlined />}
+            <div style={{ marginTop: 8 }}>Subir</div>
+          </div>
+        )}
+      </Upload>
+    </Form.Item>
+  );
+};
+
+// Componente para cada tarjeta de servicio
+const ServiceCard = ({
+  service,
+  index,
+  onRemove,
+  onChange,
+}: {
+  service: HighlightedService;
+  index: number;
+  onRemove: (index: number) => void;
+  onChange: (index: number, field: keyof HighlightedService, value: any) => void;
+}) => {
+  return (
+    <Card
+      title={`Servicio ${index + 1}`}
+      className="service-card animate-in"
+      extra={
+        <Button
+          danger
+          icon={<DeleteOutlined />}
+          onClick={() => onRemove(index)}
+          className="delete-button"
+        />
+      }
+    >
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-x-4">
+        {/* Primera Fila: Título e Identificador */}
+        <div className="md:col-span-6">
+          <Form.Item
+            label="Título"
+            required
+            validateStatus={!service.title ? "error" : ""}
+            help={!service.title ? "El título es requerido" : ""}
+            className="mb-3"
+          >
+            <Input
+              className="input-field"
+              value={service.title}
+              onChange={(e) => onChange(index, "title", e.target.value)}
+              placeholder="Ingrese el título del servicio"
+              suffix={
+                <Tooltip title="Nombre principal del servicio">
+                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                </Tooltip>
+              }
+            />
+          </Form.Item>
+        </div>
+        <div className="md:col-span-6">
+          <Form.Item
+            label="Identificador"
+            required
+            validateStatus={!service.identifier || !/^[a-z0-9-]+$/.test(service.identifier) ? "error" : ""}
+            help={!service.identifier ? "El identificador es requerido" : !/^[a-z0-9-]+$/.test(service.identifier) ? "Solo letras minúsculas, números y guiones" : ""}
+            className="mb-3"
+          >
+            <Input
+              className="input-field"
+              placeholder="ejemplo-de-identificador"
+              value={service.identifier}
+              onChange={(e) => onChange(index, "identifier", e.target.value)}
+              suffix={
+                <Tooltip title="Debe ser único y solo contener letras minúsculas, números y guiones">
+                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                </Tooltip>
+              }
+            />
+          </Form.Item>
+        </div>
+
+        {/* Segunda Fila: Descripción */}
+        <div className="md:col-span-12">
+          <Form.Item
+            label="Descripción"
+            required
+            validateStatus={!service.description ? "error" : ""}
+            help={!service.description ? "La descripción es requerida" : ""}
+            className="mb-3"
+            labelCol={{ span: 24 }} 
+            wrapperCol={{ span: 24 }}
+          >
+            <Input.TextArea
+              className="input-field"
+              rows={3}
+              value={service.description}
+              onChange={(e) => onChange(index, "description", e.target.value)}
+              placeholder="Describa brevemente en qué consiste este servicio"
+            />
+          </Form.Item>
+        </div>
+
+        {/* Tercera Fila: Imagen y Orden/Estado */} 
+        <div className="md:col-span-4">
+          <Form.Item
+            label="Imagen del Servicio"
+            required
+            validateStatus={!service.image ? "error" : ""}
+            help={!service.image ? "La imagen es requerida" : ""}
+            className="mb-3"
+          >
+            <UploadComponent
+              value={service.image}
+              onChange={(url) => onChange(index, "image", url)}
+              label=""
+              required={true}
+            />
+          </Form.Item>
+        </div>
+
+        <div className="md:col-span-8">
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="Orden" className="mb-1">
+                <InputNumber
+                  className="input-field w-full"
+                  min={0}
+                  value={service.order}
+                  onChange={(value) => onChange(index, "order", value)}
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12} className="flex items-end">
+              <Form.Item label="Estado" className="mb-1 w-full">
+                <Switch
+                  className="switch-field"
+                  checkedChildren="Activo"
+                  unCheckedChildren="Inactivo"
+                  checked={service.active}
+                  onChange={(checked) => onChange(index, "active", checked)}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+// Componente para la sección de servicios
+const ServicesSection = ({
+  services,
+  onServiceChange,
+  onAddService,
+  onRemoveService,
+}: {
+  services: HighlightedService[];
+  onServiceChange: (index: number, field: keyof HighlightedService, value: any) => void;
+  onAddService: () => void;
+  onRemoveService: (index: number) => void;
+}) => {
+  return (
+    <div className="section-container">
+      <div className="section-title">
+        <Row align="middle" justify="space-between">
+          <Col>
+            <Title level={4} style={{ margin: 0 }}>
+              <AppstoreOutlined /> Servicios Destacados
+            </Title>
+          </Col>
+          <Col>
+            <Tooltip title="Los servicios destacados se mostrarán en la página principal">
+              <InfoCircleOutlined style={{ color: '#1890ff' }} />
+            </Tooltip>
+          </Col>
+        </Row>
+      </div>
+      <div className="section-content">
+        {services.map((service, index) => (
+          <ServiceCard
+            key={index}
+            service={service}
+            index={index}
+            onRemove={onRemoveService}
+            onChange={onServiceChange}
+          />
+        ))}
+
+        <Button
+          type="dashed"
+          onClick={onAddService}
+          block
+          icon={<PlusOutlined />}
+          className="add-button"
+          style={{ marginBottom: '24px' }}
+        >
+          Agregar Servicio Destacado
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+// Componente para cada tarjeta de logro
+const AchievementCard = ({
+  achievement,
+  index,
+  onRemove,
+  onChange,
+}: {
+  achievement: Achievement;
+  index: number;
+  onRemove: (index: number) => void;
+  onChange: (index: number, field: keyof Achievement, value: any) => void;
+  onIconFileChange?: (index: number, file: File) => void;
+}) => {
+  const handleIconChange = (url: string | undefined, file?: File) => {
+    onChange(index, "icon", url || "");
+    if (file) {
+      const updatedAchievement = { ...achievement, iconFile: file };
+      onChange(index, "iconFile", file);
+    }
+  };
+
+  return (
+    <Card
+      key={index}
+      className="service-card animate-in"
+      extra={
+        <Button
+          danger
+          icon={<DeleteOutlined />}
+          onClick={() => onRemove(index)}
+          className="delete-button"
+        />
+      }
+    >
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-x-4 gap-y-1">
+        {/* Primera fila - Título y Valor */}
+        <div className="md:col-span-6">
+          <Form.Item
+            label={
+              <span className="text-sm font-medium">
+                Título <span className="text-red-500">*</span>
+              </span>
+            }
+            required
+            validateStatus={!achievement.title ? "error" : ""}
+            help={!achievement.title ? "El título es requerido" : ""}
+            className="mb-2"
+          >
+            <Input
+              className="input-field"
+              value={achievement.title}
+              onChange={(e) => onChange(index, "title", e.target.value)}
+              placeholder="Ej: Clientes Satisfechos"
+              size="middle"
+            />
+          </Form.Item>
+        </div>
+        
+        <div className="md:col-span-6">
+          <Form.Item
+            label={
+              <span className="text-sm font-medium">
+                Valor <span className="text-red-500">*</span>
+              </span>
+            }
+            required
+            validateStatus={!achievement.value ? "error" : ""}
+            help={!achievement.value ? "El valor es requerido" : ""}
+            className="mb-2"
+          >
+            <Input
+              className="input-field"
+              value={achievement.value}
+              onChange={(e) => onChange(index, "value", e.target.value)}
+              placeholder="Ej: 500+"
+              size="middle"
+            />
+          </Form.Item>
+        </div>
+        
+        {/* Segunda fila - Color y Orden */}
+        <div className="md:col-span-6">
+          <Form.Item 
+            label={
+              <span className="text-sm font-medium flex items-center">
+                Color
+                <Tooltip title="Código hexadecimal o nombre del color (ej: #1890ff o blue)">
+                  <InfoCircleOutlined className="ml-1 text-blue-500" />
+                </Tooltip>
+              </span>
+            }
+            className="mb-2"
+          >
+            <Input
+              className="input-field"
+              value={achievement.color}
+              onChange={(e) => onChange(index, "color", e.target.value)}
+              placeholder="Ej: #1890ff"
+              style={{ 
+                backgroundColor: achievement.color ? `${achievement.color}20` : 'white' 
+              }}
+              size="middle"
+            />
+          </Form.Item>
+        </div>
+        
+        <div className="md:col-span-6">
+          <Form.Item 
+            label={<span className="text-sm font-medium">Orden</span>}
+            className="mb-2"
+          >
+            <InputNumber
+              className="input-field"
+              min={0}
+              value={achievement.order}
+              onChange={(value) => onChange(index, "order", value)}
+              style={{ width: '100%' }}
+              size="middle"
+            />
+          </Form.Item>
+        </div>
+        
+        {/* Tercera fila - Ícono y Estado */}
+        <div className="md:col-span-6">
+          <Form.Item
+            label={
+              <span className="text-sm font-medium flex items-center">
+                Ícono <span className="text-red-500">*</span>
+                <Tooltip title="Formatos: JPG, PNG, GIF, SVG. Máx. 1MB. Tamaño recomendado: 64x64px">
+                  <InfoCircleOutlined className="ml-1 text-blue-500" />
+                </Tooltip>
+              </span>
+            }
+            required
+            validateStatus={!achievement.icon ? "error" : ""}
+            help={!achievement.icon ? "El ícono es requerido" : ""}
+            className="mb-1"
+          >
+            <UploadComponent
+              value={achievement.icon}
+              onChange={handleIconChange}
+              label=""
+              required={true}
+              maxSize={1}
+              dimensions={{ width: 64, height: 64 }}
+            />
+          </Form.Item>
+        </div>
+        
+        <div className="md:col-span-6 flex items-end">
+          <Form.Item 
+            label={<span className="text-sm font-medium">Estado</span>}
+            className="mb-1"
+          >
+            <Switch
+              className="switch-field"
+              checkedChildren="Activo"
+              unCheckedChildren="Inactivo"
+              checked={achievement.active}
+              onChange={(checked) => onChange(index, "active", checked)}
+            />
+          </Form.Item>
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+// Componente para la sección de logros
+const AchievementsSection = ({
+  achievements,
+  onAchievementChange,
+  onAddAchievement,
+  onRemoveAchievement,
+}: {
+  achievements: Achievement[];
+  onAchievementChange: (index: number, field: keyof Achievement, value: any) => void;
+  onAddAchievement: () => void;
+  onRemoveAchievement: (index: number) => void;
+}) => {
+  return (
+    <div className="section-container">
+      <div className="section-title">
+        <Row align="middle" justify="space-between">
+          <Col>
+            <Title level={4} style={{ margin: 0 }}>
+              <TrophyOutlined /> Logros
+            </Title>
+          </Col>
+          <Col>
+            <Tooltip title="Los logros se mostrarán como estadísticas destacadas">
+              <InfoCircleOutlined style={{ color: '#1890ff' }} />
+            </Tooltip>
+          </Col>
+        </Row>
+      </div>
+      <div className="section-content">
+        {achievements.map((achievement, index) => (
+          <AchievementCard
+            key={index}
+            achievement={achievement}
+            index={index}
+            onRemove={onRemoveAchievement}
+            onChange={onAchievementChange}
+          />
+        ))}
+
+        <Button
+          type="dashed"
+          onClick={onAddAchievement}
+          block
+          icon={<PlusOutlined />}
+          className="add-button"
+          style={{ marginBottom: '24px' }}
+        >
+          Agregar Logro
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+// Componente principal
 const HighlightedServicesSettings = () => {
   const [services, setServices] = useState<HighlightedService[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
@@ -130,7 +657,17 @@ const HighlightedServicesSettings = () => {
   });
 
   const createAchievementMutation = useMutation({
-    mutationFn: (achievement: Achievement) => ConfigService.createAchievement(achievement),
+    mutationFn: async (achievement: Achievement) => {
+      // Si tenemos un archivo de icono, primero lo subimos
+      if (achievement.iconFile) {
+        const iconUrl = await ConfigService.uploadImage(achievement.iconFile);
+        return ConfigService.createAchievement({
+          ...achievement,
+          icon: iconUrl,
+        });
+      }
+      return ConfigService.createAchievement(achievement);
+    },
     onSuccess: () => {
       message.success("Logro creado exitosamente");
       queryClient.invalidateQueries({ queryKey: ["achievements"] });
@@ -142,8 +679,17 @@ const HighlightedServicesSettings = () => {
   });
 
   const updateAchievementMutation = useMutation({
-    mutationFn: ({ id, achievement }: { id: string; achievement: Partial<Achievement> }) =>
-      ConfigService.updateAchievement(id, achievement),
+    mutationFn: async ({ id, achievement }: { id: string; achievement: Partial<Achievement> }) => {
+      // Si tenemos un archivo de icono, primero lo subimos
+      if (achievement.iconFile) {
+        const iconUrl = await ConfigService.uploadImage(achievement.iconFile);
+        return ConfigService.updateAchievement(id, {
+          ...achievement,
+          icon: iconUrl,
+        });
+      }
+      return ConfigService.updateAchievement(id, achievement);
+    },
     onSuccess: () => {
       message.success("Logro actualizado exitosamente");
       queryClient.invalidateQueries({ queryKey: ["achievements"] });
@@ -261,491 +807,27 @@ const HighlightedServicesSettings = () => {
     });
   };
 
-  const handleAddStat = (serviceIndex: number) => {
-    const newServices = [...services];
-    newServices[serviceIndex].stats = [
-      ...(newServices[serviceIndex].stats || []),
-      { value: "", icon: "" },
-    ];
-    setServices(newServices);
-  };
-
-  const handleRemoveStat = (serviceIndex: number, statIndex: number) => {
-    const newServices = [...services];
-    newServices[serviceIndex].stats.splice(statIndex, 1);
-    setServices(newServices);
-  };
-
   const handleServiceChange = (index: number, field: keyof HighlightedService, value: any) => {
     const newServices = [...services];
     newServices[index] = { ...newServices[index], [field]: value };
     setServices(newServices);
   };
 
-  const handleStatChange = (serviceIndex: number, statIndex: number, field: keyof HighlightedServiceStat, value: any) => {
-    const newServices = [...services];
-    newServices[serviceIndex].stats = newServices[serviceIndex].stats || [];
-    newServices[serviceIndex].stats[statIndex] = {
-      ...newServices[serviceIndex].stats[statIndex],
-      [field]: value,
-    };
-    setServices(newServices);
-  };
-
-  const UploadComponent = ({
-    value,
-    onChange,
-    label,
-    required = false,
-  }: {
-    value?: string;
-    onChange?: (url: string | undefined) => void;
-    label: string;
-    required?: boolean;
-  }) => {
-    const [previewUrl, setPreviewUrl] = useState<string | undefined>(value);
-    const [loading, setLoading] = useState(false);
-
-    const handleUpload = async (file: RcFile) => {
-      try {
-        const isValidFileType = ["image/jpeg", "image/png", "image/gif"].includes(
-          file.type
-        );
-        const isValidFileSize = file.size / 1024 / 1024 < 2;
-
-        if (!isValidFileType) {
-          message.error("Por favor, sube un archivo de imagen (JPG, PNG, GIF)");
-          return Upload.LIST_IGNORE;
-        }
-
-        if (!isValidFileSize) {
-          message.error("La imagen debe ser menor a 2MB");
-          return Upload.LIST_IGNORE;
-        }
-
-        setLoading(true);
-        const url = await ConfigService.uploadImage(file);
-
-        if (!url) {
-          throw new Error("No se recibió URL del servicio de carga");
-        }
-
-        setPreviewUrl(url);
-        onChange?.(url);
-        return false;
-      } catch (error) {
-        console.error("Error de carga:", error);
-        message.error("Error al subir la imagen");
-        return Upload.LIST_IGNORE;
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const handleRemove = () => {
-      setPreviewUrl(undefined);
-      onChange?.(undefined);
-    };
-
-    return (
-      <Form.Item label={label} required={required} className="upload-component">
-        <Upload
-          listType="picture-card"
-          showUploadList={false}
-          beforeUpload={handleUpload}
-        >
-          {previewUrl ? (
-            <div className="preview-container">
-              <img
-                src={previewUrl}
-                alt="Vista previa"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-              <div className="preview-actions">
-                <Button
-                  type="text"
-                  icon={<DeleteOutlined />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRemove();
-                  }}
-                />
-              </div>
-            </div>
-          ) : (
-            <div>
-              {loading ? <LoadingOutlined /> : <PlusOutlined />}
-              <div style={{ marginTop: 8 }}>Subir</div>
-            </div>
-          )}
-        </Upload>
-      </Form.Item>
-    );
-  };
-
   return (
     <div className="highlighted-services-container">
-      <div className="section-container">
-        <div className="section-title">
-          <Row align="middle" justify="space-between">
-            <Col>
-              <Title level={4} style={{ margin: 0 }}>
-                <AppstoreOutlined /> Servicios Destacados
-              </Title>
-            </Col>
-            <Col>
-              <Tooltip title="Los servicios destacados se mostrarán en la página principal">
-                <InfoCircleOutlined style={{ color: '#1890ff' }} />
-              </Tooltip>
-            </Col>
-          </Row>
-        </div>
-        <div className="section-content">
-          {services.map((service, serviceIndex) => (
-            <Card
-              key={serviceIndex}
-              title={`Servicio ${serviceIndex + 1}`}
-              className="service-card animate-in"
-              extra={
-                <Button
-                  danger
-                  icon={<DeleteOutlined />}
-                  onClick={() => handleRemoveService(serviceIndex)}
-                  className="delete-button"
-                />
-              }
-            >
-              <Row gutter={24}>
-                <Col span={12}>
-                  <Form.Item
-                    label="Título"
-                    required
-                    validateStatus={!service.title ? "error" : ""}
-                    help={!service.title ? "El título es requerido" : ""}
-                  >
-                    <Input
-                      className="input-field"
-                      value={service.title}
-                      onChange={(e) => handleServiceChange(serviceIndex, "title", e.target.value)}
-                      placeholder="Ingrese el título del servicio"
-                      suffix={
-                        <Tooltip title="Nombre principal del servicio">
-                          <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                        </Tooltip>
-                      }
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    label="Identificador"
-                    required
-                    validateStatus={!service.identifier || !/^[a-z0-9-]+$/.test(service.identifier) ? "error" : ""}
-                    help={!service.identifier ? "El identificador es requerido" : !/^[a-z0-9-]+$/.test(service.identifier) ? "Solo letras minúsculas, números y guiones" : ""}
-                  >
-                    <Input
-                      className="input-field"
-                      placeholder="ejemplo-de-identificador"
-                      value={service.identifier}
-                      onChange={(e) => handleServiceChange(serviceIndex, "identifier", e.target.value)}
-                      suffix={
-                        <Tooltip title="Debe ser único y solo contener letras minúsculas, números y guiones">
-                          <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                        </Tooltip>
-                      }
-                    />
-                  </Form.Item>
-                </Col>
-              </Row>
+      <ServicesSection
+        services={services}
+        onServiceChange={handleServiceChange}
+        onAddService={handleAddService}
+        onRemoveService={handleRemoveService}
+      />
 
-              <Form.Item
-                label="Descripción"
-                required
-                validateStatus={!service.description ? "error" : ""}
-                help={!service.description ? "La descripción es requerida" : ""}
-              >
-                <Input.TextArea
-                  className="input-field"
-                  rows={4}
-                  value={service.description}
-                  onChange={(e) => handleServiceChange(serviceIndex, "description", e.target.value)}
-                  placeholder="Describa brevemente en qué consiste este servicio"
-                />
-              </Form.Item>
-
-              <Row gutter={24}>
-                <Col span={10}>
-                  <Form.Item
-                  
-                    required
-                    validateStatus={!service.image ? "error" : ""}
-                    help={!service.image ? "La imagen es requerida" : ""}
-                  >
-                    <UploadComponent
-                      value={service.image}
-                      onChange={(url) => handleServiceChange(serviceIndex, "image", url)}
-                      label="Imagen del Servicio"
-                      required={true}
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={14}>
-                  <div className="stats-section">
-                    <Row align="middle" justify="space-between">
-                      <Col>
-                        <Text strong><EyeOutlined /> Estadísticas</Text>
-                      </Col>
-                      <Col>
-                        <Text type="secondary" style={{ fontSize: '12px' }}>Estos valores se mostrarán como datos destacados</Text>
-                      </Col>
-                    </Row>
-                    <Divider style={{ margin: '12px 0' }} />
-                    
-                    {service.stats.map((stat, statIndex) => (
-                      <Card
-                        key={statIndex}
-                        size="small"
-                        className="stat-card animate-in"
-                        extra={
-                          <Button
-                            type="text"
-                            danger
-                            icon={<DeleteOutlined />}
-                            onClick={() => handleRemoveStat(serviceIndex, statIndex)}
-                            className="delete-button"
-                          />
-                        }
-                      >
-                        <Row gutter={16}>
-                          <Col span={8}>
-                            <Form.Item
-                              label="Valor"
-                              required
-                              validateStatus={!stat.value ? "error" : ""}
-                              help={!stat.value ? "El valor es requerido" : ""}
-                            >
-                              <Input
-                                value={stat.value}
-                                onChange={(e) => handleStatChange(serviceIndex, statIndex, "value", e.target.value)}
-                                placeholder="Ej: 100+"
-                              />
-                            </Form.Item>
-                          </Col>
-                          <Col span={16}>
-                            <Form.Item
-                              label="Icono"
-                              required
-                              validateStatus={!stat.icon ? "error" : ""}
-                              help={!stat.icon ? "El icono es requerido" : ""}
-                            >
-                              <Input
-                                value={stat.icon}
-                                onChange={(e) => handleStatChange(serviceIndex, statIndex, "icon", e.target.value)}
-                                placeholder="Nombre del icono"
-                                suffix={
-                                  <Tooltip title="Nombre del icono de Ant Design o Font Awesome">
-                                    <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                                  </Tooltip>
-                                }
-                              />
-                            </Form.Item>
-                          </Col>
-                        </Row>
-                      </Card>
-                    ))}
-                    <Button
-                      type="dashed"
-                      onClick={() => handleAddStat(serviceIndex)}
-                      block
-                      icon={<PlusOutlined />}
-                      className="add-button"
-                      style={{ marginTop: '12px' }}
-                    >
-                      Agregar Estadística
-                    </Button>
-                  </div>
-                </Col>
-              </Row>
-
-              <Divider style={{ margin: '24px 0 16px' }} />
-              
-              <Row gutter={24}>
-                <Col span={12}>
-                  <Form.Item label="Orden">
-                    <InputNumber
-                      className="input-field w-full"
-                      min={0}
-                      value={service.order}
-                      onChange={(value) => handleServiceChange(serviceIndex, "order", value)}
-                      style={{ width: '100%' }}
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item label="Estado">
-                    <Switch
-                      className="switch-field"
-                      checkedChildren="Activo"
-                      unCheckedChildren="Inactivo"
-                      checked={service.active}
-                      onChange={(checked) => handleServiceChange(serviceIndex, "active", checked)}
-                    />
-                  </Form.Item>
-                </Col>
-              </Row>
-            </Card>
-          ))}
-
-          <Button
-            type="dashed"
-            onClick={handleAddService}
-            block
-            icon={<PlusOutlined />}
-            className="add-button"
-            style={{ marginBottom: '24px' }}
-          >
-            Agregar Servicio Destacado
-          </Button>
-        </div>
-      </div>
-
-      <div className="section-container">
-        <div className="section-title">
-          <Row align="middle" justify="space-between">
-            <Col>
-              <Title level={4} style={{ margin: 0 }}>
-                <TrophyOutlined /> Logros
-              </Title>
-            </Col>
-            <Col>
-              <Tooltip title="Los logros se mostrarán como estadísticas destacadas">
-                <InfoCircleOutlined style={{ color: '#1890ff' }} />
-              </Tooltip>
-            </Col>
-          </Row>
-        </div>
-        <div className="section-content">
-          {achievements.map((achievement, index) => (
-            <Card
-              key={index}
-              className="service-card animate-in"
-              extra={
-                <Button
-                  danger
-                  icon={<DeleteOutlined />}
-                  onClick={() => handleRemoveAchievement(index)}
-                  className="delete-button"
-                />
-              }
-            >
-              <Row gutter={24}>
-                <Col span={8}>
-                  <Form.Item
-                    label="Título"
-                    required
-                    validateStatus={!achievement.title ? "error" : ""}
-                    help={!achievement.title ? "El título es requerido" : ""}
-                  >
-                    <Input
-                      className="input-field"
-                      value={achievement.title}
-                      onChange={(e) => handleAchievementChange(index, "title", e.target.value)}
-                      placeholder="Ej: Clientes Satisfechos"
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={8}>
-                  <Form.Item
-                    label="Valor"
-                    required
-                    validateStatus={!achievement.value ? "error" : ""}
-                    help={!achievement.value ? "El valor es requerido" : ""}
-                  >
-                    <Input
-                      className="input-field"
-                      value={achievement.value}
-                      onChange={(e) => handleAchievementChange(index, "value", e.target.value)}
-                      placeholder="Ej: 500+"
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={8}>
-                  <Form.Item
-                    label="Ícono"
-                    required
-                    validateStatus={!achievement.icon ? "error" : ""}
-                    help={!achievement.icon ? "El ícono es requerido" : ""}
-                  >
-                    <Input
-                      className="input-field"
-                      value={achievement.icon}
-                      onChange={(e) => handleAchievementChange(index, "icon", e.target.value)}
-                      placeholder="Ej: UserOutlined"
-                      suffix={
-                        <Tooltip title="Nombre del ícono de Ant Design">
-                          <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                        </Tooltip>
-                      }
-                    />
-                  </Form.Item>
-                </Col>
-              </Row>
-
-              <Row gutter={24}>
-                <Col span={8}>
-                  <Form.Item 
-                    label="Color"
-                    help="Código hexadecimal o nombre del color (ej: #1890ff o blue)"
-                  >
-                    <Input
-                      className="input-field"
-                      value={achievement.color}
-                      onChange={(e) => handleAchievementChange(index, "color", e.target.value)}
-                      placeholder="Ej: #1890ff"
-                      style={{ 
-                        backgroundColor: achievement.color ? `${achievement.color}20` : 'white' 
-                      }}
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={8}>
-                  <Form.Item label="Orden">
-                    <InputNumber
-                      className="input-field"
-                      min={0}
-                      value={achievement.order}
-                      onChange={(value) => handleAchievementChange(index, "order", value)}
-                      style={{ width: '100%' }}
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={8}>
-                  <Form.Item label="Estado">
-                    <Switch
-                      className="switch-field"
-                      checkedChildren="Activo"
-                      unCheckedChildren="Inactivo"
-                      checked={achievement.active}
-                      onChange={(checked) => handleAchievementChange(index, "active", checked)}
-                    />
-                  </Form.Item>
-                </Col>
-              </Row>
-            </Card>
-          ))}
-
-          <Button
-            type="dashed"
-            onClick={handleAddAchievement}
-            block
-            icon={<PlusOutlined />}
-            className="add-button"
-            style={{ marginBottom: '24px' }}
-          >
-            Agregar Logro
-          </Button>
-        </div>
-      </div>
+      <AchievementsSection
+        achievements={achievements}
+        onAchievementChange={handleAchievementChange}
+        onAddAchievement={handleAddAchievement}
+        onRemoveAchievement={handleRemoveAchievement}
+      />
 
       <Row justify="center" style={{ marginTop: '32px', marginBottom: '48px' }}>
         <Button

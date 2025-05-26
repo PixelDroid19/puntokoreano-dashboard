@@ -87,9 +87,11 @@ const VehicleSelector: React.FC<VehicleSelectorProps> = ({
 
       const newOptions: VehiclesOption[] = vehicles.map(
         (vehicle: ApiVehicle) => {
-          console.log("Procesando vehículo:", vehicle);
+          console.log("Procesando vehículo:", vehicle.line_id?.name);
           const brandName =
-            vehicle.line_id?.model_id?.family_id?.brand_id?.name || "";
+            vehicle?.tag_id ||
+            vehicle.line_id?.model_id?.family_id?.brand_id?.name ||
+            "";
           const modelName = vehicle.line_id?.model_id?.name || "";
           const lineName = vehicle.line_id?.name || "";
           const vehicleDisplayName = `${brandName} ${modelName} ${lineName}`;
@@ -142,7 +144,6 @@ const VehicleSelector: React.FC<VehicleSelectorProps> = ({
         noOptionsMessage={({ inputValue }) =>
           inputValue ? "No se encontraron vehículos" : "Escribe para buscar..."
         }
-        
         debounceTimeout={350}
         reloadOptionsOnChange={true}
         className="react-select-container"

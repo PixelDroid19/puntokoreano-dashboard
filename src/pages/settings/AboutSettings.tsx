@@ -10,17 +10,24 @@ import {
   message,
   Row,
   Col,
+  Tabs,
 } from "antd";
 import {
   PlusOutlined,
   DeleteOutlined,
   LoadingOutlined,
+  SaveOutlined,
+  EnvironmentOutlined,
+  TeamOutlined,
+  GlobalOutlined,
 } from "@ant-design/icons";
 import { AboutSettings } from "../../types/about.types";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AboutService from "../../services/about.service";
 import { RcFile } from "antd/es/upload";
 import "./styles/about-settings.css";
+
+const { TabPane } = Tabs;
 
 const AboutSettingsPage = () => {
   const [form] = Form.useForm();
@@ -41,7 +48,7 @@ const AboutSettingsPage = () => {
     if (isSuccess && !isFetching) {
       form.setFieldsValue(settings);
     }
-  }, [isFetching, isSuccess]);
+  }, [isFetching, isSuccess, settings, form]);
 
   const updateMutation = useMutation({
     mutationFn: (data: AboutSettings) =>
@@ -232,8 +239,8 @@ const AboutSettingsPage = () => {
             rules={[{ required: true, message: "La imagen es requerida" }]}
           >
             <UploadComponent 
-              value={field.value} 
-              onChange={(url) => form.setFieldValue([field.name, "image"], url)}
+              value={form.getFieldValue([field.name, "image"]) } 
+              onChange={(url) => form.setFieldValue(["consultants", field.name, "image"], url)}
               label="Imagen de Perfil"
               required={true}
             />
@@ -247,7 +254,7 @@ const AboutSettingsPage = () => {
                 onChange={(checked) => {
                   setUseSharedHeaderImage(checked);
                   if (checked && sharedHeaderImage) {
-                    form.setFieldValue([field.name, "headerImage"], sharedHeaderImage);
+                    form.setFieldValue(["consultants", field.name, "headerImage"], sharedHeaderImage);
                   }
                 }}
               />
@@ -279,8 +286,8 @@ const AboutSettingsPage = () => {
                 rules={[{ required: true, message: "La imagen de encabezado es requerida" }]}
               >
                 <UploadComponent
-                  value={form.getFieldValue([field.name, "headerImage"])}
-                  onChange={(url) => form.setFieldValue([field.name, "headerImage"], url)}
+                  value={form.getFieldValue(["consultants", field.name, "headerImage"])}
+                  onChange={(url) => form.setFieldValue(["consultants", field.name, "headerImage"], url)}
                   label="Imagen de Encabezado"
                   required={true}
                 />
@@ -294,8 +301,8 @@ const AboutSettingsPage = () => {
         <Col span={24}>
           <Form.Item name={[field.name, "qrCode"]} label="Código QR">
             <UploadComponent 
-              value={form.getFieldValue([field.name, "qrCode"])} 
-              onChange={(url) => form.setFieldValue([field.name, "qrCode"], url)}
+              value={form.getFieldValue(["consultants", field.name, "qrCode"]) } 
+              onChange={(url) => form.setFieldValue(["consultants", field.name, "qrCode"], url)}
               label="Código QR"
             />
           </Form.Item>
@@ -317,6 +324,13 @@ const AboutSettingsPage = () => {
   }) => {
     const [previewUrl, setPreviewUrl] = useState<string | undefined>(value);
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (value !== previewUrl) {
+            setPreviewUrl(value);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [value]);
 
     const handleUpload = async (file: RcFile) => {
       try {
@@ -375,166 +389,194 @@ const AboutSettingsPage = () => {
   };
 
   return (
-    <Card title="Configuración About">
+    <Card title="Configuración de la Página Nosotros">
       <Form
         form={form}
         onFinish={handleSubmit}
         layout="vertical"
         initialValues={settings}
+        className="space-y-6"
       >
-        <Card title="Misión Social" className="mb-4">
-          <Form.Item
-            name={["socialMission", "text"]}
-            rules={[
-              {
-                required: true,
-                message: "El texto de la misión social es requerido",
-              },
-            ]}
+        <Tabs defaultActiveKey="1" type="card">
+          <TabPane 
+            tab={<span><GlobalOutlined /> Misión Social</span>} 
+            key="1"
           >
-            <Input.TextArea rows={4} />
-          </Form.Item>
-
-          <Row gutter={16}>
-            <Col span={24} md={12}>
+            <Card bordered={false}>
               <Form.Item
-                name={["socialMission", "backgroundImage"]}
-                label="Imagen de Fondo"
+                name={["socialMission", "text"]}
+                label="Texto de la Misión"
                 rules={[
-                  { required: true, message: "La imagen de fondo es requerida" },
+                  {
+                    required: true,
+                    message: "El texto de la misión social es requerido",
+                  },
                 ]}
+                className="mb-4"
               >
-                <Input placeholder="URL de la imagen" />
+                <Input.TextArea rows={4} placeholder="Describe la misión social de la empresa" />
               </Form.Item>
-            </Col>
-            <Col span={24} md={12}>
-              <Form.Item label="O sube una imagen">
-                <Upload
-                  listType="picture-card"
-                  maxCount={1}
-                  beforeUpload={(file) =>
-                    handleImageUpload(file, ["socialMission", "backgroundImage"])
-                  }
-                  showUploadList={false}
-                >
-                  <div>
-                    <PlusOutlined />
-                    <div>Subir</div>
-                  </div>
-                </Upload>
-              </Form.Item>
-            </Col>
-          </Row>
-          
-          {form.getFieldValue(["socialMission", "backgroundImage"]) && (
-            <div className="image-preview">
-              <img 
-                src={form.getFieldValue(["socialMission", "backgroundImage"])} 
-                alt="Vista previa" 
-                style={{ maxWidth: "100%", maxHeight: "200px", objectFit: "contain" }} 
-              />
-            </div>
-          )}
-        </Card>
 
-        <Card title="Ubicación" className="mb-4">
-          <Form.Item
-            name={["location", "address"]}
-            label="Dirección"
-            rules={[{ required: true, message: "La dirección es requerida" }]}
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item
-            name={["location", "mapUrl"]}
-            label="URL del Mapa"
-            rules={[
-              { required: true, message: "La URL del mapa es requerida" },
-              { type: "url", message: "Por favor ingresa una URL válida" },
-            ]}
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item label="Coordenadas" required className="mb-0">
-            <Input.Group compact>
-              <Form.Item
-                name={["location", "coordinates", "lat"]}
-                rules={[{ required: true, message: "La latitud es requerida" }]}
-                style={{
-                  display: "inline-block",
-                  width: "calc(50% - 8px)",
-                  marginRight: "16px",
-                }}
-              >
-                <InputNumber
-                  placeholder="Latitud"
-                  style={{ width: "100%" }}
-                  min={-90}
-                  max={90}
-                  step={0.000001}
-                />
-              </Form.Item>
-              <Form.Item
-                name={["location", "coordinates", "lng"]}
-                rules={[
-                  { required: true, message: "La longitud es requerida" },
-                ]}
-                style={{ display: "inline-block", width: "calc(50% - 8px)" }}
-              >
-                <InputNumber
-                  placeholder="Longitud"
-                  style={{ width: "100%" }}
-                  min={-180}
-                  max={180}
-                  step={0.000001}
-                />
-              </Form.Item>
-            </Input.Group>
-          </Form.Item>
-        </Card>
-
-        <Card title="Consultores" className="mb-4">
-          <Form.List name="consultants" initialValue={[]}>
-            {(fields, { add, remove }) => (
-              <>
-                {fields.map((field) => (
-                  <ConsultantForm
-                    key={field.key}
-                    field={field}
-                    remove={remove}
+              <Row gutter={24} align="top">
+                <Col span={24} md={12}>
+                  <Form.Item
+                    name={["socialMission", "backgroundImage"]}
+                    label="URL Imagen de Fondo"
+                    rules={[
+                      { required: true, message: "La imagen de fondo es requerida" },
+                      { type: "url", message: "Ingresa una URL válida" }
+                    ]}
+                    className="mb-0 md:mb-4"
+                  >
+                    <Input placeholder="https://ejemplo.com/imagen.jpg" />
+                  </Form.Item>
+                </Col>
+                <Col span={24} md={12}>
+                  <Form.Item 
+                    label="O subir una imagen local (max 2MB)" 
+                    className="mb-4"
+                  >
+                    <Upload
+                      listType="picture-card"
+                      maxCount={1}
+                      beforeUpload={(file) =>
+                        handleImageUpload(file, ["socialMission", "backgroundImage"])
+                      }
+                      showUploadList={false}
+                      className="about-social-mission-uploader"
+                    >
+                      <div>
+                        <PlusOutlined />
+                        <div style={{ marginTop: 8 }}>Subir</div>
+                      </div>
+                    </Upload>
+                  </Form.Item>
+                </Col>
+              </Row>
+              
+              {form.getFieldValue(["socialMission", "backgroundImage"]) && (
+                <div className="mt-2 p-2 border rounded-md inline-block bg-gray-50">
+                  <p className="text-xs font-medium mb-1 text-gray-600">Vista Previa (Misión):</p>
+                  <img 
+                    src={form.getFieldValue(["socialMission", "backgroundImage"])} 
+                    alt="Vista previa de misión" 
+                    className="max-w-sm max-h-40 object-contain rounded"
                   />
-                ))}
-                <Button
-                  type="dashed"
-                  onClick={() =>
-                    add({
-                      name: "",
-                      position: "",
-                      phone: "",
-                      active: true,
-                      order: fields.length,
-                    })
-                  }
-                  block
-                  icon={<PlusOutlined />}
-                >
-                  Agregar Consultor
-                </Button>
-              </>
-            )}
-          </Form.List>
-        </Card>
+                </div>
+              )}
+            </Card>
+          </TabPane>
 
-        <Button
-          type="primary"
-          htmlType="submit"
-          loading={updateMutation.isPending}
-          className="mt-4"
-        >
-          Guardar Cambios
-        </Button>
+          <TabPane 
+            tab={<span><EnvironmentOutlined /> Ubicación</span>} 
+            key="2"
+          >
+            <Card bordered={false}>
+              <Form.Item
+                name={["location", "address"]}
+                label="Dirección Completa"
+                rules={[{ required: true, message: "La dirección es requerida" }]}
+              >
+                <Input placeholder="Calle, Número, Ciudad, País"/>
+              </Form.Item>
+
+              <Form.Item
+                name={["location", "mapUrl"]}
+                label="URL de Google Maps"
+                rules={[
+                  { required: true, message: "La URL del mapa es requerida" },
+                  { type: "url", message: "Por favor ingresa una URL válida" },
+                ]}
+              >
+                <Input placeholder="https://maps.google.com/..." />
+              </Form.Item>
+
+              <Form.Item label="Coordenadas Geográficas" required className="mb-0">
+                <Input.Group compact>
+                  <Form.Item
+                    name={["location", "coordinates", "lat"]}
+                    noStyle
+                    rules={[{ required: true, message: "Latitud requerida" }]}
+                  >
+                    <InputNumber
+                      placeholder="Latitud (ej: 4.60971)"
+                      className="w-1/2"
+                      min={-90}
+                      max={90}
+                      step={0.000001}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    name={["location", "coordinates", "lng"]}
+                    noStyle
+                    rules={[{ required: true, message: "Longitud requerida" }]}
+                  >
+                    <InputNumber
+                      placeholder="Longitud (ej: -74.08175)"
+                      className="w-1/2"
+                      min={-180}
+                      max={180}
+                      step={0.000001}
+                    />
+                  </Form.Item>
+                </Input.Group>
+              </Form.Item>
+            </Card>
+          </TabPane>
+
+          <TabPane 
+            tab={<span><TeamOutlined /> Consultores</span>} 
+            key="3"
+          >
+            <Card bordered={false}>
+              <Form.List name="consultants" initialValue={[]}>
+                {(fields, { add, remove }) => (
+                  <>
+                    {fields.map((field) => (
+                      <ConsultantForm
+                        key={field.key}
+                        field={field}
+                        remove={remove}
+                      />
+                    ))}
+                    <Button
+                      type="dashed"
+                      onClick={() =>
+                        add({
+                          name: "",
+                          position: "",
+                          phone: "",
+                          active: true,
+                          order: fields.length,
+                          image: "",
+                          headerImage: useSharedHeaderImage && sharedHeaderImage ? sharedHeaderImage : "",
+                          qrCode: "",
+                        })
+                      }
+                      block
+                      icon={<PlusOutlined />}
+                      className="mt-4"
+                    >
+                      Agregar Consultor
+                    </Button>
+                  </>
+                )}
+              </Form.List>
+            </Card>
+          </TabPane>
+        </Tabs>
+
+        <div className="flex justify-end mt-8">
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={updateMutation.isPending}
+            icon={<SaveOutlined />} 
+            size="large"
+          >
+            Guardar Cambios Generales
+          </Button>
+        </div>
       </Form>
     </Card>
   );
