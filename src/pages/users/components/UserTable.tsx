@@ -15,11 +15,13 @@ interface UserTableProps {
   onBlock: (id: string, reason: string) => void;
   onUnblock: (id: string) => void;
   onDelete: (id: string) => void;
-  onRefreshToken?: (id: string) => void;
-  onInvalidateSessions?: (id: string) => void;
-  onLogout?: (id: string) => void;
+  onRefreshToken: (id: string) => void;
+  onInvalidateSessions: (id: string) => void;
+  onLogout: (id: string) => void;
   isToggleStatusLoading: boolean;
   isToggleModeLoading: boolean;
+  loading?: boolean;
+  pagination?: any;
 }
 
 const UserTable: React.FC<UserTableProps> = ({
@@ -37,6 +39,8 @@ const UserTable: React.FC<UserTableProps> = ({
   onLogout,
   isToggleStatusLoading,
   isToggleModeLoading,
+  loading,
+  pagination
 }) => {
   const columns = [
     {
@@ -122,11 +126,8 @@ const UserTable: React.FC<UserTableProps> = ({
       dataSource={users}
       columns={columns}
       rowKey="_id"
-      pagination={{
-        pageSize: 10,
-        showSizeChanger: true,
-        showTotal: (total) => `Total ${total} usuarios`,
-      }}
+      loading={loading}
+      pagination={pagination}
     />
   );
 };

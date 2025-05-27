@@ -12,9 +12,19 @@ export const axiosInstance = axios.create({
 // Interceptor para añadir el token a las peticiones
 axiosInstance.interceptors.request.use(
   (config) => {
+    // Depurar solicitudes DELETE
+    if (config.method === 'delete') {
+      console.log('DELETE Request Configuration:', {
+        url: config.url,
+        params: config.params,
+        data: config.data,
+        headers: config.headers
+      });
+    }
+    
     const token = localStorage.getItem(ACCESS_TOKEN_KEY);
     if (token) {
-      config.headers!.Authorization = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },

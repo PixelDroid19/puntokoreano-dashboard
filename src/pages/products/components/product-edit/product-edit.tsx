@@ -1,5 +1,5 @@
 import type React from "react"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState, useRef } from "react"
 import { Modal, Form, Tabs, Button, Spin, Alert, Badge, message } from "antd"
 import {
   CarOutlined,
@@ -70,6 +70,14 @@ export const ProductEdit: React.FC<ProductEditProps> = ({ open, onClose, product
   const [activeTab, setActiveTab] = useState("1")
   const [initialValues, setInitialValues] = useState<any>(null)
   const [changedFields, setChangedFields] = useState<string[]>([])
+  const [isUploadingImages, setIsUploadingImages] = useState<boolean>(false)
+  const [hasImageChanges, setHasImageChanges] = useState<boolean>(false)
+  
+  // Referencia a la función de subida de imágenes en MultimediaTab
+  const uploadPendingImagesRef = useRef<(() => Promise<{
+    thumbUrl?: string;
+    carouselUrls: string[];
+  }>) | null>(null);
 
   const {
     data: productData,
@@ -170,7 +178,8 @@ export const ProductEdit: React.FC<ProductEditProps> = ({ open, onClose, product
         seoDescription: productData.seo?.description || "",
         seoKeywords: productData.seo?.keywords?.join(", ") || "",
         imageGroup: productData.imageGroup || undefined,
-        images: productData.images || [],
+        thumb: productData.thumb || null,
+        carousel: productData.carousel || [],
         compatible_vehicles: vehicleOptions,
         active: productData.active !== undefined ? productData.active : true,
         discount: {
@@ -258,6 +267,19 @@ export const ProductEdit: React.FC<ProductEditProps> = ({ open, onClose, product
     return changedValues
   }
 
+  // Función para marcar cambios en las imágenes
+  const handleImageChange = useCallback((type: 'thumb' | 'carousel') => {
+    console.log('Cambio de imagen detectado:', type);
+    setHasImageChanges(true);
+    
+    // Asegurarse de que solo el tipo específico de imagen está en los campos cambiados
+    setChangedFields(prev => {
+      const newChangedFields = new Set(prev);
+      newChangedFields.add(type); // Solo añadir el campo que ha cambiado
+      return Array.from(newChangedFields);
+    });
+  }, []);
+
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields()
@@ -271,8 +293,14 @@ export const ProductEdit: React.FC<ProductEditProps> = ({ open, onClose, product
       // Obtener solo los campos que han cambiado
       const changedValues = getChangedValues(values)
 
+      // Si hay cambios en las imágenes, asegurarse de incluir los campos correspondientes
+      if (hasImageChanges) {
+        if (!changedValues.thumb) changedValues.thumb = values.thumb;
+        if (!changedValues.carousel) changedValues.carousel = values.carousel;
+      }
+
       // Si no hay cambios, mostrar mensaje y no hacer nada
-      if (Object.keys(changedValues).length === 0) {
+      if (Object.keys(changedValues).length === 0 && !hasImageChanges) {
         message.info("No se han detectado cambios en el producto")
         return
       }
@@ -280,6 +308,36 @@ export const ProductEdit: React.FC<ProductEditProps> = ({ open, onClose, product
       // Mostrar los campos que se van a actualizar (para depuración)
       console.log("Campos modificados:", changedFields)
       console.log("Valores a enviar:", changedValues)
+      console.log("¿Hay cambios en imágenes?", hasImageChanges)
+      
+      // Si hay imágenes pendientes de subir, subirlas primero
+      if (uploadPendingImagesRef.current) {
+        setIsUploadingImages(true);
+        try {
+          message.loading("Subiendo imágenes...", 0);
+          const imageResults = await uploadPendingImagesRef.current();
+          message.destroy();
+          
+          // Actualizar los valores de las imágenes con las URLs reales
+          if (imageResults.thumbUrl) {
+            changedValues.thumb = imageResults.thumbUrl;
+          }
+          
+          if (imageResults.carouselUrls.length > 0) {
+            changedValues.carousel = imageResults.carouselUrls;
+          }
+          
+          console.log("Imágenes subidas:", imageResults);
+          console.log("Valores actualizados a enviar:", changedValues);
+        } catch (error) {
+          console.error("Error al subir imágenes:", error);
+          message.error("Error al subir imágenes. No se guardará el producto.");
+          setIsUploadingImages(false);
+          return;
+        } finally {
+          setIsUploadingImages(false);
+        }
+      }
 
       // Enviar solo los campos modificados
       updateMutation.mutate(changedValues)
@@ -316,6 +374,9 @@ export const ProductEdit: React.FC<ProductEditProps> = ({ open, onClose, product
   }
 
   const stockStatus = calculateStockStatus()
+
+  // Determinar si hay cambios para habilitar el botón de guardar
+  const hasChanges = changedFields.length > 0 || hasImageChanges;
 
   if (isLoadingProduct) {
     return (
@@ -437,12 +498,13 @@ export const ProductEdit: React.FC<ProductEditProps> = ({ open, onClose, product
           key="submit"
           type="primary"
           onClick={handleSubmit}
-          loading={updateMutation.isPending}
+          loading={updateMutation.isPending || isUploadingImages}
           className="bg-blue-600 hover:bg-blue-700 transition-colors duration-300"
-          disabled={changedFields.length === 0}
+          disabled={!hasChanges}
         >
           <CheckCircleOutlined className="mr-1" />
-          {changedFields.length > 0 ? `Guardar Cambios (${changedFields.length})` : "No hay cambios"}
+          {isUploadingImages ? "Subiendo imágenes..." : 
+           hasChanges ? `Guardar Cambios (${changedFields.length})` : "No hay cambios"}
         </Button>,
       ]}
       width={1000}
@@ -487,6 +549,8 @@ export const ProductEdit: React.FC<ProductEditProps> = ({ open, onClose, product
             setUseGroupImages={setUseGroupImages}
             imageGroupsData={imageGroupsData}
             form={form}
+            onUploadPendingImagesRef={uploadPendingImagesRef}
+            onImageChange={handleImageChange}
           />
         )}
 
@@ -494,11 +558,29 @@ export const ProductEdit: React.FC<ProductEditProps> = ({ open, onClose, product
 
         {activeTab === "6" && <SeoTab />}
 
-        {changedFields.length > 0 && (
+        {hasChanges && (
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="font-medium text-blue-700 mb-2">Campos modificados ({changedFields.length}):</div>
+            <div className="font-medium text-blue-700 mb-2">
+              {hasImageChanges ? "Cambios en imágenes y campos" : "Campos modificados"} ({changedFields.length}):
+            </div>
             <div className="flex flex-wrap gap-2">
-              {changedFields.map((field) => (
+              {changedFields.includes('thumb') && (
+                <Badge
+                  count="imagen principal"
+                  className="site-badge-count-4"
+                  style={{ backgroundColor: "#f50" }}
+                />
+              )}
+              {changedFields.includes('carousel') && (
+                <Badge
+                  count="imágenes de carrusel"
+                  className="site-badge-count-4"
+                  style={{ backgroundColor: "#f50" }}
+                />
+              )}
+              {changedFields
+                .filter(field => field !== 'thumb' && field !== 'carousel')
+                .map((field) => (
                 <Badge
                   key={field}
                   count={field}

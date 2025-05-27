@@ -135,15 +135,18 @@ const Users = () => {
   });
 
   const deleteUser = useMutation({
-    mutationFn: (id: string) =>
-      userTypeFilter === UserType.ADMIN
+    mutationFn: (id: string) => {
+      console.log(`Deleting user ${id} of type ${userTypeFilter}`);
+      return userTypeFilter === UserType.ADMIN
         ? UsersService.deleteAdminUser(id)
-        : UsersService.deleteCustomer(id),
+        : UsersService.deleteCustomer(id, { hardDelete: true });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["usersManagerPage"] });
       toast.success("Usuario eliminado correctamente");
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("Error al eliminar usuario:", error);
       toast.error("Error al eliminar el usuario");
     },
   });
@@ -184,7 +187,10 @@ const Users = () => {
   });
 
   const logoutUser = useMutation({
-    mutationFn: (userId: string) => UsersService.logoutUser(userId),
+    mutationFn: (userId: string) => 
+      userTypeFilter === UserType.ADMIN
+        ? UsersService.logoutUser(userId, "admin")
+        : UsersService.logoutUser(userId, "customer"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["usersManagerPage"] });
       toast.success("Usuario desconectado correctamente");

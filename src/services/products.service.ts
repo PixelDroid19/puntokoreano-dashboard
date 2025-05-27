@@ -21,6 +21,13 @@ interface PaginatedResponse {
   };
 }
 
+interface UploadImageResponse {
+  success: boolean;
+  url: string;
+  thumbUrl?: string;
+  delete_url?: string;
+}
+
 class ProductsService {
   static async getProducts(
     params?: PaginationParams
@@ -125,6 +132,51 @@ class ProductsService {
       if (axios.isAxiosError(error)) {
         throw new Error(
           error.response?.data?.message || "Error en la búsqueda de productos"
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Sube una imagen al servidor
+   * @param file Archivo a subir
+   * @returns Promise con la URL y la URL para borrar
+   */
+  static async uploadImage(file: File): Promise<UploadImageResponse> {
+    try {
+      // Verificar el formato
+      if (!file.type.startsWith('image/')) {
+        throw new Error("El archivo debe ser una imagen");
+      }
+
+      // Crear formData para enviar el archivo
+      const formData = new FormData();
+      formData.append("image", file);
+
+      // Usar un servicio externo como ImgBB para almacenamiento de imágenes
+      // Esta es una implementación de ejemplo que usa ImgBB
+      const imgbbApiKey = import.meta.env.VITE_IMGBB_API_KEY || "YOUR_IMGBB_API_KEY";
+      const response = await axios.post(
+        `https://api.imgbb.com/1/upload?key=${imgbbApiKey}`, 
+        formData
+      );
+
+      if (response.data && response.data.success) {
+        return {
+          success: true,
+          url: response.data.data.url,
+          thumbUrl: response.data.data.thumb?.url || response.data.data.url,
+          delete_url: response.data.data.delete_url
+        };
+      } else {
+        throw new Error("Error al subir la imagen");
+      }
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || "Error al subir la imagen"
         );
       }
       throw error;

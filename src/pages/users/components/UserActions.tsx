@@ -1,5 +1,5 @@
-import React from 'react';
-import { Space, Button, Tooltip, Modal, Form, Input } from 'antd';
+import React, { useState } from 'react';
+import { Space, Button, Tooltip, Modal, Form, Input, Checkbox } from 'antd';
 import { EditOutlined, LockOutlined, UnlockOutlined, DeleteOutlined, ReloadOutlined, LogoutOutlined, StopOutlined } from '@ant-design/icons';
 import { User } from '../../../types/users.types';
 
@@ -24,41 +24,57 @@ const UserActions: React.FC<UserActionsProps> = ({
   onDelete,
   onLogout,
 }) => {
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [isDeleteConfirmed, setIsDeleteConfirmed] = useState(false);
+  
   return (
-    <Space>
+    <Space size="small">
       <Tooltip title="Editar">
         <Button
           icon={<EditOutlined />}
           onClick={() => onEdit(user)}
         />
       </Tooltip>
-      <Tooltip title={user.active ? "Bloquear" : "Desbloquear"}>
-        <Button
-          icon={user.active ? <LockOutlined /> : <UnlockOutlined />}
-          onClick={() => {
-            if (user.active) {
+
+      {user.active ? (
+        <Tooltip title="Bloquear">
+          <Button
+            icon={<LockOutlined />}
+            onClick={() => {
               Modal.confirm({
                 title: "Bloquear usuario",
                 content: (
-                  <Form.Item label="Razón del bloqueo" required>
-                    <TextArea
-                      onChange={(e) => {
-                        (Modal.confirm as any).reason = e.target.value;
-                      }}
-                    />
-                  </Form.Item>
+                  <div>
+                    <p>¿Estás seguro de bloquear a este usuario?</p>
+                    <Form.Item label="Razón del bloqueo">
+                      <Input.TextArea
+                        id="block-reason"
+                        rows={3}
+                      />
+                    </Form.Item>
+                  </div>
                 ),
+                okText: "Bloquear",
+                okType: "danger",
+                cancelText: "Cancelar",
                 onOk: () => {
-                  onBlock(user._id, (Modal.confirm as any).reason);
+                  const reason = document.getElementById("block-reason") as HTMLTextAreaElement;
+                  onBlock(user._id, reason ? reason.value : "No especificada");
                 },
               });
-            } else {
-              onUnblock(user._id);
-            }
-          }}
-        />
-      </Tooltip>
-   {/*    {onLogout && (
+            }}
+          />
+        </Tooltip>
+      ) : (
+        <Tooltip title="Desbloquear">
+          <Button
+            type="primary"
+            icon={<UnlockOutlined />}
+            onClick={() => onUnblock(user._id)}
+          />
+        </Tooltip>
+      )}
+      {onLogout && (
         <Tooltip title="Cerrar sesión">
           <Button
             icon={<LogoutOutlined />}
@@ -74,23 +90,48 @@ const UserActions: React.FC<UserActionsProps> = ({
             }}
           />
         </Tooltip>
-      )} */}
+      )}
       <Tooltip title="Eliminar">
         <Button
           danger
           icon={<DeleteOutlined />}
-          onClick={() => {
-            Modal.confirm({
-              title: "¿Estás seguro de eliminar este usuario?",
-              content: "Esta acción no se puede deshacer",
-              okText: "Sí, eliminar",
-              okType: "danger",
-              cancelText: "Cancelar",
-              onOk: () => onDelete(user._id),
-            });
-          }}
+          onClick={() => setIsDeleteModalVisible(true)}
         />
       </Tooltip>
+      
+      <Modal
+        title="Eliminar usuario"
+        open={isDeleteModalVisible}
+        onCancel={() => {
+          setIsDeleteModalVisible(false);
+          setIsDeleteConfirmed(false);
+        }}
+        okText="Sí, eliminar"
+        okType="danger"
+        okButtonProps={{
+          danger: true,
+          disabled: !isDeleteConfirmed
+        }}
+        cancelText="Cancelar"
+        onOk={() => {
+          if (isDeleteConfirmed) {
+            onDelete(user._id);
+            setIsDeleteModalVisible(false);
+            setIsDeleteConfirmed(false);
+          }
+        }}
+      >
+        <div>
+          <p>¿Estás seguro de eliminar a este usuario?</p>
+          <p>Esta acción no se puede deshacer.</p>
+          <Checkbox 
+            onChange={(e) => setIsDeleteConfirmed(e.target.checked)}
+            checked={isDeleteConfirmed}
+          >
+            Confirmo la eliminación permanente
+          </Checkbox>
+        </div>
+      </Modal>
     </Space>
   );
 };

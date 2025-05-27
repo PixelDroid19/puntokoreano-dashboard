@@ -197,36 +197,22 @@ class UsersService {
     userType: string
   ): Promise<void> {
     try {
-      // If active is true, unblock the user, otherwise block the user
-      if (userType === "admin") {
-        const url = active
-          ? ENDPOINTS.DASHBOARD.ANALYTICS.USERS.ADMIN.UNBLOCK.url.replace(
-              ":id",
-              userId
-            )
-          : ENDPOINTS.DASHBOARD.ANALYTICS.USERS.ADMIN.BLOCK.url.replace(
-              ":id",
-              userId
-            );
-        await axiosInstance.post(
-          url,
-          active ? {} : { reason: "Blocked by admin" }
-        );
-      } else {
-        const url = active
-          ? ENDPOINTS.DASHBOARD.ANALYTICS.USERS.CUSTOMERS.UNBLOCK.url.replace(
-              ":id",
-              userId
-            )
-          : ENDPOINTS.DASHBOARD.ANALYTICS.USERS.CUSTOMERS.BLOCK.url.replace(
-              ":id",
-              userId
-            );
-        await axiosInstance.post(
-          url,
-          active ? {} : { reason: "Blocked by admin" }
-        );
-      }
+      // Determinar qué tipo de usuario se está manejando
+      const isAdmin = userType === "admin";
+      
+      // Si active es true, desbloquear al usuario, de lo contrario, bloquearlo
+      const url = active
+        ? (isAdmin 
+            ? ENDPOINTS.DASHBOARD.ANALYTICS.USERS.ADMIN.UNBLOCK.url.replace(":id", userId)
+            : ENDPOINTS.DASHBOARD.ANALYTICS.USERS.CUSTOMERS.UNBLOCK.url.replace(":id", userId))
+        : (isAdmin
+            ? ENDPOINTS.DASHBOARD.ANALYTICS.USERS.ADMIN.BLOCK.url.replace(":id", userId)
+            : ENDPOINTS.DASHBOARD.ANALYTICS.USERS.CUSTOMERS.BLOCK.url.replace(":id", userId));
+      
+      await axiosInstance.post(
+        url,
+        active ? {} : { reason: "Blocked by admin" }
+      );
     } catch (error) {
       return this.handleError(error);
     }
@@ -270,6 +256,8 @@ class UsersService {
     options: { transferDataTo?: string; hardDelete?: boolean } = {}
   ): Promise<void> {
     try {
+      console.log("deleteUser called with options:", { id, userType, options });
+      
       const url =
         userType === "admin"
           ? ENDPOINTS.DASHBOARD.ANALYTICS.USERS.ADMIN.DELETE.url.replace(
@@ -280,8 +268,20 @@ class UsersService {
               ":id",
               id
             );
-      await axiosInstance.delete(url, { params: options });
+      
+      // Convertir opciones booleanas a string para evitar problemas en la URL
+      const params: Record<string, string> = {};
+      if (options.transferDataTo) params.transferDataTo = options.transferDataTo;
+      if (options.hardDelete !== undefined) params.hardDelete = String(options.hardDelete);
+      
+      console.log("Sending DELETE request with params:", params);
+      
+      const response = await axiosInstance.delete(url, { params });
+      console.log("DELETE response:", response.data);
+      
+      return response.data;
     } catch (error) {
+      console.error("Error in deleteUser:", error);
       return this.handleError(error);
     }
   }
@@ -352,17 +352,15 @@ class UsersService {
   /**
    * Logout user from current session
    */
-  static async logoutUser(userId: string, userType: "customer"): Promise<void> {
+  static async logoutUser(userId: string, userType: "admin" | "customer" = "customer"): Promise<void> {
     try {
-      const url =
-        ENDPOINTS.DASHBOARD.ANALYTICS.USERS.CUSTOMERS.LOGOUT.url.replace(
-          ":id",
-          userId
-        );
+      const url = userType === "admin"
+        ? ENDPOINTS.DASHBOARD.ANALYTICS.USERS.ADMIN.LOGOUT.url.replace(":id", userId)
+        : ENDPOINTS.DASHBOARD.ANALYTICS.USERS.CUSTOMERS.LOGOUT.url.replace(":id", userId);
 
       // Make the API call with empty data object to prevent potential undefined issues
       const res = await axiosInstance.post(url, {});
-      console.log("Logout response:", res);
+      console.log(`Logout response for ${userType}:`, res);
     } catch (error) {
       console.error("Logout error details:", error);
       // Use a more specific error message for logout failures
@@ -413,7 +411,7 @@ class UsersService {
    */
   static async deleteCustomer(
     id: string,
-    options?: { transferDataTo?: string; hardDelete?: boolean }
+    options: { transferDataTo?: string; hardDelete?: boolean } = { hardDelete: true }
   ): Promise<void> {
     return this.deleteUser(id, "customer", options);
   }

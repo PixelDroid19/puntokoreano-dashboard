@@ -530,6 +530,18 @@ const ENDPOINTS: Endpoints = {
             url: `${BASE_URL}/dashboard/users/admin/:id/invalidate-sessions`,
             method: "POST",
           },
+          LOGOUT: {
+            url: `${BASE_URL}/dashboard/users/admin/:id/logout`,
+            method: "POST",
+          },
+          BLOCK: {
+            url: `${BASE_URL}/dashboard/users/admin/:id/block`,
+            method: "POST",
+          },
+          UNBLOCK: {
+            url: `${BASE_URL}/dashboard/users/admin/:id/unblock`,
+            method: "POST",
+          },
         },
         CUSTOMERS: {
           GET_ALL: {
