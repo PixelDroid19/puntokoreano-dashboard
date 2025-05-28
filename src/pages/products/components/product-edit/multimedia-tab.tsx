@@ -592,7 +592,7 @@ const MultimediaTab: React.FC<MultimediaTabProps> = ({
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleRemoveCarouselImage(file.uid);
-                                }}
+              }}
                                 className="shadow-md flex items-center justify-center p-2 h-auto"
                                 danger
                               />
@@ -619,17 +619,17 @@ const MultimediaTab: React.FC<MultimediaTabProps> = ({
                 )}
                 
                 {/* Componente para subir imágenes al carrusel - Después de la visualización */}
-                <Upload.Dragger
+              <Upload.Dragger
                   beforeUpload={handleCarouselUpload}
                   showUploadList={false}
                   accept="image/jpeg,image/png,image/gif,image/webp"
                   className="bg-gray-50 hover:bg-gray-100 transition-colors mb-4 flex-grow"
                   disabled={carouselImages.length >= 8 || uploading}
                   multiple={true}
-                >
-                  <p className="ant-upload-drag-icon">
+              >
+                <p className="ant-upload-drag-icon">
                     <CloudUploadOutlined style={{ fontSize: 48, color: "#1890ff" }} />
-                  </p>
+                </p>
                   <p className="ant-upload-text">
                     Haga clic o arrastre imágenes aquí
                   </p>
@@ -645,9 +645,9 @@ const MultimediaTab: React.FC<MultimediaTabProps> = ({
                       className="mt-4"
                     />
                   )}
-                </Upload.Dragger>
+              </Upload.Dragger>
               </div>
-              
+
               {/* Columna de Imagen Principal (Thumb) */}
               <div className="flex flex-col h-full">
                 <div className="mb-2 font-medium">Imagen Principal (300x300px ±5%)</div>
@@ -661,7 +661,7 @@ const MultimediaTab: React.FC<MultimediaTabProps> = ({
                       <div 
                         className="aspect-square rounded-lg overflow-hidden border-2 border-green-500 bg-gray-50 cursor-pointer"
                         onClick={() => handlePreview(thumbImage)}
-                      >
+                  >
                         <img
                           src={thumbImage.url || thumbImage.thumbUrl || (thumbImage.preview as string)}
                           alt="Imagen principal"

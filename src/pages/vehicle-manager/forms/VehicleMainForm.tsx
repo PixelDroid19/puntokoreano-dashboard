@@ -1,28 +1,34 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { NumericFormat } from "react-number-format";
 import { Check, AlertCircle, Plus } from "lucide-react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
+import ModelSelector from "../selectors/model-selector";
 import TransmissionSelector from "../selectors/transmission-selector";
 import FuelSelector from "../selectors/fuel-selector";
 import VehicleFamiliesService from "../../../services/vehicle-families.service";
 import FormError from "./FormError";
 import { Tooltip } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
+import { ModelsOption, TransmissionsOption, FuelsOption } from "../../../types/selectors.types";
 
 interface VehicleFormData {
+  model_id: string;
   transmission_id: string;
   tag_id: string;
   fuel_id: string;
-  line_id: string;
+  color?: string;
+  precio?: number | null;
   active?: boolean;
 }
 
 export default function VehicleMainForm() {
-  const [selectedTransmissionValue, setSelectedTransmissionValue] = useState<string | null>(null);
-  const [selectedFuelValue, setSelectedFuelValue] = useState<string | null>(null);
+  const [selectedModelValue, setSelectedModelValue] = useState<ModelsOption | null>(null);
+  const [selectedTransmissionValue, setSelectedTransmissionValue] = useState<TransmissionsOption | null>(null);
+  const [selectedFuelValue, setSelectedFuelValue] = useState<FuelsOption | null>(null);
   const [formSuccess, setFormSuccess] = useState(false);
   const [formError, setFormError] = useState<{ message: string; errors?: string[] } | null>(null);
 
@@ -31,9 +37,12 @@ export default function VehicleMainForm() {
     handleSubmit,
     reset,
     setValue,
+    control,
     formState: { errors },
   } = useForm<VehicleFormData>({
     defaultValues: {
+      color: "",
+      precio: null,
       active: true,
       tag_id: "",
     },
@@ -46,7 +55,9 @@ export default function VehicleMainForm() {
       const payload = {
         transmission_id: data.transmission_id,
         fuel_id: data.fuel_id,
-        line_id: data.line_id,
+        model_id: data.model_id,
+        color: data.color?.trim() ? data.color.trim() : undefined,
+        price: data.precio,
         active: data.active !== undefined ? data.active : true,
         tag_id: data.tag_id,
       };
@@ -59,6 +70,7 @@ export default function VehicleMainForm() {
       setFormError(null);
       setTimeout(() => {
         reset();
+        setSelectedModelValue(null);
         setSelectedTransmissionValue(null);
         setSelectedFuelValue(null);
         setFormSuccess(false);
@@ -84,7 +96,7 @@ export default function VehicleMainForm() {
   });
 
   const onSubmit = async (data: VehicleFormData) => {
-    if (!selectedTransmissionValue || !selectedFuelValue) {
+    if (!selectedModelValue || !selectedTransmissionValue || !selectedFuelValue) {
       return;
     }
     try {
@@ -109,19 +121,26 @@ export default function VehicleMainForm() {
     const getId = (val: any) => (typeof val === 'string' ? val : val?.value);
     mutate({
       ...data,
+      model_id: getId(selectedModelValue),
       transmission_id: getId(selectedTransmissionValue),
       fuel_id: getId(selectedFuelValue),
     });
   };
 
   // Handlers para los selectores
-  const handleTransmissionChange = (value: string | null) => {
-    setSelectedTransmissionValue(value);
-    setValue("transmission_id", value || "", { shouldValidate: true });
+  const handleModelChange = (selectedOption: ModelsOption | null) => {
+    setSelectedModelValue(selectedOption);
+    setValue("model_id", selectedOption?.value || "", { shouldValidate: true });
   };
-  const handleFuelChange = (value: string | null) => {
-    setSelectedFuelValue(value);
-    setValue("fuel_id", value || "", { shouldValidate: true });
+  
+  const handleTransmissionChange = (selectedOption: TransmissionsOption | null) => {
+    setSelectedTransmissionValue(selectedOption);
+    setValue("transmission_id", selectedOption?.value || "", { shouldValidate: true });
+  };
+  
+  const handleFuelChange = (selectedOption: FuelsOption | null) => {
+    setSelectedFuelValue(selectedOption);
+    setValue("fuel_id", selectedOption?.value || "", { shouldValidate: true });
   };
 
   return (
@@ -154,7 +173,27 @@ export default function VehicleMainForm() {
         </motion.div>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <label className="block text-sm font-medium mb-1 text-gray-700">
+                  Modelo <span className="text-red-500">*</span>
+                </label>
+                <Tooltip title="Selecciona el modelo del vehículo. Este campo es obligatorio y determina el tipo específico del vehículo.">
+                  <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                </Tooltip>
+              </div>
+              <ModelSelector onChange={handleModelChange} value={selectedModelValue} />
+              {errors.model_id && (
+                <motion.p
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-sm text-red-500 mt-1"
+                >
+                  El modelo es requerido.
+                </motion.p>
+              )}
+            </div>
             <div>
               <div className="flex items-center gap-2">
                 <label className="block text-sm font-medium mb-1 text-gray-700">
@@ -196,7 +235,9 @@ export default function VehicleMainForm() {
               )}
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        
+        
             <div>
               <div className="flex items-center gap-2">
                 <label htmlFor="tag_id" className="block text-sm font-medium mb-1 text-gray-700">
@@ -264,6 +305,7 @@ export default function VehicleMainForm() {
               className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 rounded-md flex items-center justify-center gap-2 transition-all duration-300 disabled:opacity-50"
               disabled={
                 isSubmitting ||
+                !selectedModelValue ||
                 !selectedTransmissionValue ||
                 !selectedFuelValue
               }

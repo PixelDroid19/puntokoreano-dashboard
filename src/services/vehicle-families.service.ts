@@ -35,10 +35,11 @@ export interface OptionItem {
 export interface VehicleData {
   transmission_id: string;
   fuel_id: string;
-  line_id: string;
+  model_id: string;
   color?: string;
   price?: number;
   active?: boolean;
+  tag_id?: string;
 }
 
 export interface BulkVehicleData {
@@ -412,10 +413,11 @@ class VehicleFamiliesService {
   static async addVehicle(vehicleData: VehicleData): Promise<any> {
     if (
       !vehicleData.transmission_id ||
-      !vehicleData.fuel_id 
+      !vehicleData.fuel_id ||
+      !vehicleData.model_id
     ) {
       throw new Error(
-        "Los campos transmisión, combustible son requeridos"
+        "Los campos transmisión, combustible y modelo son requeridos"
       );
     }
 

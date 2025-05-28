@@ -38,9 +38,9 @@ const UserActions: React.FC<UserActionsProps> = ({
 
       {user.active ? (
         <Tooltip title="Bloquear">
-          <Button
+        <Button
             icon={<LockOutlined />}
-            onClick={() => {
+          onClick={() => {
               Modal.confirm({
                 title: "Bloquear usuario",
                 content: (
@@ -50,8 +50,8 @@ const UserActions: React.FC<UserActionsProps> = ({
                       <Input.TextArea
                         id="block-reason"
                         rows={3}
-                      />
-                    </Form.Item>
+                    />
+                  </Form.Item>
                   </div>
                 ),
                 okText: "Bloquear",
@@ -62,9 +62,9 @@ const UserActions: React.FC<UserActionsProps> = ({
                   onBlock(user._id, reason ? reason.value : "No especificada");
                 },
               });
-            }}
-          />
-        </Tooltip>
+          }}
+        />
+      </Tooltip>
       ) : (
         <Tooltip title="Desbloquear">
           <Button

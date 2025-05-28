@@ -24,6 +24,7 @@ export interface FamilieOption {
 export interface ModelsOption {
   value: string;
   label: string;
+  modelData: any;
 }
 
 interface ApiTransmission {
@@ -67,42 +68,42 @@ export interface VehicleSelectorProps {
 }
 
 export interface TransmissionSelectorProps {
-  onChange?: (value: string | null) => void;
-  value?: string;
+  onChange?: (value: TransmissionsOption | null) => void;
+  value?: TransmissionsOption | null;
   placeholder?: string;
   [key: string]: any;
 }
 
 export interface FuelSelectorProps {
-  onChange?: (value: string | null) => void;
-  value?: string;
+  onChange?: (value: FuelsOption | null) => void;
+  value?: FuelsOption | null;
   placeholder?: string;
   [key: string]: any;
 }
 
 export interface LinesSelectorProps {
-  onChange?: (value: string | null) => void;
-  value?: string;
+  onChange?: (value: LinesOption | null) => void;
+  value?: LinesOption | null;
   placeholder?: string;
   [key: string]: any;
 }
 
 export interface ModelSelectorProps {
-  onChange?: (value: string | null) => void;
-  value?: string;
+  onChange?: (value: ModelsOption | null) => void;
+  value?: ModelsOption | null;
   placeholder?: string;
   [key: string]: any;
 }
 
 export interface BrandSelectorProps {
-  onChange?: (value: string | null) => void;
-  value?: string;
+  onChange?: (value: BrandOption | null) => void;
+  value?: BrandOption | null;
   placeholder?: string;
   [key: string]: any;
 }
 export interface FamilieSelectorProps {
-  onChange?: (value: string | null) => void;
-  value?: string;
+  onChange?: (value: FamilieOption | null) => void;
+  value?: FamilieOption | null;
   placeholder?: string;
   [key: string]: any;
 }

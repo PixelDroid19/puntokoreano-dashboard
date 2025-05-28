@@ -201,7 +201,7 @@ class UsersService {
       const isAdmin = userType === "admin";
       
       // Si active es true, desbloquear al usuario, de lo contrario, bloquearlo
-      const url = active
+        const url = active
         ? (isAdmin 
             ? ENDPOINTS.DASHBOARD.ANALYTICS.USERS.ADMIN.UNBLOCK.url.replace(":id", userId)
             : ENDPOINTS.DASHBOARD.ANALYTICS.USERS.CUSTOMERS.UNBLOCK.url.replace(":id", userId))
@@ -209,10 +209,10 @@ class UsersService {
             ? ENDPOINTS.DASHBOARD.ANALYTICS.USERS.ADMIN.BLOCK.url.replace(":id", userId)
             : ENDPOINTS.DASHBOARD.ANALYTICS.USERS.CUSTOMERS.BLOCK.url.replace(":id", userId));
       
-      await axiosInstance.post(
-        url,
-        active ? {} : { reason: "Blocked by admin" }
-      );
+        await axiosInstance.post(
+          url,
+          active ? {} : { reason: "Blocked by admin" }
+        );
     } catch (error) {
       return this.handleError(error);
     }

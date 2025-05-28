@@ -821,6 +821,7 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
                     options={subgroups?.map((sg: any) => ({
                       label: sg.name,
                       value: sg.name,
+                      key: sg.name,
                     }))}
                     notFoundContent={
                       !watchedGroup
@@ -829,6 +830,8 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
                     }
                     onFocus={() => setActiveField("subgroup")}
                     onBlur={() => setActiveField(null)}
+                    listHeight={256}
+                    virtual={false}
                   />
                 </Form.Item>
               </div>
