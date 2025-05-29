@@ -39,6 +39,7 @@ const getBaseUrl = (): string => {
   }
 
   return currentConfig.apiUrl;
+ 
 };
 
 export const API_CONFIG = {

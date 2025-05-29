@@ -51,6 +51,7 @@ class OrdersService {
   }) {
     try {
       const response = await axiosInstance.get("/dashboard/orders", { params });
+      console.log('axiosInstance',response);
       return response.data;
     } catch (error) {
       console.error("Error fetching orders:", error);

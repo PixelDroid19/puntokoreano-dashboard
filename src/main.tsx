@@ -11,7 +11,7 @@ import { store } from "./redux/store.ts";
 import { ConfigProvider } from "antd";
 import { useMediaQuery } from "react-responsive";
 import "./index.css";
-import initStagewiseToolbar from "./components/ui/StagewiseToolbar.tsx";
+//import initStagewiseToolbar from "./components/ui/StagewiseToolbar.tsx";
 
 
 const queryClient = new QueryClient({
@@ -52,6 +52,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 );
 
 // Inicializar la barra de herramientas Stagewise solo en desarrollo
-if (import.meta.env.DEV) {
+/* if (import.meta.env.DEV) {
   initStagewiseToolbar();
 }
+ */
