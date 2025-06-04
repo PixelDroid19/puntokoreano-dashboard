@@ -1,7 +1,6 @@
 export interface BrandOption {
   value: string;
   label: string;
-  country?: string;
 }
 
 export interface LinesOption {
@@ -30,28 +29,24 @@ export interface ModelsOption {
 interface ApiTransmission {
   _id: string;
   name: string;
-  gears?: number;
   [key: string]: any;
 }
 
 interface ApiFuel {
   _id: string;
   name: string;
-  octane_rating?: number;
   [key: string]: any;
 }
 
 export interface TransmissionsOption {
   value: string;
   label: string;
-  gears?: number;
   transmissionData: ApiTransmission;
 }
 
 export interface FuelsOption {
   value: string;
   label: string;
-  octane_rating?: number;
   fuelData: ApiFuel;
 }
 
@@ -61,8 +56,8 @@ export interface VehiclesOption {
 }
 
 export interface VehicleSelectorProps {
-  onChange?: (value: string | null) => void;
-  value?: string;
+  onChange?: (value: VehiclesOption | null) => void;
+  value?: VehiclesOption | null;
   placeholder?: string;
   [key: string]: any;
 }
@@ -106,4 +101,27 @@ export interface FamilieSelectorProps {
   value?: FamilieOption | null;
   placeholder?: string;
   [key: string]: any;
+}
+
+// Tipos para selector de grupos de aplicabilidad
+export interface ApplicabilityGroupOption {
+  value: string;
+  label: string;
+  groupData: {
+    _id: string;
+    name: string;
+    description?: string;
+    category?: string;
+    active: boolean;
+  };
+}
+
+export interface ApplicabilityGroupSelectorProps {
+  onChange?: (selectedOption: ApplicabilityGroupOption | ApplicabilityGroupOption[] | null) => void;
+  value?: ApplicabilityGroupOption | ApplicabilityGroupOption[] | null;
+  placeholder?: string;
+  isMulti?: boolean;
+  className?: string;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }

@@ -111,7 +111,7 @@ export default function TransmissionForm({ initialValues, mode = "create", onSub
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <label className="block text-sm font-medium mb-1">
-                Nombre de la Transmisión
+                Nombre de la Transmisión <span className="text-red-500">*</span>
               </label>
               <Tooltip title="Nombre del tipo de transmisión. Este campo es obligatorio y debe ser único (ej. Automática, Manual).">
                 <InfoCircleOutlined className="text-blue-500 cursor-help" />
@@ -125,30 +125,6 @@ export default function TransmissionForm({ initialValues, mode = "create", onSub
             />
             {errors.name && (
               <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <label className="block text-sm font-medium mb-1">
-                Número de Velocidades (Opcional)
-              </label>
-              <Tooltip title="Número de velocidades o marchas de la transmisión. Debe ser un número positivo mayor a 0.">
-                <InfoCircleOutlined className="text-blue-500 cursor-help" />
-              </Tooltip>
-            </div>
-            <Input
-              type="number"
-              placeholder="Ingrese el número de velocidades (opcional)"
-              {...register("gears", {
-                valueAsNumber: true,
-                min: { value: 1, message: "Debe tener al menos 1 velocidad" },
-              })}
-            />
-            {errors.gears && (
-              <p className="text-sm text-red-500 mt-1">
-                {errors.gears.message}
-              </p>
             )}
           </div>
 

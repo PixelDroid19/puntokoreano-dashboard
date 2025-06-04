@@ -174,11 +174,6 @@ const router = createBrowserRouter(
           element={<FuelView />}
           errorElement={<RouteError />}
         />
-        <Route
-          path="/vehicle-management"
-          element={<VehicleView />}
-          errorElement={<RouteError />}
-        />
       </Route>
 
       {/* Redirects */}

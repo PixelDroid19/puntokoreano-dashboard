@@ -164,6 +164,16 @@ const ENDPOINTS: Endpoints = {
       url: `${BASE_URL}/dashboard/vehicles/lines`,
       method: "POST",
     },
+
+    // Import functionality
+    IMPORT_EXCEL: {
+      url: `${BASE_URL}/dashboard/vehicles/import`,
+      method: "POST",
+    },
+    DOWNLOAD_TEMPLATE: {
+      url: `${BASE_URL}/dashboard/vehicles/import/template`,
+      method: "GET",
+    },
   },
 
   DASHBOARD: {
@@ -606,6 +616,28 @@ const ENDPOINTS: Endpoints = {
             method: "POST",
           },
         },
+      },
+    },
+    VEHICLE_APPLICABILITY_GROUPS: {
+      GET_ALL: {
+        url: `${BASE_URL}/dashboard/vehicles/applicability-groups`,
+        method: "GET",
+      },
+      GET_BY_ID: {
+        url: `${BASE_URL}/dashboard/vehicles/applicability-groups/:id`,
+        method: "GET",
+      },
+      CREATE: {
+        url: `${BASE_URL}/dashboard/vehicles/applicability-groups`,
+        method: "POST",
+      },
+      UPDATE: {
+        url: `${BASE_URL}/dashboard/vehicles/applicability-groups/:id`,
+        method: "PUT",
+      },
+      DELETE: {
+        url: `${BASE_URL}/dashboard/vehicles/applicability-groups/:id`,
+        method: "DELETE",
       },
     },
   },

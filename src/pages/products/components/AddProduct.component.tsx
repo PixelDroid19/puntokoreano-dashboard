@@ -221,7 +221,7 @@ const AddProduct = () => {
   const getTabForKey = (fieldName: string): string | null => {
     const fieldNameStr = Array.isArray(fieldName) ? fieldName.join('.') : fieldName;
     // Tab 1: Información Básica
-    if (["name", "code", "price", "stock", "reservedStock", "group", "subgroup", "active", "discount", "compatible_vehicles"].includes(fieldNameStr)) return "1";
+    if (["name", "code", "price", "stock", "reservedStock", "group", "subgroup", "active", "discount", "compatible_vehicles", "applicabilityGroups"].includes(fieldNameStr)) return "1";
     // Tab 2: Multimedia
     if (["useGroupImages", "imageGroup", "images", "videoUrl"].includes(fieldNameStr)) return "2";
     // Tab 3: Descripción y Detalles
@@ -306,6 +306,25 @@ const AddProduct = () => {
       "IDs de vehículos compatibles extraídos:",
       compatibleVehicleIds
     );
+
+    // Procesar grupos de aplicabilidad
+    const rawApplicabilityGroups = values.applicabilityGroups;
+    let applicabilityGroupIds: string[] = [];
+
+    if (rawApplicabilityGroups) {
+      const groupsArray = Array.isArray(rawApplicabilityGroups)
+        ? rawApplicabilityGroups
+        : [rawApplicabilityGroups];
+
+      applicabilityGroupIds = groupsArray
+        .map((group) => group?.value)
+        .filter((id): id is string => typeof id === "string" && id.length > 0);
+    }
+    console.log(
+      "IDs de grupos de aplicabilidad extraídos:",
+      applicabilityGroupIds
+    );
+
     let discountData = values.discount || { isActive: false };
 
     if (!discountData.isActive) {
@@ -417,6 +436,9 @@ const AddProduct = () => {
       seoKeywords: values.seoKeywords || [],
 
       variants: values.variants || [],
+
+      // Aplicabilidad
+      applicabilityGroups: applicabilityGroupIds,
     };
 
     console.log(

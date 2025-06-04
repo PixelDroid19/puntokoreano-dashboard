@@ -12,7 +12,6 @@ import { Tooltip, Select, Tag } from "antd";
 import { InfoCircleOutlined, PlusOutlined } from "@ant-design/icons";
 
 interface ModelFormData {
-  name: string;
   years: number[];
   engine_type: string;
   family_id: string;
@@ -66,7 +65,6 @@ export default function ModelForm({
     formState: { errors },
   } = useForm<ModelFormData>({
     defaultValues: {
-      name: initialValues?.name || "",
       years: initialValues?.years || initialValues?.year ? 
         Array.isArray(initialValues.year) ? 
           initialValues.year : [initialValues.year] : 
@@ -80,7 +78,6 @@ export default function ModelForm({
 
   useEffect(() => {
     if (mode === "edit" && initialValues) {
-      setValue("name", initialValues.name || "");
       setValue("engine_type", initialValues.engine_type || "");
       setValue("family_id", initialValues.family_id || "");
       setValue("active", initialValues.active ?? true);
@@ -180,7 +177,7 @@ export default function ModelForm({
 
   useEffect(() => {
     setFormError(null);
-  }, [errors.name, errors.family_id, errors.years, errors.engine_type]);
+  }, [errors.family_id, errors.years, errors.engine_type]);
 
   return (
     <motion.div
@@ -333,25 +330,6 @@ export default function ModelForm({
               <p className="text-sm text-red-500 mt-1">
                 {errors.engine_type.message}
               </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <label className="block text-sm font-medium mb-1">
-                Nombre del Modelo
-              </label>
-              <Tooltip title="Nombre opcional del modelo. Puede dejarse en blanco.">
-                <InfoCircleOutlined className="text-blue-500 cursor-help" />
-              </Tooltip>
-            </div>
-            <Input
-              {...register("name")}
-              required={false}
-              placeholder="Ingrese el nombre del modelo (Ej: Corolla)"
-            />
-            {errors.name && (
-              <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>
             )}
           </div>
 

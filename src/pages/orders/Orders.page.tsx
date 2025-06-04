@@ -398,21 +398,16 @@ const Orders = () => {
           <Tooltip title="Ver detalles">
             <Button
               icon={<EyeOutlined />}
-              type="primary"
-              ghost
-              size="small"
               onClick={() => {
                 setSelectedOrder(record);
                 setIsViewModalOpen(true);
               }}
-              className="border-blue-500 text-blue-500 hover:bg-blue-50"
             />
           </Tooltip>
           <Tooltip title="Editar">
             <Button
               icon={<EditOutlined />}
               type="default"
-              size="small"
               onClick={() => {
                 setSelectedOrder(record);
                 form.setFieldsValue({
@@ -422,40 +417,34 @@ const Orders = () => {
                 });
                 setIsEditModalOpen(true);
               }}
-              className="border-orange-500 text-orange-500 hover:bg-orange-50"
             />
           </Tooltip>
           <Tooltip title="Descargar factura">
             <Button
               icon={<DownloadOutlined />}
               type="default"
-              size="small"
               onClick={() => handleInvoiceAction(record.id)}
               disabled={
                 record.status === "pending" ||
                 record.payment.status !== "completed"
               }
-              className="border-green-500 text-green-500 hover:bg-green-50 disabled:border-gray-300 disabled:text-gray-400"
             />
           </Tooltip>
           <Tooltip title="Enviar factura por correo">
             <Button
               icon={<MailOutlined />}
               type="default"
-              size="small"
               onClick={() => handleEmailModal(record)}
               disabled={
                 record.status === "pending" ||
                 record.payment.status !== "completed"
               }
-              className="border-purple-500 text-purple-500 hover:bg-purple-50 disabled:border-gray-300 disabled:text-gray-400"
             />
           </Tooltip>
           {record.payment.status === "completed" && (
             <Tooltip title="Procesar reembolso">
               <Button
                 danger
-                size="small"
                 onClick={() => handleRefundModal(record)}
                 disabled={["refunded", "cancelled"].includes(record.status)}
                 className="bg-red-50 border-red-500 text-red-500 hover:bg-red-100 disabled:bg-gray-50 disabled:border-gray-300 disabled:text-gray-400"

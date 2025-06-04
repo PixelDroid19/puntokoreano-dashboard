@@ -1,0 +1,240 @@
+/* Estilos personalizados para el formulario de aplicabilidad */
+
+/* Personalización de pestañas */
+.custom-tabs .ant-tabs-tab {
+  transition: all 0.3s ease;
+  border-radius: 6px 6px 0 0;
+  margin-right: 4px;
+  padding: 8px 16px;
+}
+
+.custom-tabs .ant-tabs-tab:hover {
+  color: #4f46e5;
+  background-color: #f5f5ff;
+}
+
+.custom-tabs .ant-tabs-tab.ant-tabs-tab-active {
+  background-color: #f0f0ff;
+  border-color: #e5e7eb;
+  border-bottom-color: #f0f0ff;
+}
+
+.custom-tabs .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+.custom-tabs .ant-tabs-content-holder {
+  border: 1px solid #e5e7eb;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  background-color: #ffffff;
+  padding: 0;
+}
+
+.custom-tabs .ant-tabs-nav {
+  margin-bottom: 0;
+}
+
+/* Corrección para contenedores de etiquetas */
+.tag-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* Mejoras para el tag */
+.ant-tag {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 6px;
+  max-width: 100%;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.2;
+}
+
+.ant-tag .anticon-close {
+  margin-left: 4px;
+}
+
+/* Colores personalizados para botones */
+.btn-primary {
+  background-color: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  color: white !important;
+}
+
+.btn-primary:hover {
+  background-color: #2563eb !important;
+  border-color: #2563eb !important;
+}
+
+.btn-secondary {
+  background-color: #6b7280 !important;
+  border-color: #6b7280 !important;
+  color: white !important;
+}
+
+.btn-secondary:hover {
+  background-color: #4b5563 !important;
+  border-color: #4b5563 !important;
+}
+
+.btn-success {
+  background-color: #10b981 !important;
+  border-color: #10b981 !important;
+  color: white !important;
+}
+
+.btn-success:hover {
+  background-color: #059669 !important;
+  border-color: #059669 !important;
+}
+
+.btn-danger {
+  background-color: #ef4444 !important;
+  border-color: #ef4444 !important;
+  color: white !important;
+}
+
+.btn-danger:hover {
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+}
+
+.btn-warning {
+  background-color: #f59e0b !important;
+  border-color: #f59e0b !important;
+  color: white !important;
+}
+
+.btn-warning:hover {
+  background-color: #d97706 !important;
+  border-color: #d97706 !important;
+}
+
+/* Tarjetas y contenedores */
+.criteria-card {
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.criteria-card:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+}
+
+/* Efectos de hover en botones */
+.btn-hover-scale {
+  transition: transform 0.2s ease;
+}
+
+.btn-hover-scale:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn-hover-scale:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* Selector personalizado */
+.custom-selector .ant-select-selector {
+  border-radius: 6px !important;
+  transition: all 0.3s ease;
+}
+
+.custom-selector .ant-select-selector:hover {
+  border-color: #818cf8 !important;
+}
+
+.custom-selector.ant-select-focused .ant-select-selector {
+  border-color: #4f46e5 !important;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2) !important;
+}
+
+/* Mejora de tags */
+.custom-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin: 0 4px 4px 0;
+  transition: all 0.2s;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.custom-tag:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Animaciones */
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Adaptaciones responsivas */
+@media (max-width: 768px) {
+  .custom-tabs .ant-tabs-tab {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .ant-tag {
+    max-width: calc(100% - 10px);
+  }
+}
+
+/* Sombras y elevaciones */
+.elevation-1 {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.elevation-2 {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.elevation-3 {
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Inputs personalizados */
+.custom-input {
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.custom-input:hover {
+  border-color: #818cf8;
+}
+
+.custom-input:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+} 

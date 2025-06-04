@@ -1,7 +1,9 @@
 import type React from "react";
-import { Car, Tag, Folder, Users } from "lucide-react";
+import { Car, Tag, Folder, Users, Layers, CheckCircle, Filter, Settings } from "lucide-react";
 import { motion } from "framer-motion";
 import { DashboardAnalytics } from "../../api/types";
+import { useQuery } from "@tanstack/react-query";
+import VehicleApplicabilityGroupsService, { GroupStatsResponse } from "../../services/vehicle-applicability-groups.service";
 
 interface StatItem {
   titulo: string;
@@ -18,6 +20,13 @@ interface DashboardStatisticsProps {
 export default function DashboardStatistics({
   data,
 }: DashboardStatisticsProps) {
+  // Obtener estadísticas de grupos de aplicabilidad
+  const { data: groupStats } = useQuery<GroupStatsResponse>({
+    queryKey: ["applicabilityGroupStats"],
+    queryFn: () => VehicleApplicabilityGroupsService.getGroupStats(),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const estadisticas: StatItem[] = data
     ? [
         {
@@ -59,6 +68,31 @@ export default function DashboardStatistics({
               : undefined,
           icono: Users,
           color: "bg-blue-100 text-blue-500",
+        },
+        // Añadir estadísticas de grupos de aplicabilidad
+        {
+          titulo: "Total de Grupos",
+          valor: groupStats?.totalGroups ?? 0,
+          icono: Layers,
+          color: "bg-orange-100 text-orange-500",
+        },
+        {
+          titulo: "Grupos Activos",
+          valor: groupStats?.activeGroups ?? 0,
+          icono: CheckCircle,
+          color: "bg-green-100 text-green-700",
+        },
+        {
+          titulo: "Categorías",
+          valor: groupStats?.byCategory?.length ?? 0,
+          icono: Filter,
+          color: "bg-yellow-100 text-yellow-600",
+        },
+        {
+          titulo: "Criterios Detallados",
+          valor: groupStats?.byCriteriaLevel?.find(level => level._id === 'detailed')?.count ?? 0,
+          icono: Settings,
+          color: "bg-indigo-100 text-indigo-500",
         },
       ]
     : [];

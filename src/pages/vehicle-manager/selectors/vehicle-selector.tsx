@@ -13,14 +13,24 @@ interface PageAdditional {
 
 interface ApiVehicle {
   _id: string;
-  line_id?: {
-    name?: string;
-    model_id?: {
+  tag_id?: string;
+  color?: string;
+  model_id?: {
+    displayName?: string;
+    engine_type?: string;
+    year?: number[];
+    family_id?: {
       name?: string;
       brand_id?: {
         name?: string;
       };
     };
+  };
+  transmission_id?: {
+    name?: string;
+  };
+  fuel_id?: {
+    name?: string;
   };
   [key: string]: any;
 }
@@ -28,17 +38,17 @@ interface ApiVehicle {
 interface VehicleApiData {
   vehicles: ApiVehicle[];
   pagination: {
-    total: number;
-    pages: number;
-    page: number;
-    limit: number;
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
   };
 }
 
 const VehicleSelector: React.FC<VehicleSelectorProps> = ({
   onChange,
   value,
-  placeholder = "Buscar Vehiculo...",
+  placeholder = "Buscar Vehículo...",
   ...rest
 }) => {
   const [error, setError] = useState<string | null>(null);
@@ -69,32 +79,39 @@ const VehicleSelector: React.FC<VehicleSelectorProps> = ({
         sortOrder: "asc",
         search: search,
       });
-      console.log("Respuesta RECIBIDA del servicio:", serviceResponse);
-
-      const responseData: VehicleApiData | null | undefined =
-        serviceResponse?.data ?? serviceResponse;
 
       if (
-        !responseData ||
-        !Array.isArray(responseData.vehicles) ||
-        !responseData.pagination
+        !serviceResponse ||
+        !Array.isArray(serviceResponse.vehicles) ||
+        !serviceResponse.pagination
       ) {
-        console.error("Formato de datos de API inválido:", responseData);
+        console.error("Formato de datos de API inválido:", serviceResponse);
         throw new Error("Formato de datos inválido de la API de vehículos");
       }
 
-      const { vehicles, pagination } = responseData;
+      const { vehicles, pagination } = serviceResponse;
 
       const newOptions: VehiclesOption[] = vehicles.map(
         (vehicle: ApiVehicle) => {
-          console.log("Procesando vehículo:", vehicle.line_id?.name);
-          const brandName =
-            vehicle?.tag_id ||
-            vehicle.line_id?.model_id?.family_id?.brand_id?.name ||
-            "";
-          const modelName = vehicle.line_id?.model_id?.name || "";
-          const lineName = vehicle.line_id?.name || "";
-          const vehicleDisplayName = `${brandName} ${modelName} ${lineName}`;
+          const brandName = vehicle.model_id?.family_id?.brand_id?.name || "";
+          const familyName = vehicle.model_id?.family_id?.name || "";
+          
+          // Usar displayName si está disponible, o construir manualmente
+          let modelName = vehicle.model_id?.displayName;
+          if (!modelName) {
+            const engineType = vehicle.model_id?.engine_type || "";
+            const years = vehicle.model_id?.year && vehicle.model_id.year.length > 0 
+              ? vehicle.model_id.year.sort().join('-') 
+              : 'N/A';
+            modelName = `${familyName} ${engineType} ${years}`.trim();
+          }
+          
+          const tagId = vehicle.tag_id || "";
+          const color = vehicle.color || "";
+          const transmission = vehicle.transmission_id?.name || "";
+          const fuel = vehicle.fuel_id?.name || "";
+          
+          const vehicleDisplayName = `${brandName} ${modelName} - ${tagId}${color ? ` (${color})` : ""} - ${transmission} ${fuel}`.trim();
 
           return {
             value: vehicle._id,
@@ -104,8 +121,8 @@ const VehicleSelector: React.FC<VehicleSelectorProps> = ({
         }
       );
 
-      const hasMore = pagination.page < pagination.pages;
-      const nextPage = hasMore ? pagination.page + 1 : undefined;
+      const hasMore = pagination.currentPage < pagination.totalPages;
+      const nextPage = hasMore ? pagination.currentPage + 1 : undefined;
 
       return {
         options: newOptions,
@@ -115,7 +132,7 @@ const VehicleSelector: React.FC<VehicleSelectorProps> = ({
     } catch (err: any) {
       console.error("Error en loadPageOptions:", err);
       const errorMessage =
-        err.message || "Error inesperado al cargar Vehiculos";
+        err.message || "Error inesperado al cargar Vehículos";
       setError(errorMessage);
       return {
         options: [],
@@ -140,12 +157,11 @@ const VehicleSelector: React.FC<VehicleSelectorProps> = ({
         onChange={handleChange}
         isSearchable={true}
         placeholder={placeholder}
-        loadingMessage={() => "Cargando Vehiculos..."}
+        loadingMessage={() => "Cargando Vehículos..."}
         noOptionsMessage={({ inputValue }) =>
           inputValue ? "No se encontraron vehículos" : "Escribe para buscar..."
         }
         debounceTimeout={350}
-        reloadOptionsOnChange={true}
         className="react-select-container"
         classNamePrefix="react-select"
         {...rest}

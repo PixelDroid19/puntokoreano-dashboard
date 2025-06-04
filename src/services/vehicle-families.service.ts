@@ -6,7 +6,6 @@ import { axiosInstance } from "../utils/axios-interceptor";
 export interface BrandItem {
   _id: string;
   name: string;
-  country?: string;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -70,12 +69,16 @@ export interface VehicleSearchCriteria {
   keyword?: string;
 }
 
-interface GetParams {
-  page: number;
-  limit: number;
-  sortBy: string;
-  sortOrder: string;
+export interface GetParams {
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
   search?: string;
+  activeOnly?: boolean;
+  brand_id?: string;
+  family_id?: string;
+  model_id?: string;
 }
 
 interface GetFamiliesResponse {
@@ -88,7 +91,7 @@ interface GetFamiliesResponse {
   };
 }
 
-interface GetVehiclesResponse {
+export interface GetVehiclesResponse {
   vehicles: any[];
   pagination: {
     currentPage: number;
@@ -97,6 +100,7 @@ interface GetVehiclesResponse {
     itemsPerPage: number;
   };
 }
+
 interface GetModelsResponse {
   models: any[];
   pagination: {
@@ -126,6 +130,7 @@ interface GetLinesResponse {
     itemsPerPage: number;
   };
 }
+
 interface GetTransmissionsResponse {
   transmissions: any[];
   pagination: {
@@ -153,7 +158,6 @@ interface CreateFamilyPayload {
 }
 
 interface CreateModel {
-  name?: string;
   family_id: string;
   years: number[];
   engine_type: string;
@@ -161,37 +165,23 @@ interface CreateModel {
 }
 
 class VehicleFamiliesService {
-  static async getBrands(params: GetParams): Promise<GetBrandsResponse> {
+  static async getBrands(params: GetParams = {}): Promise<GetBrandsResponse> {
     try {
-      const response = await axiosInstance(
-        `${BASE_URL}/dashboard/vehicle-brands`,
-        {
-          method: "GET",
-
-          params: params,
+      const response = await axiosInstance.get("/dashboard/vehicles/brands", {
+        params: {
+          ...params,
+          activeOnly: params.activeOnly !== undefined ? String(params.activeOnly) : undefined
         }
-      );
-
-      if (!response.data?.success || !response.data?.data) {
-        throw new Error(
-          response.data?.message || "Respuesta inválida de la API de marcas"
-        );
-      }
+      });
       return response.data.data;
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        throw new Error(
-          error.response?.data?.message ||
-            "Error al obtener las marcas de vehículos"
-        );
-      }
+      console.error("Error fetching brands:", error);
       throw error;
     }
   }
 
   static async createBrand(data: {
     name: string;
-    country?: string;
     active: boolean;
   }): Promise<BrandItem> {
     try {
@@ -218,7 +208,7 @@ class VehicleFamiliesService {
 
   static async updateBrand(
     id: string,
-    data: { name?: string; country?: string; active?: boolean }
+    data: { name?: string; active?: boolean }
   ): Promise<BrandItem> {
     try {
       const response = await axiosInstance({
@@ -265,12 +255,13 @@ class VehicleFamiliesService {
     }
   }
 
-  static async getVehicles(params: GetParams): Promise<GetVehiclesResponse> {
+  static async getVehicles(params: GetParams = {}): Promise<GetVehiclesResponse> {
     try {
-      const response = await axiosInstance({
-        url: ENDPOINTS.VEHICLES.CREATE.url,
-        method: "GET",
-        params: params,
+      const response = await axiosInstance.get("/dashboard/vehicles", {
+        params: {
+          ...params,
+          activeOnly: params.activeOnly !== undefined ? String(params.activeOnly) : undefined
+        }
       });
       if (!response.data?.success || !response.data?.data) {
         throw new Error(
@@ -288,15 +279,14 @@ class VehicleFamiliesService {
     }
   }
 
-  static async getFamilies(params: GetParams): Promise<GetFamiliesResponse> {
+  static async getFamilies(params: GetParams = {}): Promise<GetFamiliesResponse> {
     try {
-      const response = await axiosInstance(
-        `${BASE_URL}/dashboard/vehicle-families`,
-        {
-          method: "GET",
-          params: params,
+      const response = await axiosInstance.get("/dashboard/vehicles/families", {
+        params: {
+          ...params,
+          activeOnly: params.activeOnly !== undefined ? String(params.activeOnly) : undefined
         }
-      );
+      });
       if (!response.data?.success || !response.data?.data) {
         throw new Error(
           response.data?.message || "Respuesta inválida de la API de familias"
@@ -314,12 +304,13 @@ class VehicleFamiliesService {
     }
   }
 
-  static async getModels(params: GetParams): Promise<GetModelsResponse> {
+  static async getModels(params: GetParams = {}): Promise<GetModelsResponse> {
     try {
-      const response = await axiosInstance({
-        url: `${BASE_URL}/dashboard/vehicles/models`,
-        method: "GET",
-        params: params,
+      const response = await axiosInstance.get("/dashboard/vehicles/models", {
+        params: {
+          ...params,
+          activeOnly: params.activeOnly !== undefined ? String(params.activeOnly) : undefined
+        }
       });
       if (!response.data?.success || !response.data?.data) {
         throw new Error(
@@ -338,13 +329,14 @@ class VehicleFamiliesService {
   }
 
   static async getTransmissions(
-    params: GetParams
+    params: GetParams = {}
   ): Promise<GetTransmissionsResponse> {
     try {
-      const response = await axiosInstance({
-        url: `${BASE_URL}/dashboard/vehicles/transmissions`,
-        method: "GET",
-        params,
+      const response = await axiosInstance.get("/dashboard/vehicles/transmissions", {
+        params: {
+          ...params,
+          activeOnly: params.activeOnly !== undefined ? String(params.activeOnly) : undefined
+        }
       });
       if (!response.data?.success || !response.data?.data) {
         throw new Error(
@@ -538,9 +530,6 @@ class VehicleFamiliesService {
       engine_type: payload.engine_type.trim(),
       active: payload.active !== undefined ? payload.active : true,
     };
-    if (typeof payload.name === 'string' && payload.name.trim() !== '') {
-      data.name = payload.name.trim();
-    }
 
     try {
       const response = await axiosInstance({
@@ -565,14 +554,10 @@ class VehicleFamiliesService {
   }
 
   static async addTransmission(
-    transmissionName: string,
-    gears?: number
+    transmissionName: string
   ): Promise<any> {
     if (!transmissionName?.trim()) {
       throw new Error("Nombre de transmisión inválido");
-    }
-    if (gears !== undefined && (!Number.isInteger(gears) || gears < 0)) {
-      throw new Error("El número de marchas debe ser un entero no negativo");
     }
 
     try {
@@ -581,9 +566,6 @@ class VehicleFamiliesService {
         method: "POST",
         data: {
           name: transmissionName.trim(),
-          ...(gears !== undefined &&
-            gears !== null &&
-            !isNaN(gears) && { gears: gears }),
           active: true,
         },
       });
@@ -603,7 +585,7 @@ class VehicleFamiliesService {
     }
   }
 
-  static async addFuel(name: string, octane_rating?: number): Promise<any> {
+  static async addFuel(name: string): Promise<any> {
     try {
       if (!name || name.trim() === '') {
         throw new Error('El nombre del combustible es obligatorio');
@@ -614,7 +596,6 @@ class VehicleFamiliesService {
         method: "POST",
         data: {
           name: name.toUpperCase(),
-          octane_rating
         },
       });
       
@@ -632,20 +613,10 @@ class VehicleFamiliesService {
   static async addLine(
     modelId: string,
     lineName: string,
-    features?: string,
-    price?: string | number,
     active: boolean = true
   ): Promise<any> {
     if (!modelId) throw new Error("El ID del modelo es requerido");
     if (!lineName?.trim()) throw new Error("Nombre de línea inválido");
-
-    let numericPrice: number | undefined = undefined;
-    if (price !== undefined && price !== null && price !== "") {
-      numericPrice = Number(price);
-      if (isNaN(numericPrice) || numericPrice < 0) {
-        throw new Error("Formato de precio inválido");
-      }
-    }
 
     try {
       const response = await axiosInstance({
@@ -654,8 +625,6 @@ class VehicleFamiliesService {
         data: {
           model_id: modelId,
           name: lineName.trim(),
-          features: features?.trim() || "",
-          price: numericPrice,
           active,
         },
       });
@@ -717,7 +686,7 @@ class VehicleFamiliesService {
     }
   }
 
-  static async updateFuel(id: string, data: { name?: string; octane_rating?: number; active?: boolean }): Promise<any> {
+  static async updateFuel(id: string, data: { name?: string; active?: boolean }): Promise<any> {
     try {
       const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicles/fuels/${id}`,
@@ -761,7 +730,7 @@ class VehicleFamiliesService {
     }
   }
 
-  static async updateLine(id: string, data: { model_id?: string; name?: string; features?: string; price?: number; active?: boolean }): Promise<any> {
+  static async updateLine(id: string, data: { model_id?: string; name?: string; active?: boolean }): Promise<any> {
     try {
       const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicles/lines/${id}`,
@@ -805,7 +774,7 @@ class VehicleFamiliesService {
     }
   }
 
-  static async updateModel(id: string, data: { name?: string; family_id?: string; year?: number; engine_type?: string; active?: boolean }): Promise<any> {
+  static async updateModel(id: string, data: { family_id?: string; year?: number; engine_type?: string; active?: boolean }): Promise<any> {
     try {
       const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicles/models/${id}`,
@@ -849,7 +818,7 @@ class VehicleFamiliesService {
     }
   }
 
-  static async updateTransmission(id: string, data: { name?: string; gears?: number; active?: boolean }): Promise<any> {
+  static async updateTransmission(id: string, data: { name?: string; active?: boolean }): Promise<any> {
     try {
       const response = await axiosInstance({
         url: `${BASE_URL}/dashboard/vehicles/transmissions/${id}`,

@@ -152,6 +152,10 @@ export interface Endpoints {
     // Lines
     GET_LINES: ApiEndpoint;
     CREATE_LINE: ApiEndpoint;
+
+    // Import functionality
+    IMPORT_EXCEL: ApiEndpoint;
+    DOWNLOAD_TEMPLATE: ApiEndpoint;
   };
   DASHBOARD: {
     DISCOUNTS: {
@@ -269,6 +273,9 @@ export interface Endpoints {
           UPDATE_PERMISSIONS: ApiEndpoint;
           REFRESH_TOKEN: ApiEndpoint;
           INVALIDATE_SESSIONS: ApiEndpoint;
+          LOGOUT: ApiEndpoint;
+          BLOCK: ApiEndpoint;
+          UNBLOCK: ApiEndpoint;
         };
         CUSTOMERS: {
           GET_ALL: ApiEndpoint;
@@ -288,6 +295,13 @@ export interface Endpoints {
           LOGOUT: ApiEndpoint;
         };
       };
+    };
+    VEHICLE_APPLICABILITY_GROUPS: {
+      GET_ALL: ApiEndpoint;
+      GET_BY_ID: ApiEndpoint;
+      CREATE: ApiEndpoint;
+      UPDATE: ApiEndpoint;
+      DELETE: ApiEndpoint;
     };
   };
 }
@@ -319,6 +333,7 @@ export interface ProductCreateInput {
     endDate?: Date;
   };
   compatible_vehicles: string[];
+  applicabilityGroups?: string[];
   seoTitle: string;
   seoDescription: string;
   seoKeywords: string[];

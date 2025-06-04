@@ -7,16 +7,14 @@ import ModelSelector from "../selectors/model-selector";
 import { useState, useEffect } from "react";
 import VehicleFamiliesService from "../../../services/vehicle-families.service";
 import FormSuccess from "../ui/FormSuccess";
-import { NumericFormat } from "react-number-format";
 import { AlertCircle } from "lucide-react";
 import FormError from "./FormError";
 import { Tooltip } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
+import type { ModelsOption } from "../../../types/selectors.types";
 
 interface LineFormData {
   name: string;
-  features: string;
-  price?: number;
   model_id: string;
   active: boolean;
 }
@@ -33,10 +31,8 @@ export default function LineForm({
   onSubmit,
 }: LineFormProps) {
   const [formSuccess, setFormSuccess] = useState(false);
-  const [selectedModelValue, setSelectedModelValue] = useState<string | null>(
-    initialValues?.model_id || null
-  );
-  const [apiError, setApiError] = useState<string | null>(null); // State for API errors
+  const [selectedModelValue, setSelectedModelValue] = useState<ModelsOption | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [formError, setFormError] = useState<{
     message: string;
     errors?: string[];
@@ -47,13 +43,11 @@ export default function LineForm({
     handleSubmit,
     reset,
     setValue,
-    control, // Destructure control for Controller
+    control,
     formState: { errors },
   } = useForm<LineFormData>({
     defaultValues: {
       name: initialValues?.name || "",
-      features: initialValues?.features || "",
-      price: initialValues?.price ?? undefined,
       model_id: initialValues?.model_id || "",
       active: initialValues?.active ?? true,
     },
@@ -64,32 +58,36 @@ export default function LineForm({
   useEffect(() => {
     if (mode === "edit" && initialValues) {
       setValue("name", initialValues.name || "");
-      setValue("features", initialValues.features || "");
-      setValue("price", initialValues.price ?? undefined);
       setValue("model_id", initialValues.model_id || "");
       setValue("active", initialValues.active ?? true);
-      setSelectedModelValue(initialValues.model_id || null);
+      
+      // Si tenemos model_id inicial, crear el objeto para el selector
+      if (initialValues.model_id) {
+        setSelectedModelValue({
+          value: initialValues.model_id,
+          label: "Modelo seleccionado", // Placeholder - será actualizado por el selector
+          modelData: {}
+        });
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialValues, mode]);
+  }, [initialValues, mode, setValue]);
 
   const { mutate, isPending: isSubmitting } = useMutation({
     mutationFn: (data: LineFormData) =>
       VehicleFamiliesService.addLine(
         data.model_id!,
         data.name!,
-        data.features!,
-        data.price,
         data.active
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lines"] });
       queryClient.invalidateQueries({ queryKey: ["dashboardAnalytics"] });
       setFormSuccess(true);
-      setApiError(null); // Clear previous API errors
-      setFormError(null); // Limpia el error tras éxito
+      setApiError(null);
+      setFormError(null);
       setTimeout(() => {
         reset();
+        setSelectedModelValue(null);
         setFormSuccess(false);
       }, 1500);
     },
@@ -118,10 +116,7 @@ export default function LineForm({
     setFormError(null);
     const payload = {
       ...data,
-      model_id:
-        typeof data.model_id === "object" && data.model_id !== null
-          ? data.model_id.value
-          : data.model_id,
+      model_id: selectedModelValue?.value || data.model_id,
     };
     if (onSubmit) {
       onSubmit(payload);
@@ -130,15 +125,15 @@ export default function LineForm({
     }
   };
 
-  const handleModelChange = (value: string | null) => {
-    setSelectedModelValue(value);
-    setValue("model_id", value || "");
+  const handleModelChange = (selectedOption: ModelsOption | null) => {
+    setSelectedModelValue(selectedOption);
+    setValue("model_id", selectedOption?.value || "");
   };
 
   // Limpia el error si el usuario cambia los campos relevantes
   useEffect(() => {
     setFormError(null);
-  }, [errors.name, errors.model_id, errors.features, errors.price]);
+  }, [errors.name, errors.model_id]);
 
   return (
     <motion.div
@@ -195,13 +190,12 @@ export default function LineForm({
               rules={{ required: "Debe seleccionar un modelo" }} 
               render={({ field }) => (
                 <ModelSelector
-                  inputId="model_id_field"
                   value={selectedModelValue}
                   onChange={(selectedOption) => {
                     field.onChange(selectedOption?.value || "");
-                    handleModelChange(selectedOption || null);
+                    handleModelChange(selectedOption);
                   }}
-                  aria-invalid={errors.model_id ? "true" : "false"}
+                  placeholder="Seleccionar modelo"
                 />
               )}
             />
@@ -237,75 +231,6 @@ export default function LineForm({
             />
             {errors.name && (
               <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="features"
-                className="block text-sm font-medium mb-1"
-              >
-                Características (Opcional)
-              </label>
-              <Tooltip title="Descripción opcional de las características principales de esta línea (ej. equipamiento, acabados).">
-                <InfoCircleOutlined className="text-blue-500 cursor-help" />
-              </Tooltip>
-            </div>
-            <Input
-              id="features"
-              placeholder="Ej: Techo solar, Asientos de cuero, GPS"
-              {...register("features")} // Es opcional, no necesita validación `required`
-            />
-            {/* No suele haber errores para campos opcionales a menos que haya otras validaciones */}
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <label htmlFor="price" className="block text-sm font-medium mb-1">
-                Precio Base (Opcional)
-              </label>
-              <Tooltip title="Precio de referencia de esta línea. Debe ser un número mayor o igual a cero. Puedes dejarlo vacío si no aplica.">
-                <InfoCircleOutlined className="text-blue-500 cursor-help" />
-              </Tooltip>
-            </div>
-            <Controller
-              name="price"
-              control={control}
-              rules={{
-                // Opcional: Validaciones adicionales
-                min: { value: 0, message: "El precio no puede ser negativo" },
-              }}
-              render={({ field: { onChange, onBlur, value, name } }) => (
-                <NumericFormat
-                  id="price"
-                  customInput={Input} // Usa tu componente Input de ShadCN/UI
-                  placeholder="Ingrese el precio base"
-                  thousandSeparator="." // Separador de miles
-                  decimalSeparator="," // Separador decimal
-                  prefix="$ " // Prefijo de moneda
-                  allowNegative={false} // No permitir negativos
-                  decimalScale={0} // Sin decimales (ajusta si necesitas)
-                  value={value ?? ""} // Usa el valor del field, o "" si es null/undefined
-                  onValueChange={(values) => {
-                    // Actualiza react-hook-form con el valor numérico o null
-                    onChange(values.floatValue ?? null);
-                  }}
-                  onBlur={onBlur} // Propaga onBlur para validación de RHF
-                  name={name} // Propaga name
-                  aria-invalid={errors.price ? "true" : "false"}
-                  className={
-                    errors.price
-                      ? "border-destructive focus:border-destructive"
-                      : ""
-                  }
-                />
-              )}
-            />
-            {errors.price && (
-              <p className="text-sm text-red-500 mt-1">
-                {errors.price.message}
-              </p>
             )}
           </div>
 

@@ -50,7 +50,7 @@ const FuelView: React.FC = () => {
       page: currentPage,
       limit: pageSize,
       sortBy: sortField,
-      sortOrder: sortOrder,
+      sortOrder: sortOrder as "asc" | "desc",
       search: searchQuery
     }),
   });
@@ -78,8 +78,8 @@ const FuelView: React.FC = () => {
   };
 
   const createFuelMutation = useMutation({
-    mutationFn: (values: { name: string; octane_rating?: number }) =>
-      VehicleFamiliesService.addFuel(values.name, values.octane_rating),
+    mutationFn: (values: { name: string }) =>
+      VehicleFamiliesService.addFuel(values.name),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fuels"] });
       message.success("Combustible creado exitosamente");
@@ -92,8 +92,8 @@ const FuelView: React.FC = () => {
   });
 
   const updateFuelMutation = useMutation({
-    mutationFn: (values: { id: string; name: string; octane_rating?: number }) =>
-      VehicleFamiliesService.updateFuel(values.id, { name: values.name, octane_rating: values.octane_rating }),
+    mutationFn: (values: { id: string; name: string }) =>
+      VehicleFamiliesService.updateFuel(values.id, { name: values.name }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fuels"] });
       message.success("Combustible actualizado exitosamente");
@@ -124,7 +124,6 @@ const FuelView: React.FC = () => {
     setEditingFuel(record);
     form.setFieldsValue({
       name: { value: record._id, label: record.name, fuelData: record },
-      octane_rating: record.octane_rating,
     });
     setIsModalVisible(true);
   };
@@ -170,13 +169,6 @@ const FuelView: React.FC = () => {
       dataIndex: 'name',
       key: 'name',
       sorter: true,
-    },
-    {
-      title: 'Octanaje',
-      dataIndex: 'octane_rating',
-      key: 'octane_rating',
-      sorter: true,
-      render: (octane_rating: number | undefined) => octane_rating || 'N/A',
     },
     {
       title: 'Estado',
@@ -287,7 +279,6 @@ const FuelView: React.FC = () => {
             mode="edit"
             initialValues={{
               name: editingFuel.name,
-              octane_rating: editingFuel.octane_rating,
               active: editingFuel.active,
             }}
             onSubmit={(values) => {

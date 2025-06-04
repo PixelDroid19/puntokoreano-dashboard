@@ -18,7 +18,7 @@ import {
   SearchOutlined,
   PlusOutlined,
 } from "@ant-design/icons";
-import VehicleFamiliesService from "../../services/vehicle-families.service";
+import VehicleFamiliesService, { GetVehiclesResponse } from "../../services/vehicle-families.service";
 import VehicleMainForm from "./forms/VehicleMainForm";
 
 interface Vehicle {
@@ -27,17 +27,19 @@ interface Vehicle {
   price: number | null;
   transmission_id: { _id: string; name: string } | null;
   fuel_id: { _id: string; name: string } | null;
-  line_id: { _id: string; name: string } | null;
+  model_id: { 
+    _id: string; 
+    displayName?: string;
+    engine_type?: string;
+    year?: number[];
+    family_id?: {
+      name?: string;
+      brand_id?: {
+        name?: string;
+      };
+    };
+  } | null;
   active: boolean;
-}
-
-interface ApiResponse {
-  vehicles: Vehicle[];
-  pagination: {
-    total: number;
-    limit: number;
-    page: number;
-  };
 }
 
 interface QueryParams {
@@ -65,7 +67,7 @@ const VehicleView: React.FC = () => {
     activeOnly: true,
   });
 
-  const { data: apiResponse, isLoading } = useQuery<ApiResponse>({
+  const { data: apiResponse, isLoading } = useQuery<GetVehiclesResponse>({
     queryKey: ["vehicles", queryParams],
     queryFn: () => VehicleFamiliesService.getVehicles(queryParams),
   });
@@ -146,13 +148,32 @@ const VehicleView: React.FC = () => {
     form.resetFields();
   };
 
+  const getModelDisplayName = (model: Vehicle['model_id']) => {
+    if (!model) return "N/D";
+    
+    if (model.displayName) {
+      return model.displayName;
+    }
+    
+    // Construir el nombre si no está disponible displayName
+    const familyName = model.family_id?.name || "";
+    const engineType = model.engine_type || "";
+
+    
+    return `${familyName} ${engineType}`.trim() || "N/D";
+  };
+
   const columns = [
     {
       title: "Identificador",
       dataIndex: "tag_id",
       key: "tag_id",
     },
-
+    {
+      title: "Modelo",
+      key: "model",
+      render: (_: any, record: Vehicle) => getModelDisplayName(record.model_id),
+    },
     {
       title: "Transmisión",
       dataIndex: ["transmission_id", "name"],
@@ -165,28 +186,7 @@ const VehicleView: React.FC = () => {
       key: "fuel",
       render: (_: any, record: any) => record.fuel_id?.name || "N/D",
     },
-    {
-      title: "Línea",
-      dataIndex: ["line_id", "name"],
-      key: "line",
-      render: (_: any, record: any) => record.line_id?.name || "N/D",
-    },
-    {
-      title: "Color",
-      dataIndex: "color",
-      key: "color",
-      sorter: true,
-      render: (color) => color || "N/D",
-    },
-    {
-      title: "Precio",
-      dataIndex: "price",
-      key: "price",
-      sorter: true,
-      render: (price: number | null) =>
-        price != null ? `$${price.toLocaleString("es-CO")}` : "N/A",
-      align: "right" as const,
-    },
+  
     {
       title: "Estado",
       dataIndex: "active",
@@ -209,7 +209,7 @@ const VehicleView: React.FC = () => {
               type="default"
               icon={<EditOutlined style={{ fontSize: 16 }} />}
               onClick={() => {}}
-              aria-label={`Editar vehículo ${record.line_id?.name || record._id}`}
+              aria-label={`Editar vehículo ${getModelDisplayName(record.model_id) || record._id}`}
               disabled
             />
           </Tooltip>
@@ -228,7 +228,7 @@ const VehicleView: React.FC = () => {
               <Button
                 danger
                 icon={<DeleteOutlined style={{ fontSize: 16 }} />}
-                aria-label={`Eliminar vehículo ${record.line_id?.name || record._id}`}
+                aria-label={`Eliminar vehículo ${getModelDisplayName(record.model_id) || record._id}`}
                 disabled={
                   deleteMutation.isPending &&
                   deleteMutation.variables === record._id
@@ -254,7 +254,7 @@ const VehicleView: React.FC = () => {
       >
         <Space>
           <Input
-            placeholder="Buscar por color, línea..."
+            placeholder="Buscar por tag_id..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             onPressEnter={handleSearch}

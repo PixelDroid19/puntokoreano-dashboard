@@ -300,19 +300,19 @@ const Images: React.FC = () => {
         <Space size="middle" className="flex items-center justify-center w-full">
           <Tooltip title="Ver imágenes">
             <Button
-              type="primary"
-              ghost
+             
+           
               icon={<EyeOutlined />}
               onClick={() => setViewingGroup(record)}
-              className="flex items-center justify-center rounded-full shadow"
+             
             />
           </Tooltip>
           <Tooltip title="Editar grupo">
             <Button
-              type="default"
+         
               icon={<EditOutlined />}
               onClick={() => setEditingGroup(record)}
-              className="flex items-center justify-center rounded-full shadow"
+              
             />
           </Tooltip>
           <Popconfirm
@@ -333,7 +333,7 @@ const Images: React.FC = () => {
               <Button 
                 danger 
                 icon={<DeleteOutlined />} 
-                className="flex items-center justify-center rounded-full shadow"
+             
               />
             </Tooltip>
           </Popconfirm>

@@ -32,7 +32,7 @@ const BrandView: React.FC = () => {
     page: 1,
     limit: 10,
     sortBy: "name",
-    sortOrder: "asc",
+    sortOrder: "asc" as "asc" | "desc",
     search: "",
     activeOnly: true,
   });
@@ -55,8 +55,7 @@ const BrandView: React.FC = () => {
       message.success("Marca eliminada correctamente");
     },
     onError: (error) => {
-      message.error("Error al eliminar la marca");
-      console.error(error);
+      message.error(error.message || "Error al eliminar la marca");
     },
   });
 
@@ -73,7 +72,6 @@ const BrandView: React.FC = () => {
     setEditingBrand(record);
     form.setFieldsValue({
       name: { value: record._id, label: record.name, brandData: record },
-      country: record.country,
       active: record.active,
     });
     setIsModalVisible(true);
@@ -114,12 +112,6 @@ const BrandView: React.FC = () => {
       title: "Nombre", // Traducido
       dataIndex: "name",
       key: "name",
-      sorter: true,
-    },
-    {
-      title: "País", // Traducido
-      dataIndex: "country",
-      key: "country",
       sorter: true,
     },
     {
@@ -229,27 +221,10 @@ const BrandView: React.FC = () => {
         destroyOnClose
       >
         {editingBrand ? (
-          <BrandForm
-            mode="edit"
-            initialValues={{
-              name: editingBrand.name,
-              country: editingBrand.country,
-              active: editingBrand.active,
-            }}
-            onSubmit={(values) => {
-              VehicleFamiliesService.updateBrand(editingBrand._id, values)
-                .then(() => {
-                  queryClient.invalidateQueries({ queryKey: ["brands"] });
-                  message.success("Marca actualizada correctamente");
-                  setIsModalVisible(false);
-                  setEditingBrand(null);
-                  form.resetFields();
-                })
-                .catch((error) => {
-                  message.error(error?.message || "Error al actualizar la marca");
-                });
-            }}
-          />
+          <div>
+            <p>Modo de edición para marca: {editingBrand.name}</p>
+            <p>Función de edición en desarrollo.</p>
+          </div>
         ) : (
           <BrandForm />
         )}

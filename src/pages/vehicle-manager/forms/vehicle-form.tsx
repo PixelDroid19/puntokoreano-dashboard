@@ -16,13 +16,14 @@ import {
   Droplet,
 } from "lucide-react";
 
-export default function VehicleForm() {
+export default function VehicleForm({...props}) {
   return (
     <motion.div
       initial={{ y: 20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5, delay: 0.2 }}
       className="bg-white rounded-lg shadow"
+      {...props}
     >
       <div className="p-6">
         <h2 className="text-xl font-semibold mb-4">Gestión de Vehículos</h2>

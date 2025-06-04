@@ -1,4 +1,3 @@
-
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, Car, Tag, Layers, Cog, Droplet, ChevronRight, Folder, GitBranch } from "lucide-react"; // Added Folder, GitBranch
 import { formatDistanceToNow } from "date-fns";
@@ -7,9 +6,10 @@ import { VehicleActivity } from "../../api/types";
 
 interface RecentActivityProps {
   activities: VehicleActivity[] | undefined; // Accept fetched data as prop
+  showTitle?: boolean; // Añadir opción para mostrar u ocultar el título
 }
 
-export default function RecentActivity({ activities = [] }: RecentActivityProps) { // Default to empty array
+export default function RecentActivity({ activities = [], showTitle = false }: RecentActivityProps) { // Default to empty array
 
   const getIcon = (type: string) => {
     switch (type?.toLowerCase()) {
@@ -63,20 +63,20 @@ export default function RecentActivity({ activities = [] }: RecentActivityProps)
       initial={{ y: 20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5, delay: 0.1 }} // Slightly faster delay
-      className="bg-white rounded-lg shadow p-6"
     >
-      <div className="flex items-center gap-2 mb-4">
-        <Clock className="w-5 h-5 text-gray-500" />
-        <h2 className="text-lg font-semibold">Actividad Reciente (Vehículos)</h2>
-      </div>
+      {showTitle && (
+        <div className="flex items-center gap-2 mb-4">
+          <Clock className="w-5 h-5 text-gray-500" />
+          <h2 className="text-lg font-semibold">Actividad Reciente (Vehículos)</h2>
+        </div>
+      )}
 
       <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2"> {/* Added max-height and scroll */}
         {activities.length === 0 ? (
           <p className="text-gray-500 text-sm text-center py-4">No hay actividades recientes</p>
         ) : (
           <AnimatePresence initial={false}>
-            {/* Display more activities if available */}
-            {activities.slice(0, 10).map((activity, index) => (
+            {activities.map((activity, index) => (
               <motion.div
                 // Use a more robust key if API provides unique IDs for activities
                 key={activity.details?.id || `${activity.type}-${activity.timestamp}-${index}`}
@@ -104,8 +104,7 @@ export default function RecentActivity({ activities = [] }: RecentActivityProps)
         )}
       </div>
 
-       {/* Keep the button but maybe link somewhere else or remove if not needed */}
-      {activities.length > 5 && (
+      {activities.length > 0 && (
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}

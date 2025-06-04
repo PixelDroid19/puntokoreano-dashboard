@@ -109,11 +109,6 @@ const menuItems = [
         label: <Link to="/fuel-management">Combustibles</Link>,
         title: "Configuración de Combustibles",
       },
-      {
-        key: "/vehicle-management",
-        label: <Link to="/vehicle-management">Vehículos</Link>,
-        title: "Configuración de Vehículos",
-      },
     ],
   },
   {

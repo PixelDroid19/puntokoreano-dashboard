@@ -12,7 +12,6 @@ import FormError from "./FormError";
 
 interface BrandFormData {
   name: string;
-  origin_country: string;
 }
 
 export default function BrandForm() {
@@ -27,7 +26,6 @@ export default function BrandForm() {
   } = useForm<BrandFormData>({
     defaultValues: {
       name: "",
-      origin_country: "",
     },
   });
 
@@ -37,7 +35,6 @@ export default function BrandForm() {
     mutationFn: (data: BrandFormData) => {
       return VehicleFamiliesService.createBrand({
         name: data.name.trim(),
-        country: data.origin_country.trim(),
         active: true,
       });
     },
@@ -136,39 +133,6 @@ export default function BrandForm() {
               </motion.p>
             )}
           </div>
-
-            <div>
-            <div className="flex items-center gap-2">
-                <label htmlFor="origin_country" className="block text-sm font-medium mb-1 text-gray-700">
-                  * País de origen
-              </label>
-                <Tooltip title="Ingresa el país de origen de la marca. Este campo es obligatorio.">
-                <InfoCircleOutlined className="text-blue-500 cursor-help" />
-              </Tooltip>
-            </div>
-              <div className="relative">
-            <Input
-                  id="origin_country"
-                  placeholder="Corea"
-                  {...register("origin_country", {
-                    required: "El país de origen es requerido",
-                  })}
-                  className={`${errors.origin_country ? "border-red-300 focus:border-red-500 pr-10" : "border-gray-300"}`}
-                />
-                {errors.origin_country && (
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 500, damping: 15 }}>
-                      <AlertCircle className="h-5 w-5 text-red-500" />
-                    </motion.div>
-                  </div>
-                )}
-              </div>
-              {errors.origin_country && (
-                <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-sm text-red-500 mt-1">
-                  {errors.origin_country.message}
-                </motion.p>
-              )}
-            </div>
           </div>
 
           {formError && (

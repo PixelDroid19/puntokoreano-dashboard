@@ -30,9 +30,11 @@ import {
   QuestionCircleOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  GroupOutlined,
 } from "@ant-design/icons";
 import { motion, useReducedMotion } from "framer-motion";
 import VehicleSelector from "../../../vehicle-manager/selectors/vehicle-selector";
+import ApplicabilityGroupSelector from "../../../vehicle-manager/selectors/applicability-group-selector";
 
 const { Title, Text } = Typography;
 
@@ -81,6 +83,7 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
   const watchedActive = Form.useWatch("active", form);
   const watchedGroup = Form.useWatch("group", form);
   const watchedCompatibleVehicles = Form.useWatch("compatible_vehicles", form);
+  const watchedApplicabilityGroups = Form.useWatch("applicabilityGroups", form);
   const watchedDiscount = Form.useWatch("discount", form);
 
 
@@ -198,7 +201,10 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
                     formatter={(value) =>
                       `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
                     }
-                    parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
+                    parser={(value) => {
+                      const parsed = value?.replace(/\$\s?|(,*)/g, "") ?? "";
+                      return parsed as any;
+                    }}
                     onFocus={() => setActiveField("price")}
                     onBlur={() => setActiveField(null)}
                   />
@@ -264,7 +270,6 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
                     {
                       type: "number",
                       min: 0,
-                      integer: true,
                       message: "El stock debe ser un número entero no negativo",
                     },
                   ]}
@@ -303,7 +308,6 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
                     {
                       type: "number",
                       min: 0,
-                      integer: true,
                       message:
                         "El stock reservado debe ser un número entero no negativo",
                     },
@@ -576,7 +580,10 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
                     size="large"
                     disabled={!watchedDiscount?.isActive}
                     formatter={(value) => `${value}%`}
-                    parser={(value) => value!.replace("%", "")}
+                    parser={(value) => {
+                      const parsed = value?.replace("%", "") ?? "";
+                      return parsed as any;
+                    }}
                     onFocus={() => setActiveField("discount_percentage")}
                     onBlur={() => setActiveField(null)}
                     onChange={(value) => {
@@ -926,6 +933,35 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
 
               <div
                 className={`transition-all duration-200 ${
+                  activeField === "applicabilityGroups"
+                    ? "bg-blue-50 -mx-2 px-2 py-1 rounded-md"
+                    : ""
+                }`}
+              >
+                <Form.Item
+                  name="applicabilityGroups"
+                  label={
+                    <div className="flex items-center">
+                      <TagsOutlined className="mr-1 text-purple-600" />
+                      <span>Grupos de Aplicabilidad</span>
+                      {renderFieldHelp(
+                        "Grupos de Aplicabilidad",
+                        "Seleccione grupos de aplicabilidad predefinidos que contengan múltiples vehículos compatibles. Estos grupos facilitan la gestión de productos que son compatibles con muchos vehículos."
+                      )}
+                    </div>
+                  }
+                >
+                  <ApplicabilityGroupSelector
+                    isMulti={true}
+                    placeholder="Buscar grupos de aplicabilidad..."
+                    onFocus={() => setActiveField("applicabilityGroups")}
+                    onBlur={() => setActiveField(null)}
+                  />
+                </Form.Item>
+              </div>
+
+              <div
+                className={`transition-all duration-200 ${
                   activeField === "short_description"
                     ? "bg-blue-50 -mx-2 px-2 py-1 rounded-md"
                     : ""
@@ -1031,6 +1067,20 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
                             count={`Compatible con ${watchedCompatibleVehicles.length} vehículo(s)`}
                             style={{ backgroundColor: "#1890ff" }}
                             className="mt-2"
+                          />
+                        </motion.div>
+                      )}
+                    {watchedApplicabilityGroups &&
+                      watchedApplicabilityGroups.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <Badge
+                            count={`${watchedApplicabilityGroups.length} grupo(s) de aplicabilidad`}
+                            style={{ backgroundColor: "#722ed1" }}
+                            className="mt-2 ml-2"
                           />
                         </motion.div>
                       )}

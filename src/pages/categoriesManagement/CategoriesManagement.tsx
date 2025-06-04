@@ -209,7 +209,12 @@ const CategoriesManagement = () => {
   };
 
   const beforeUpload = async (file: RcFile): Promise<boolean> => {
-    const allowedFormats = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    const allowedFormats = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ];
     const isAllowedFormat = allowedFormats.includes(file.type);
 
     if (!isAllowedFormat) {
@@ -224,7 +229,9 @@ const CategoriesManagement = () => {
 
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      message.error("La imagen debe ser menor a 5MB. Por favor, elige un archivo más pequeño.");
+      message.error(
+        "La imagen debe ser menor a 5MB. Por favor, elige un archivo más pequeño."
+      );
       return false;
     }
 
@@ -245,7 +252,9 @@ const CategoriesManagement = () => {
           }
         };
         img.onerror = () => {
-          message.error("No se pudo cargar la imagen para validar dimensiones.");
+          message.error(
+            "No se pudo cargar la imagen para validar dimensiones."
+          );
           resolve(false);
         };
       };
@@ -302,22 +311,22 @@ const CategoriesManagement = () => {
     [deleteCategory]
   );
 
-  const getSubgroupCountBadge = (subgroups: Category['subgroups']) => {
+  const getSubgroupCountBadge = (subgroups: Category["subgroups"]) => {
     if (!subgroups?.length) return null;
-    
-    const activeCount = subgroups.filter(s => s.active).length;
+
+    const activeCount = subgroups.filter((s) => s.active).length;
     const totalCount = subgroups.length;
-    
+
     return (
       <Tooltip title={`${activeCount} activos de ${totalCount} subgrupos`}>
-        <Badge 
-          count={activeCount} 
-          style={{ backgroundColor: activeCount > 0 ? '#52c41a' : '#f5222d' }}
+        <Badge
+          count={activeCount}
+          style={{ backgroundColor: activeCount > 0 ? "#52c41a" : "#f5222d" }}
           overflowCount={99}
           title={`${activeCount}/${totalCount}`}
         >
           <Tag className="cursor-pointer">
-            {totalCount} subgrupo{totalCount !== 1 ? 's' : ''}
+            {totalCount} subgrupo{totalCount !== 1 ? "s" : ""}
           </Tag>
         </Badge>
       </Tooltip>
@@ -332,8 +341,8 @@ const CategoriesManagement = () => {
         key: "image",
         width: 70,
         render: (image: string, record: Category) => (
-          <Avatar 
-            src={image} 
+          <Avatar
+            src={image}
             alt={record.name}
             shape="square"
             size={50}
@@ -347,7 +356,9 @@ const CategoriesManagement = () => {
         key: "category",
         render: (_: any, record: Category) => (
           <div>
-            <Text strong className="text-base">{record.name}</Text>
+            <Text strong className="text-base">
+              {record.name}
+            </Text>
             <div className="mt-1">
               {getSubgroupCountBadge(record.subgroups)}
             </div>
@@ -362,23 +373,18 @@ const CategoriesManagement = () => {
           <Space size="small">
             <Tooltip title="Ver detalles">
               <Button
-                type="text"
                 icon={<EyeOutlined />}
                 onClick={() => showCategoryDetails(record)}
-                className="hover:text-blue-500"
               />
             </Tooltip>
             <Tooltip title="Editar">
               <Button
-                type="text"
                 icon={<EditOutlined />}
                 onClick={() => handleModalOpen("edit", record)}
-                className="hover:text-blue-500"
               />
             </Tooltip>
             <Tooltip title="Eliminar">
               <Button
-                type="text"
                 danger
                 icon={<DeleteOutlined />}
                 onClick={() => handleDelete(record)}
@@ -454,7 +460,7 @@ const CategoriesManagement = () => {
             },
             showSizeChanger: true,
             defaultPageSize: 8,
-            pageSizeOptions: ['8', '16', '24', '32'],
+            pageSizeOptions: ["8", "16", "24", "32"],
             showTotal: (total) => `Total ${total} categorías`,
             className: "mt-4",
           }}
@@ -476,11 +482,11 @@ const CategoriesManagement = () => {
       <Drawer
         title={
           <div className="flex items-center gap-2">
-            <Avatar 
-              src={selectedCategory?.image} 
-              shape="square" 
+            <Avatar
+              src={selectedCategory?.image}
+              shape="square"
               size={32}
-              icon={<PictureOutlined />} 
+              icon={<PictureOutlined />}
             />
             <span>{selectedCategory?.name}</span>
           </div>
@@ -510,15 +516,20 @@ const CategoriesManagement = () => {
               <Paragraph>{selectedCategory.description}</Paragraph>
             </div>
 
-            <Divider orientation="left">Subgrupos ({selectedCategory.subgroups?.length || 0})</Divider>
-            
+            <Divider orientation="left">
+              Subgrupos ({selectedCategory.subgroups?.length || 0})
+            </Divider>
+
             {!selectedCategory.subgroups?.length ? (
-              <Empty description="No hay subgrupos definidos" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+              <Empty
+                description="No hay subgrupos definidos"
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              />
             ) : (
               <div className="space-y-2">
                 {selectedCategory.subgroups.map((subgroup, index) => (
-                  <div 
-                    key={subgroup._id} 
+                  <div
+                    key={subgroup._id}
                     className="flex justify-between items-center p-3 bg-white rounded-md border border-gray-100 shadow-sm"
                   >
                     <div className="flex items-center gap-2">
@@ -528,10 +539,10 @@ const CategoriesManagement = () => {
                       <Badge status={subgroup.active ? "success" : "error"} />
                       <Text>{subgroup.name}</Text>
                     </div>
-                    <Switch 
-                      checked={subgroup.active} 
+                    <Switch
+                      checked={subgroup.active}
                       size="small"
-                      onChange={(checked) => 
+                      onChange={(checked) =>
                         updateSubgroupStatus.mutate({
                           categoryId: selectedCategory._id,
                           subgroupId: subgroup._id!,
@@ -571,11 +582,11 @@ const CategoriesManagement = () => {
         footer={null}
         width={1000}
         centered
-        bodyStyle={{ 
-          maxHeight: "80vh", 
-          overflowY: "auto", 
+        bodyStyle={{
+          maxHeight: "80vh",
+          overflowY: "auto",
           padding: "24px",
-          backgroundColor: "#f9fafb" 
+          backgroundColor: "#f9fafb",
         }}
         className="category-modal rounded-lg"
         destroyOnClose
@@ -593,7 +604,9 @@ const CategoriesManagement = () => {
             <div className="col-span-12 md:col-span-4 flex flex-col items-center">
               <Form.Item
                 name="image"
-                label={<span className="text-base">Imagen de la categoría</span>}
+                label={
+                  <span className="text-base">Imagen de la categoría</span>
+                }
                 rules={VALIDATION_RULES.image}
                 className="w-full"
               >
@@ -611,7 +624,7 @@ const CategoriesManagement = () => {
                       }
                       return false; // Siempre retornar false para manejar la subida manualmente
                     }}
-                    style={{ width: '100%' }}
+                    style={{ width: "100%" }}
                   >
                     {imageUrl ? (
                       <div className="relative w-full h-48 overflow-hidden rounded-lg">
@@ -640,39 +653,44 @@ const CategoriesManagement = () => {
                       </div>
                     )}
                   </Upload>
-                  <Text type="secondary" className="text-xs block mt-2 text-center">
+                  <Text
+                    type="secondary"
+                    className="text-xs block mt-2 text-center"
+                  >
                     Tamaño recomendado: 300x300px. Máximo 5MB.
                   </Text>
                 </div>
               </Form.Item>
             </div>
-            
+
             {/* Información básica */}
             <div className="col-span-12 md:col-span-8">
               <div className="bg-white p-5 rounded-lg shadow-sm">
-                <h3 className="text-lg font-medium mb-4 text-gray-700">Información básica</h3>
-                <Form.Item 
-                  name="name" 
-                  label="Nombre" 
+                <h3 className="text-lg font-medium mb-4 text-gray-700">
+                  Información básica
+                </h3>
+                <Form.Item
+                  name="name"
+                  label="Nombre"
                   rules={VALIDATION_RULES.name}
                   className="mb-4"
                 >
-                  <Input 
-                    placeholder="Nombre de la categoría" 
+                  <Input
+                    placeholder="Nombre de la categoría"
                     size="large"
                     prefix={<TagOutlined className="text-gray-400" />}
                   />
                 </Form.Item>
-                
+
                 <Form.Item
                   name="description"
                   label="Descripción"
                   rules={VALIDATION_RULES.description}
                 >
-                  <TextArea 
-                    rows={4} 
-                    placeholder="Descripción de la categoría" 
-                    showCount 
+                  <TextArea
+                    rows={4}
+                    placeholder="Descripción de la categoría"
+                    showCount
                     maxLength={200}
                   />
                 </Form.Item>
@@ -682,7 +700,7 @@ const CategoriesManagement = () => {
 
           {/* Sección de subgrupos */}
           <div className="mt-6">
-            <Card 
+            <Card
               title={
                 <div className="flex items-center gap-2">
                   <TagOutlined />
@@ -698,10 +716,11 @@ const CategoriesManagement = () => {
                   type="primary"
                   icon={<PlusOutlined />}
                   onClick={() => {
-                    const currentSubgroups = form.getFieldValue('subgroups') || [];
-                    form.setFieldValue('subgroups', [
+                    const currentSubgroups =
+                      form.getFieldValue("subgroups") || [];
+                    form.setFieldValue("subgroups", [
                       ...currentSubgroups,
-                      { name: '', active: true }
+                      { name: "", active: true },
                     ]);
                   }}
                   size="small"
@@ -722,7 +741,10 @@ const CategoriesManagement = () => {
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {fields.map((field, index) => (
-                          <div key={field.key} className="bg-white p-3 rounded-md shadow-sm border border-gray-100 hover:border-blue-200 transition-colors">
+                          <div
+                            key={field.key}
+                            className="bg-white p-3 rounded-md shadow-sm border border-gray-100 hover:border-blue-200 transition-colors"
+                          >
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-50 text-blue-500 border border-blue-200 font-medium">
                                 {index + 1}
@@ -730,7 +752,12 @@ const CategoriesManagement = () => {
                               <Form.Item
                                 {...field}
                                 name={[field.name, "name"]}
-                                rules={[{ required: true, message: "Nombre requerido" }]}
+                                rules={[
+                                  {
+                                    required: true,
+                                    message: "Nombre requerido",
+                                  },
+                                ]}
                                 className="flex-1 mb-0"
                                 label={null}
                               >
@@ -743,10 +770,10 @@ const CategoriesManagement = () => {
                                 className="mb-0"
                                 label={null}
                               >
-                                <Switch 
-                                  defaultChecked 
-                                  checkedChildren="Activo" 
-                                  unCheckedChildren="Inactivo" 
+                                <Switch
+                                  defaultChecked
+                                  checkedChildren="Activo"
+                                  unCheckedChildren="Inactivo"
                                 />
                               </Form.Item>
                               <Button
@@ -769,7 +796,7 @@ const CategoriesManagement = () => {
 
           {modalMode !== "view" && (
             <div className="flex justify-end gap-3 mt-6">
-              <Button 
+              <Button
                 onClick={handleModalClose}
                 size="large"
                 className="min-w-[100px]"

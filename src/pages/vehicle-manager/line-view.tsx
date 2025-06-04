@@ -25,8 +25,6 @@ import LineForm from "./forms/line-form";
 interface LineData {
   _id: string;
   name: string;
-  features: string;
-  price?: number;
   model_id: {
     _id: string;
     name: string;
@@ -56,7 +54,7 @@ const LineView: React.FC = () => {
     page: 1,
     limit: 10,
     sortBy: "name",
-    sortOrder: "asc",
+    sortOrder: "asc" as "asc" | "desc",
     search: "",
     model_id: null as string | null,
   });
@@ -84,12 +82,10 @@ const LineView: React.FC = () => {
   // Mutación para crear línea
   const createMutation = useMutation({
     mutationFn: (values: any) => {
-      const { model_id, name, features, price, active } = values;
+      const { model_id, name, active } = values;
       return VehicleFamiliesService.addLine(
         model_id,
         name,
-        features,
-        price,
         active
       );
     },
@@ -159,8 +155,6 @@ const LineView: React.FC = () => {
     setEditingLine(record);
     form.setFieldsValue({
       name: record.name,
-      features: record.features,
-      price: record.price,
       model_id: record.model_id
         ? { value: record.model_id._id, label: record.model_id.name, modelData: record.model_id }
         : null,
@@ -245,13 +239,6 @@ const LineView: React.FC = () => {
       dataIndex: ["model_id", "family_id", "brand_id", "name"],
       key: "brand",
       sorter: true,
-    },
-    {
-      title: "Precio",
-      dataIndex: "price",
-      key: "price",
-      sorter: true,
-      render: (price) => (price ? `$${price.toLocaleString()}` : "-"),
     },
     {
       title: "Estado",
@@ -374,8 +361,6 @@ const LineView: React.FC = () => {
             mode="edit"
             initialValues={{
               name: editingLine.name,
-              features: editingLine.features,
-              price: editingLine.price,
               model_id: editingLine.model_id?._id,
               active: editingLine.active,
             }}

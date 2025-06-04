@@ -12,7 +12,6 @@ import { InfoCircleOutlined } from "@ant-design/icons";
 
 interface FuelFormData {
   name: string;
-  octane_rating: number;
   active: boolean;
 }
 
@@ -34,7 +33,6 @@ export default function FuelForm({ initialValues, mode = "create", onSubmit }: F
   } = useForm<FuelFormData>({
     defaultValues: {
       name: initialValues?.name || "",
-      octane_rating: initialValues?.octane_rating ?? 87,
       active: initialValues?.active ?? true,
     },
   });
@@ -45,7 +43,6 @@ export default function FuelForm({ initialValues, mode = "create", onSubmit }: F
   useEffect(() => {
     if (mode === "edit" && initialValues) {
       setValue("name", initialValues.name || "");
-      setValue("octane_rating", initialValues.octane_rating ?? 87);
       setValue("active", initialValues.active ?? true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -53,7 +50,7 @@ export default function FuelForm({ initialValues, mode = "create", onSubmit }: F
 
   const { mutate, isPending: isSubmitting } = useMutation({
     mutationFn: (data: FuelFormData) =>
-      VehicleFamiliesService.addFuel(data.name, data.octane_rating),
+      VehicleFamiliesService.addFuel(data.name),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fuels"] });
       queryClient.invalidateQueries({ queryKey: ["dashboardAnalytics"] });
@@ -85,7 +82,7 @@ export default function FuelForm({ initialValues, mode = "create", onSubmit }: F
 
   useEffect(() => {
     setFormError(null);
-  }, [errors.name, errors.octane_rating]);
+  }, [errors.name]);
 
   const handleFormSubmit = (data: FuelFormData) => {
     setFormError(null);
@@ -115,7 +112,7 @@ export default function FuelForm({ initialValues, mode = "create", onSubmit }: F
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <label className="block text-sm font-medium mb-1">
-                Tipo de Combustible
+                Tipo de Combustible <span className="text-red-500">*</span>
               </label>
               <Tooltip title="Tipo de combustible que utiliza el vehículo. Este campo es obligatorio y debe ser único (ej. Gasolina, Diésel).">
                 <InfoCircleOutlined className="text-blue-500 cursor-help" />
@@ -129,28 +126,6 @@ export default function FuelForm({ initialValues, mode = "create", onSubmit }: F
             />
             {errors.name && (
               <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <label className="block text-sm font-medium mb-1">Octanaje</label>
-              <Tooltip title="Número de octanos del combustible. Debe ser un valor positivo (ej. 87, 89, 92, 95).">
-                <InfoCircleOutlined className="text-blue-500 cursor-help" />
-              </Tooltip>
-            </div>
-            <Input
-              type="number"
-              placeholder="Ingrese el octanaje"
-              {...register("octane_rating", {
-                valueAsNumber: true,
-                min: { value: 0, message: "El octanaje debe ser positivo" },
-              })}
-            />
-            {errors.octane_rating && (
-              <p className="text-sm text-red-500 mt-1">
-                {errors.octane_rating.message}
-              </p>
             )}
           </div>
 
