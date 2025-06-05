@@ -65,60 +65,65 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
   const uploadMutation = useMutation({
     mutationFn: async ({
       identifier,
+      description,
       productImage,
       carouselImages,
     }: {
       identifier: string;
+      description?: string;
       productImage?: File;
       carouselImages?: File[];
     }) => {
-      console.log("Identifier:", identifier);
-      console.log("Product Image:", productImage);
-      console.log("Carousel Images:", carouselImages);
-
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      let currentFile = 0;
       const totalFilesToUpload =
         (productImage ? 1 : 0) + (carouselImages?.length || 0);
 
+      let currentFile = 0;
+
+      // Inicializar progreso
       if (productImage) {
         setUploadProgress((prev) => ({ ...prev, [productImage.name]: 0 }));
-        await new Promise((resolve) =>
-          setTimeout(() => {
+      }
+      
+      if (carouselImages) {
+        carouselImages.forEach(file => {
+          setUploadProgress((prev) => ({ ...prev, [file.name]: 0 }));
+        });
+      }
+
+      // Subir usando FilesService que ahora usa Google Cloud Storage
+      const result = await FilesService.createGroup({
+        identifier,
+        description,
+        thumb: productImage,
+        carousel: carouselImages,
+      });
+
+      // Simular progreso visual
+      if (productImage) {
             setUploadProgress((prev) => ({
               ...prev,
-              [(productImage as File).name]: 100,
+          [productImage.name]: 100,
             }));
             currentFile++;
-            setTotalProgress(
-              Math.round((currentFile / totalFilesToUpload) * 100)
-            );
-            resolve(null);
-          }, 500)
-        );
+        setTotalProgress(Math.round((currentFile / totalFilesToUpload) * 100));
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
 
       if (carouselImages) {
         for (const file of carouselImages) {
-          setUploadProgress((prev) => ({ ...prev, [file.name]: 0 }));
-          await new Promise((resolve) =>
-            setTimeout(() => {
               setUploadProgress((prev) => ({ ...prev, [file.name]: 100 }));
               currentFile++;
-              setTotalProgress(
-                Math.round((currentFile / totalFilesToUpload) * 100)
-              );
-              resolve(null);
-            }, 500)
-          );
+          setTotalProgress(Math.round((currentFile / totalFilesToUpload) * 100));
+          await new Promise(resolve => setTimeout(resolve, 200));
         }
       }
+
+      return result;
     },
     onSuccess: () => {
       notification.success({
         message: "Éxito",
-        description: "Imágenes procesadas (simulación)",
+        description: "Imágenes subidas correctamente a Google Cloud Storage",
       });
       queryClient.invalidateQueries({ queryKey: ["imageGroupsModule"] });
       handleCloseModal();
@@ -310,22 +315,15 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
         return;
       }
 
-      // Enviar directamente los archivos al backend usando el nuevo método
-      await FilesService.createGroup({
+      // Usar la mutación que ya maneja Google Cloud Storage
+      await uploadMutation.mutateAsync({
         identifier: values.identifier,
         description: values.description,
-        // Thumb como archivo
-        thumb: productImageFile.originFileObj as File,
-        // Imágenes de carrusel como archivos
-        carousel: carouselImageFiles.map(f => f.originFileObj as File),
+        productImage: productImageFile.originFileObj as File,
+        carouselImages: carouselImageFiles.map(f => f.originFileObj as File),
       });
 
-      notification.success({
-        message: "Éxito",
-        description: "Imágenes subidas y grupo creado correctamente.",
-      });
-      queryClient.invalidateQueries({ queryKey: ["imageGroupsModule"] });
-      handleCloseModal();
+             // El success y la invalidación de queries se manejan en la mutación
     } catch (error: any) {
       notification.error({
         message: "Error",

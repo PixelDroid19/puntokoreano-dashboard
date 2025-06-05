@@ -178,7 +178,7 @@ const CategoriesManagement = () => {
 
     try {
       setUploadLoading(true);
-      const result = await FilesService.uploadToImgBB(file);
+      const result = await FilesService.uploadToGCS(file, 'categories');
       const imageData = {
         url: result.data.url,
         display_url: result.data.display_url,

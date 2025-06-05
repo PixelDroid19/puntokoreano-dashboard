@@ -29,6 +29,7 @@ import {
 } from "@ant-design/icons";
 import { motion, AnimatePresence } from "framer-motion";
 import { RcFile } from "antd/es/upload";
+import StorageService from "../../../../services/storage.service";
 
 const { Title, Text } = Typography;
 const { Dragger } = Upload;
@@ -103,6 +104,9 @@ interface MultimediaInformationProps {
   setVideoUrl?: React.Dispatch<React.SetStateAction<string>>;
   videoUrl?: string;
   form?: any; // Form instance opcional
+  uploadProgress?: Record<string, number>;
+  totalUploadProgress?: number;
+  isUploading?: boolean;
 }
 
 const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
@@ -116,6 +120,9 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
   setVideoUrl,
   videoUrl = "",
   form,
+  uploadProgress = {},
+  totalUploadProgress = 0,
+  isUploading = false,
 }) => {
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewImage, setPreviewImage] = useState("");
@@ -320,7 +327,7 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
     videoUrlRef.current = url;
   };
 
-  // Manejar subida de imagen principal
+  // Manejar preparación de imagen principal (sin subir inmediatamente)
   const handleThumbUpload = async (file: RcFile) => {
     try {
       // Validar la imagen
@@ -329,81 +336,45 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
         return false;
       }
       
-      // Mostrar una vista previa antes de subir
+      // Generar vista previa local usando base64
       const previewUrl = await getBase64(file);
       
-      // Crear un objeto de archivo temporal para mostrar mientras se sube
-      const tempFile: UploadFile = {
+      // Crear un objeto de archivo para almacenar localmente (sin subir aún)
+      const localFile: UploadFile = {
         uid: file.uid,
         name: file.name,
-        status: 'uploading',
-        percent: 0,
+        status: 'done',
+        url: previewUrl, // Usar base64 para vista previa local
+        thumbUrl: previewUrl,
         preview: previewUrl as string,
+        originFileObj: file, // Mantener referencia al archivo original para subir después
       };
       
-      // Establecer como imagen principal temporal
-      setThumbImage(tempFile);
+      // Establecer como imagen principal local
+      setThumbImage(localFile);
       
-      // Ahora subir el archivo
-      console.log("Iniciando carga de imagen principal...");
-      const result = await handleUpload(file);
-      console.log("Resultado de la carga:", result);
+      notification.success({
+        message: "Imagen principal preparada",
+        description: `"${file.name}" está lista para subir al crear el producto.`,
+        placement: "bottomRight",
+      });
       
-      if (result && typeof result === 'object' && 'url' in result) {
-        // Si recibimos un objeto con una URL, utilizamos esa información
-        const updatedFile: UploadFile = {
-          ...tempFile,
-          status: 'done',
-          percent: 100,
-          url: result.url,
-          thumbUrl: result.thumbUrl || result.url,
-          delete_url: result.delete_url,
-          preview: previewUrl as string,
-        };
-        
-        setThumbImage(updatedFile);
-        
-        // Actualizar el estado para reflejar que tenemos una nueva imagen principal
-        notification.success({
-          message: "Imagen principal",
-          description: "Se ha establecido la imagen principal correctamente",
-          placement: "bottomRight",
-        });
-      } else if (result === true) {
-        // Si solo recibimos true, mantenemos el archivo temporal pero lo marcamos como completado
-        const updatedFile: UploadFile = {
-          ...tempFile,
-          status: 'done',
-          percent: 100,
-        };
-        
-        setThumbImage(updatedFile);
-        
-        // Actualizar el estado para reflejar que tenemos una nueva imagen principal
-        notification.success({
-          message: "Imagen principal",
-          description: "Se ha establecido la imagen principal correctamente",
-          placement: "bottomRight",
-        });
-      } else {
-        // Si la subida falló, eliminamos la imagen temporal
-        console.error("La carga falló, eliminando imagen temporal");
-        setThumbImage(null);
-      }
+      console.log("Imagen principal preparada localmente:", file.name);
     } catch (error) {
-      console.error("Error al subir la imagen principal:", error);
-      setThumbImage(null);
+      console.error("Error preparando imagen principal:", error);
       notification.error({
-        message: "Error de subida",
-        description: "No se pudo subir la imagen principal. Por favor, inténtelo de nuevo.",
+        message: "Error de preparación",
+        description: `Error al preparar "${file.name}". ${
+          error instanceof Error ? error.message : "Error desconocido"
+        }`,
         placement: "bottomRight",
       });
     }
     
-    return false; // Prevenir comportamiento por defecto
+    return false; // Prevenir comportamiento por defecto de Upload
   };
 
-  // Manejar subida de imágenes de carrusel
+  // Manejar preparación de imágenes de carrusel (sin subir inmediatamente)
   const handleCarouselUpload = async (file: RcFile) => {
     try {
       // Verificar límite de imágenes
@@ -422,105 +393,65 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
         return false;
       }
       
-      // Mostrar una vista previa antes de subir
+      // Generar vista previa local usando base64
       const previewUrl = await getBase64(file);
       
-      // Crear un objeto de archivo temporal para mostrar mientras se sube
-      const tempFile: UploadFile = {
+      // Crear un objeto de archivo para almacenar localmente (sin subir aún)
+      const localFile: UploadFile = {
         uid: file.uid,
         name: file.name,
-        status: 'uploading',
-        percent: 0,
+        status: 'done',
+        url: previewUrl, // Usar base64 para vista previa local
+        thumbUrl: previewUrl,
         preview: previewUrl as string,
+        originFileObj: file, // Mantener referencia al archivo original para subir después
       };
       
-      // Agregar al carrusel temporalmente
-      setCarouselImages(prev => [...prev, tempFile]);
+      // Agregar al carrusel localmente
+      setCarouselImages(prev => [...prev, localFile]);
       
-      // Ahora subir el archivo
-      console.log("Iniciando carga de imagen de carrusel...");
-      const result = await handleUpload(file);
-      console.log("Resultado de la carga de carrusel:", result);
+      notification.success({
+        message: "Imagen de carrusel preparada",
+        description: `"${file.name}" está lista para subir al crear el producto.`,
+        placement: "bottomRight",
+      });
       
-      if (result && typeof result === 'object' && 'url' in result) {
-        // Si recibimos un objeto con una URL, utilizamos esa información
-        const updatedFile: UploadFile = {
-          ...tempFile,
-          status: 'done',
-          percent: 100,
-          url: result.url,
-          thumbUrl: result.thumbUrl || result.url,
-          delete_url: result.delete_url,
-          preview: previewUrl as string,
-        };
-        
-        // Reemplazar la imagen temporal con la imagen actualizada
-        setCarouselImages(prev => 
-          prev.map(img => img.uid === file.uid ? updatedFile : img)
-        );
-      } else if (result === true) {
-        // Si solo recibimos true, mantenemos el archivo temporal pero lo marcamos como completado
-        const updatedFile: UploadFile = {
-          ...tempFile,
-          status: 'done',
-          percent: 100,
-        };
-        
-        // Reemplazar la imagen temporal con la imagen actualizada
-        setCarouselImages(prev => 
-          prev.map(img => img.uid === file.uid ? updatedFile : img)
-        );
-      } else {
-        // Si la subida falló, eliminamos la imagen temporal
-        console.error("La carga de carrusel falló, eliminando imagen temporal");
-        setCarouselImages(prev => prev.filter(img => img.uid !== file.uid));
-      }
+      console.log("Imagen de carrusel preparada localmente:", file.name);
     } catch (error) {
-      console.error("Error al subir la imagen de carrusel:", error);
-      setCarouselImages(prev => prev.filter(img => img.uid !== file.uid));
+      console.error("Error preparando imagen de carrusel:", error);
       notification.error({
-        message: "Error de subida",
-        description: "No se pudo subir la imagen de carrusel. Por favor, inténtelo de nuevo.",
+        message: "Error de preparación",
+        description: `Error al preparar "${file.name}". ${
+          error instanceof Error ? error.message : "Error desconocido"
+        }`,
         placement: "bottomRight",
       });
     }
     
-    return false; // Prevenir comportamiento por defecto
+    return false; // Prevenir comportamiento por defecto de Upload
   };
 
   // Eliminar imagen principal
-  const handleRemoveThumb = () => {
+  const handleRemoveThumb = async () => {
     if (thumbImage) {
-      // Intentar eliminar la imagen del servidor imgbb si existe la URL de eliminación
-      if (thumbImage.delete_url) {
-        // Navegar a la URL de eliminación en una nueva pestaña
-        window.open(thumbImage.delete_url, '_blank');
-      }
-      
       setThumbImage(null);
-      notification.info({
-        message: "Imagen eliminada",
-        description: "Se ha eliminado la imagen principal",
+      
+      notification.success({
+        message: "Imagen principal eliminada",
+        description: "Se ha eliminado la imagen principal de la lista.",
         placement: "bottomRight",
       });
     }
   };
 
   // Eliminar imagen de carrusel
-  const handleRemoveCarouselImage = (uid: string) => {
-    // Encontrar la imagen para obtener su URL de eliminación
-    const imageToRemove = carouselImages.find(img => img.uid === uid);
-    
-    // Intentar eliminar la imagen del servidor imgbb si existe la URL de eliminación
-    if (imageToRemove && imageToRemove.delete_url) {
-      // Navegar a la URL de eliminación en una nueva pestaña
-      window.open(imageToRemove.delete_url, '_blank');
-    }
-    
+  const handleRemoveCarouselImage = async (uid: string) => {
+    // Remover de la lista local
     setCarouselImages(prev => prev.filter(img => img.uid !== uid));
-    notification.info({
-      message: "Imagen eliminada",
-      description: "Se ha eliminado la imagen del carrusel",
+    
+    notification.success({
+      message: "Imagen de carrusel eliminada",
+      description: "Se ha eliminado la imagen del carrusel de la lista.",
       placement: "bottomRight",
     });
   };
@@ -1269,6 +1200,56 @@ const MultimediaInformation: React.FC<MultimediaInformationProps> = ({
           </motion.div>
         </Col>
       </Row>
+
+      {/* Progreso de subida (igual que en CreateGroupModal) */}
+      {isUploading && Object.keys(uploadProgress).length > 0 && (
+        <Card size="small" bordered className="mt-6 bg-gray-50">
+          <Title level={5} style={{ marginBottom: 12, textAlign: "center" }}>
+            Subiendo Imágenes a Google Cloud Storage
+          </Title>
+          {Object.entries(uploadProgress).map(([fileName, progress]) => (
+            <div key={fileName} className="mb-3">
+              <div className="flex justify-between items-center mb-1">
+                <Text ellipsis style={{ maxWidth: "65%" }} className="text-sm">
+                  {fileName}
+                </Text>
+                <Text type="secondary" className="text-sm">
+                  {progress}%
+                </Text>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    progress === 100 ? 'bg-green-500' : 'bg-blue-500'
+                  }`}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          ))}
+          {Object.keys(uploadProgress).length > 1 && (
+            <>
+              <div className="border-t border-gray-300 my-4" />
+              <div className="flex justify-between items-center mb-1">
+                <Text strong className="text-base">
+                  Progreso Total
+                </Text>
+                <Text strong className="text-base">
+                  {totalUploadProgress}%
+                </Text>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div 
+                  className={`h-3 rounded-full transition-all duration-300 ${
+                    totalUploadProgress === 100 ? 'bg-green-500' : 'bg-blue-500'
+                  }`}
+                  style={{ width: `${totalUploadProgress}%` }}
+                />
+              </div>
+            </>
+          )}
+        </Card>
+      )}
 
       <Modal
         open={previewVisible}

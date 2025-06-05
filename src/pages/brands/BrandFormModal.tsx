@@ -79,7 +79,7 @@ const BrandFormModal: React.FC<{
 
     try {
       setUploadLoading(true);
-      const result = await FilesService.uploadToImgBB(file);
+      const result = await FilesService.uploadToGCS(file, 'brands');
 
       const imageData = {
         url: result.data.url,

@@ -38,7 +38,6 @@ import BasicInformation from "./form/BasicInformation";
 import MultimediaInformation from "./form/MultimediaInformation";
 import DescriptionInformation from "./form/DescriptionInformation";
 import SeoInformation from "./form/SeoInformation";
-import axios from "axios";
 
 const { TabPane } = Tabs;
 
@@ -100,6 +99,12 @@ const AddProduct = () => {
   const [videoUrl, setVideoUrl] = React.useState("");
   const [previewTitle, setPreviewTitle] = React.useState("");
 
+  // Estados para manejar imágenes como File objects hasta la subida final
+  const [thumbImageFile, setThumbImageFile] = React.useState<File | null>(null);
+  const [carouselImageFiles, setCarouselImageFiles] = React.useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = React.useState<Record<string, number>>({});
+  const [totalUploadProgress, setTotalUploadProgress] = React.useState(0);
+
   const { data: groups } = useQuery({
     queryKey: ["groups"],
     queryFn: getGroups,
@@ -120,6 +125,9 @@ const AddProduct = () => {
         description: NOTIFICATIONS.PRODUCT_CREATED,
         placement: "bottomRight",
       });
+      // Limpiar estados de progreso
+      setUploadProgress({});
+      setTotalUploadProgress(0);
       navigate("/products");
     },
     onError: (error: Error) => {
@@ -128,62 +136,51 @@ const AddProduct = () => {
         description: error.message || "Ocurrió un error inesperado.",
         placement: "bottomRight",
       });
+      // Limpiar estados de progreso en caso de error
+      setUploadProgress({});
+      setTotalUploadProgress(0);
     },
   });
 
+  // Función para manejar archivos localmente (sin subir inmediatamente)
   const handleUpload = async (file: RcFile) => {
-    const formData = new FormData();
-    formData.append("image", file);
-
     try {
-      // Obtener vista previa antes de la carga
+      // Solo generar vista previa y almacenar archivo localmente
       const previewBase64 = await getBase64(file);
 
-      const response = await axios.post(
-        `https://api.imgbb.com/1/upload?key=${
-          import.meta.env.VITE_IMGBB_API_KEY
-        }`,
-        formData
-      );
+      // Crear objeto para vista previa local
+      const localFile: ExtendedUploadFile = {
+        uid: file.uid,
+        name: file.name,
+        status: "done",
+        url: previewBase64, // Usar base64 para vista previa local
+        thumbUrl: previewBase64,
+        preview: previewBase64,
+        originFileObj: file, // Mantener referencia al archivo original
+      };
 
-      console.log("Respuesta ImgBB:", response.data);
+      setFileList((prevFileList) => [...prevFileList, localFile]);
 
-      if (response.data.success) {
-        const newFile: ExtendedUploadFile = {
-          uid: file.uid,
-          name: file.name,
-          status: "done",
-          url: response.data.data.url,
-          thumbUrl: response.data.data.thumb.url,
-          delete_url: response.data.data.delete_url,
-          preview: previewBase64,
-        };
-
-        setFileList((prevFileList) => [...prevFileList, newFile]);
-
-        notification.success({
-          message: "Imagen subida",
-          description: `"${file.name}" se ha subido correctamente.`,
-          placement: "bottomRight",
-        });
-        
-        // Devolver un objeto con toda la información de la imagen
-        return {
-          uid: file.uid,
-          name: file.name,
-          url: response.data.data.url,
-          thumbUrl: response.data.data.thumb.url,
-          delete_url: response.data.data.delete_url,
-          preview: previewBase64,
-        };
-      } else {
-        throw new Error(response.data?.error?.message || "Error desconocido en la subida");
-      }
+      notification.success({
+        message: "Imagen preparada",
+        description: `"${file.name}" está lista para subir al crear el producto.`,
+        placement: "bottomRight",
+      });
+      
+      // Devolver información del archivo local
+      return {
+        uid: file.uid,
+        name: file.name,
+        url: previewBase64,
+        thumbUrl: previewBase64,
+        preview: previewBase64,
+        file: file, // Archivo original para subir después
+      };
     } catch (error) {
-      console.error("Error uploading to ImgBB:", error);
+      console.error("Error preparando archivo:", error);
       notification.error({
-        message: "Error de subida",
-        description: `Error al subir "${file.name}". ${
+        message: "Error de preparación",
+        description: `Error al preparar "${file.name}". ${
           error instanceof Error ? error.message : "Error desconocido"
         }`,
         placement: "bottomRight",
@@ -286,7 +283,7 @@ const AddProduct = () => {
     });
   };
 
-  const onFinish = (values: any) => {
+  const onFinish = async (values: any) => {
     console.log("Valores recibidos del formulario:", values);
     setTabErrors({}); // Limpiar errores si la validación es exitosa
 
@@ -367,13 +364,13 @@ const AddProduct = () => {
       }
     }
 
-    // Extraer directamente thumb y carousel del formulario
-    let thumbUrl = values.thumb || undefined;
-    let carouselUrls = values.carousel || [];
+    // Subir imágenes y validar según el modo
+    let thumbUrl: string | undefined = undefined;
+    let carouselUrls: string[] = [];
 
-    // Validar que tengamos imágenes si no usamos un grupo
     if (!useGroupImages) {
-      if (!thumbUrl && fileList.length === 0) {
+      // Validar que tengamos imágenes si no usamos un grupo
+      if (fileList.length === 0) {
         notification.error({
           message: "Error de Validación",
           description: "Debe subir al menos una imagen manualmente si no usa un grupo.",
@@ -382,15 +379,29 @@ const AddProduct = () => {
         setActiveTab("2");
         return;
       }
-      
-      // Si no hay thumb en values pero hay fileList, tomamos el primero como thumb
-      if (!thumbUrl && fileList.length > 0 && fileList[0].url) {
-        thumbUrl = fileList[0].url;
-      }
-      
-      // Si no hay carousel en values pero hay más de una imagen en fileList, las usamos
-      if (carouselUrls.length === 0 && fileList.length > 1) {
-        carouselUrls = fileList.slice(1).map(file => file.url as string).filter(Boolean);
+
+      // Subir todas las imágenes pendientes
+      try {
+        notification.info({
+          message: "Subiendo imágenes",
+          description: "Subiendo imágenes a Google Cloud Storage...",
+          placement: "bottomRight",
+        });
+
+        const uploadResults = await uploadAllImages();
+        thumbUrl = uploadResults.thumbUrl;
+        carouselUrls = uploadResults.carouselUrls;
+
+        console.log("Imágenes subidas exitosamente:", { thumbUrl, carouselUrls });
+      } catch (error) {
+        console.error("Error subiendo imágenes:", error);
+        notification.error({
+          message: "Error subiendo imágenes",
+          description: "No se pudieron subir todas las imágenes. Por favor, inténtelo de nuevo.",
+        });
+        setTabErrors(prev => ({ ...prev, "2": (prev["2"] || 0) + 1 }));
+        setActiveTab("2");
+        return;
       }
     } else if (useGroupImages && !values.imageGroup) {
       notification.error({
@@ -401,9 +412,6 @@ const AddProduct = () => {
       setActiveTab("2");
       return;
     }
-
-    // Log para depuración
-    console.log("Imágenes que se enviarán:", { thumbUrl, carouselUrls });
 
     const productData: ProductCreateInput = {
       name: values.name,
@@ -478,6 +486,97 @@ const AddProduct = () => {
     );
   };
 
+  // Función para subir todas las imágenes pendientes al crear el producto
+  const uploadAllImages = async () => {
+    console.log("🔍 Verificando archivos para subir...");
+    console.log("📁 FileList total:", fileList.length);
+    console.log("📁 FileList contenido:", fileList.map(f => ({ 
+      name: f.name, 
+      hasOriginFileObj: !!f.originFileObj,
+      status: f.status 
+    })));
+    
+    const imagesToUpload = fileList.filter(file => file.originFileObj);
+    
+    console.log("📤 Imágenes para subir:", imagesToUpload.length);
+    
+    if (imagesToUpload.length === 0) {
+      console.log("⚠️ No hay imágenes para subir");
+      return { thumbUrl: undefined, carouselUrls: [] };
+    }
+
+    setUploadProgress({});
+    setTotalUploadProgress(0);
+
+    // Inicializar progreso para todos los archivos
+    imagesToUpload.forEach(file => {
+      setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
+    });
+
+    const uploadResults = {
+      thumbUrl: undefined as string | undefined,
+      carouselUrls: [] as string[]
+    };
+
+    try {
+      // Subir todas las imágenes en paralelo
+      for (let i = 0; i < imagesToUpload.length; i++) {
+        const file = imagesToUpload[i];
+        const originalFile = file.originFileObj as File;
+
+        try {
+          console.log(`Subiendo imagen ${i + 1}/${imagesToUpload.length}: ${file.name}`);
+          
+          // Simular progreso inicial
+          setUploadProgress(prev => ({ ...prev, [file.name]: 25 }));
+          
+          const uploadResult = await FilesService.uploadProductImage(originalFile, 'products/images');
+
+          if (uploadResult.success && uploadResult.data) {
+            // Determinar si es thumb o carousel basado en el orden (primer archivo = thumb)
+            if (i === 0) {
+              uploadResults.thumbUrl = uploadResult.data.url;
+            } else {
+              uploadResults.carouselUrls.push(uploadResult.data.url);
+            }
+
+            // Marcar como completado
+            setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
+            setTotalUploadProgress(Math.round(((i + 1) / imagesToUpload.length) * 100));
+
+            console.log(`✅ Imagen subida exitosamente: ${uploadResult.data.url}`);
+          } else {
+            throw new Error("Error en la respuesta del servidor");
+          }
+        } catch (error) {
+          console.error(`❌ Error subiendo ${file.name}:`, error);
+          // Continúar con los demás archivos aunque uno falle
+          setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
+          notification.error({
+            message: "Error subiendo imagen",
+            description: `No se pudo subir "${file.name}". Continuando con las demás...`,
+            placement: "bottomRight",
+          });
+        }
+
+        // Pequeña pausa para mostrar el progreso
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      console.log("✅ Todas las imágenes subidas exitosamente");
+      return uploadResults;
+    } catch (error) {
+      console.error("Error general en subida de imágenes:", error);
+      throw error;
+    } finally {
+      // Limpiar progreso al final
+      setTimeout(() => {
+        setUploadProgress({});
+        setTotalUploadProgress(0);
+      }, 2000);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <Flex align="center" gap={10} className="mb-6">
@@ -527,6 +626,9 @@ const AddProduct = () => {
               handlePreview={handlePreview}
               imageGroups={imageGroups}
               form={form}
+              uploadProgress={uploadProgress}
+              totalUploadProgress={totalUploadProgress}
+              isUploading={saveProduct.isPending}
             />
           </TabPane>
 
@@ -549,7 +651,12 @@ const AddProduct = () => {
             size="large"
             loading={saveProduct.isPending}
           >
-            {saveProduct.isPending ? "Guardando..." : "Guardar Producto"}
+            {saveProduct.isPending 
+              ? totalUploadProgress > 0 && totalUploadProgress < 100
+                ? `Subiendo imágenes... (${totalUploadProgress}%)`
+                : "Guardando producto..."
+              : "Guardar Producto"
+            }
           </Button>
         </div>
       </Form>

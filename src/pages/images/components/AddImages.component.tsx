@@ -27,7 +27,7 @@ const AddImages: React.FC = () => {
   >({});
   const [totalProgress, setTotalProgress] = React.useState(0);
 
-  // Mutación para subir imágenes
+  // Mutación para subir imágenes usando Google Cloud Storage
   const uploadMutation = useMutation({
     mutationFn: async ({
       identifier,
@@ -36,30 +36,33 @@ const AddImages: React.FC = () => {
       identifier: string;
       files: File[];
     }) => {
-      let progress = 0;
       const totalFiles = files.length;
 
-      for (const file of files) {
-        // Inicializar progreso para cada archivo
+      // Inicializar progreso para todos los archivos
+      files.forEach(file => {
         setUploadProgress((prev) => ({
           ...prev,
           [file.name]: 0,
         }));
+      });
 
-        // Subir archivo individual
-        await FilesService.uploadImages(identifier, [file], (progressEvent) => {
-          const fileProgress = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
+      // Subir todas las imágenes a la vez usando Google Cloud Storage
+      const result = await FilesService.uploadImages(identifier, files);
+
+      // Simular progreso para cada archivo (ya que GCS no provee progreso detallado)
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
           setUploadProgress((prev) => ({
             ...prev,
-            [file.name]: fileProgress,
+          [file.name]: 100,
           }));
-        });
+        setTotalProgress(Math.round(((i + 1) / totalFiles) * 100));
 
-        progress += 1;
-        setTotalProgress(Math.round((progress / totalFiles) * 100));
+        // Pequeña pausa para mostrar el progreso
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
+
+      return result;
     },
     onSuccess: () => {
       notification.success({
