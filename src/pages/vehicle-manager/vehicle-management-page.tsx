@@ -9,7 +9,7 @@ import { AlertTriangle, Car, Upload, Settings, LineChart, Clock } from "lucide-r
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import VehicleView from "./vehicle-view";
 import ApplicabilityGroupsView from "./applicability-groups-view";
-import VehicleImport from "./components/vehicle-import";
+
 import PerformanceMetricsViewer from "./components/performance-metrics-viewer";
 
 // Importar el archivo CSS de aplicabilidad para tener estilos coherentes
@@ -79,13 +79,7 @@ export default function VehicleManagement() {
             <Car className="h-5 w-5" />
             <span>Vehículos</span>
           </TabsTrigger>
-          <TabsTrigger 
-            value="import" 
-            className="flex items-center gap-3 px-6 py-3 text-base data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm"
-          >
-            <Upload className="h-5 w-5" />
-            <span>Importar Excel</span>
-          </TabsTrigger>
+     
           <TabsTrigger 
             value="metrics" 
             className="flex items-center gap-3 px-6 py-3 text-base data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm"
@@ -107,12 +101,7 @@ export default function VehicleManagement() {
             <VehicleView />
           </div>
         </TabsContent>
-        
-        <TabsContent value="import" className="fade-in">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
-            <VehicleImport />
-          </div>
-        </TabsContent>
+     
         
         <TabsContent value="metrics" className="fade-in">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

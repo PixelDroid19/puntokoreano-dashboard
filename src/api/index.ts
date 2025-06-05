@@ -640,6 +640,24 @@ const ENDPOINTS: Endpoints = {
         method: "DELETE",
       },
     },
+    STORAGE: {
+      UPLOAD_SINGLE: {
+        url: `${BASE_URL}/storage/upload`,
+        method: "POST",
+      },
+      UPLOAD_MULTIPLE: {
+        url: `${BASE_URL}/storage/upload/multiple`,
+        method: "POST",
+      },
+      DELETE_FILE: {
+        url: `${BASE_URL}/storage/files/:filename`,
+        method: "DELETE",
+      },
+      LIST_FILES: {
+        url: `${BASE_URL}/storage/files`,
+        method: "GET",
+      },
+    },
   },
 };
 

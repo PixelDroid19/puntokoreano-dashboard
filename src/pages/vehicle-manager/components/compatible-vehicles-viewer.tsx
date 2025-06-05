@@ -91,11 +91,11 @@ const CompatibleVehiclesViewer: React.FC<CompatibleVehiclesViewerProps> = ({ gro
     },
     {
       title: "Modelo",
-      dataIndex: ["model_id", "name"],
+      dataIndex: ["model_id", "year"],
       key: "model",
       render: (text: string, record: any) => {
-        const year = record.model_id?.year ? `(${record.model_id.year})` : "";
-        return text ? `${text} ${year}` : "N/A";
+        
+        return text ? `${text}` : "N/A";
       }
     },
     {

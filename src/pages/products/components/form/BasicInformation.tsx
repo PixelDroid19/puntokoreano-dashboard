@@ -15,6 +15,8 @@ import {
   Tooltip,
   Divider,
   notification,
+  Alert,
+  Space,
 } from "antd";
 import {
   TagOutlined,
@@ -31,6 +33,8 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   GroupOutlined,
+  WarningOutlined,
+  BulbOutlined,
 } from "@ant-design/icons";
 import { motion, useReducedMotion } from "framer-motion";
 import VehicleSelector from "../../../vehicle-manager/selectors/vehicle-selector";
@@ -52,6 +56,17 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
   handleGroupChange,
 }) => {
   const [activeField, setActiveField] = useState<string | null>(null);
+  const [vehicleCompatibilityWarnings, setVehicleCompatibilityWarnings] = useState<{
+    hasIndividualVehicles: boolean;
+    hasApplicabilityGroups: boolean;
+    shouldSuggestGroups: boolean;
+    totalVehicles: number;
+  }>({
+    hasIndividualVehicles: false,
+    hasApplicabilityGroups: false,
+    shouldSuggestGroups: false,
+    totalVehicles: 0,
+  });
   const prefersReducedMotion = useReducedMotion();
 
   const cardAnimation = prefersReducedMotion
@@ -86,6 +101,86 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
   const watchedApplicabilityGroups = Form.useWatch("applicabilityGroups", form);
   const watchedDiscount = Form.useWatch("discount", form);
 
+  // Efecto para analizar compatibilidad de vehículos
+  useEffect(() => {
+    const hasIndividual = watchedCompatibleVehicles && watchedCompatibleVehicles.length > 0;
+    const hasGroups = watchedApplicabilityGroups && watchedApplicabilityGroups.length > 0;
+    const shouldSuggest = hasIndividual && watchedCompatibleVehicles.length >= 5;
+    
+    setVehicleCompatibilityWarnings({
+      hasIndividualVehicles: hasIndividual,
+      hasApplicabilityGroups: hasGroups,
+      shouldSuggestGroups: shouldSuggest,
+      totalVehicles: (watchedCompatibleVehicles?.length || 0) + (watchedApplicabilityGroups?.length || 0),
+    });
+
+    // Notificación inteligente cuando se seleccionan muchos vehículos individuales
+    if (shouldSuggest && !hasGroups) {
+      notification.info({
+        message: "Sugerencia: Considera usar Grupos de Aplicabilidad",
+        description: `Has seleccionado ${watchedCompatibleVehicles.length} vehículos individuales. Los grupos de aplicabilidad podrían ser más eficientes.`,
+        placement: "bottomRight",
+        icon: <BulbOutlined style={{ color: "#faad14" }} />,
+        duration: 8,
+      });
+    }
+  }, [watchedCompatibleVehicles, watchedApplicabilityGroups]);
+
+  // Función para renderizar alertas de compatibilidad
+  const renderCompatibilityAlerts = () => {
+    const { hasIndividualVehicles, hasApplicabilityGroups, shouldSuggestGroups } = vehicleCompatibilityWarnings;
+
+    if (!hasIndividualVehicles && !hasApplicabilityGroups) return null;
+
+    return (
+      <div className="space-y-3 mt-4">
+        {/* Alerta informativa cuando se usan ambos */}
+        {hasIndividualVehicles && hasApplicabilityGroups && (
+          <Alert
+            message="Usando Vehículos Individuales + Grupos de Aplicabilidad"
+            description="Estás combinando ambos métodos. El sistema evitará automáticamente duplicados, pero asegúrate de que esta combinación sea necesaria."
+            type="info"
+            icon={<InfoCircleOutlined />}
+            showIcon
+            closable
+          />
+        )}
+
+        {/* Sugerencia para usar grupos */}
+        {shouldSuggestGroups && !hasApplicabilityGroups && (
+          <Alert
+            message="Considera usar Grupos de Aplicabilidad"
+            description={`Has seleccionado ${watchedCompatibleVehicles?.length} vehículos individuales. Para productos con muchas compatibilidades, los grupos son más eficientes.`}
+            type="warning"
+            icon={<BulbOutlined />}
+            showIcon
+            closable
+          />
+        )}
+
+        {/* Información sobre cobertura total */}
+        {(hasIndividualVehicles || hasApplicabilityGroups) && (
+          <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+            <Space>
+              <InfoCircleOutlined className="text-blue-600" />
+              <span className="text-blue-800 font-medium">Cobertura de Compatibilidad:</span>
+            </Space>
+            <div className="mt-2 text-blue-700">
+              {hasIndividualVehicles && (
+                <div>• {watchedCompatibleVehicles?.length || 0} vehículos seleccionados individualmente</div>
+              )}
+              {hasApplicabilityGroups && (
+                <div>• {watchedApplicabilityGroups?.length || 0} grupos de aplicabilidad seleccionados</div>
+              )}
+              <div className="text-xs text-blue-600 mt-1">
+                El sistema combinará automáticamente todos los vehículos compatibles y eliminará duplicados.
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="p-6 min-h-screen">
@@ -464,8 +559,6 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
                           });
                         }
                       }}
-                      onFocus={() => setActiveField("discount_isActive")}
-                      onBlur={() => setActiveField(null)}
                     />
                     {watchedDiscount?.isActive && (
                       <Badge
@@ -901,6 +994,17 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
 
               <Divider className="my-4" />
 
+              <div className="mb-4">
+                <Typography.Title level={5} className="text-gray-700 mb-2 flex items-center">
+                  <CarOutlined className="mr-2 text-blue-600" />
+                  Compatibilidad de Vehículos
+                </Typography.Title>
+                <Typography.Text className="text-gray-500 text-sm">
+                  Define con qué vehículos es compatible este producto. Puedes usar vehículos individuales, 
+                  grupos de aplicabilidad, o ambos según tus necesidades.
+                </Typography.Text>
+              </div>
+
               <div
                 className={`transition-all duration-200 ${
                   activeField === "compatible_vehicles"
@@ -913,20 +1017,19 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
                   label={
                     <div className="flex items-center">
                       <CarOutlined className="mr-1 text-blue-600" />
-                      <span>Vehículos Compatibles / Aplicaciones </span>
+                      <span>Vehículos Compatibles Individuales</span>
                       {renderFieldHelp(
-                        "Vehículos Compatibles",
-                        "Seleccione los vehículos con los que este producto es compatible. Los IDs se guardarán para el backend."
+                        "Vehículos Compatibles Individuales",
+                        "Selecciona vehículos específicos uno por uno. Ideal para productos con compatibilidades muy específicas o pocas compatibilidades."
                       )}
                     </div>
                   }
                 >
                   <VehicleSelector
                     isMulti={true}
-                    placeholder="Buscar vehículos compatibles..."
+                    placeholder="Buscar vehículos compatibles específicos..."
                     onFocus={() => setActiveField("compatible_vehicles")}
                     onBlur={() => setActiveField(null)}
-                    // onChange={handleVehicleChange}
                   />
                 </Form.Item>
               </div>
@@ -942,11 +1045,11 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
                   name="applicabilityGroups"
                   label={
                     <div className="flex items-center">
-                      <TagsOutlined className="mr-1 text-purple-600" />
+                      <GroupOutlined className="mr-1 text-purple-600" />
                       <span>Grupos de Aplicabilidad</span>
                       {renderFieldHelp(
                         "Grupos de Aplicabilidad",
-                        "Seleccione grupos de aplicabilidad predefinidos que contengan múltiples vehículos compatibles. Estos grupos facilitan la gestión de productos que son compatibles con muchos vehículos."
+                        "Selecciona grupos predefinidos que contienen múltiples vehículos. Ideal para productos compatibles con muchos vehículos o familias completas de vehículos."
                       )}
                     </div>
                   }
@@ -959,6 +1062,9 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
                   />
                 </Form.Item>
               </div>
+
+              {/* Alertas y sugerencias de compatibilidad */}
+              {renderCompatibilityAlerts()}
 
               <div
                 className={`transition-all duration-200 ${

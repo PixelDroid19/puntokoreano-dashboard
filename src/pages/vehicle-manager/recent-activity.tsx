@@ -62,58 +62,49 @@ export default function RecentActivity({ activities = [], showTitle = false }: R
     <motion.div
       initial={{ y: 20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.5, delay: 0.1 }} // Slightly faster delay
+      transition={{ duration: 0.5, delay: 0.1 }}
+      className="h-full flex flex-col"
     >
       {showTitle && (
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-6">
           <Clock className="w-5 h-5 text-gray-500" />
           <h2 className="text-lg font-semibold">Actividad Reciente (Vehículos)</h2>
         </div>
       )}
 
-      <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2"> {/* Added max-height and scroll */}
+      <div className="flex-1 space-y-4 max-h-[calc(100vh-200px)] min-h-[500px] lg:min-h-[600px] xl:min-h-[700px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
         {activities.length === 0 ? (
+          <div className="flex items-center justify-center h-full min-h-[200px]">
           <p className="text-gray-500 text-sm text-center py-4">No hay actividades recientes</p>
+          </div>
         ) : (
           <AnimatePresence initial={false}>
             {activities.map((activity, index) => (
               <motion.div
-                // Use a more robust key if API provides unique IDs for activities
                 key={activity.details?.id || `${activity.type}-${activity.timestamp}-${index}`}
                 initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: 20, opacity: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }} // Faster delay for lists
-                className="flex items-start gap-3 p-2 hover:bg-gray-50/80 rounded-md transition-colors duration-150"
+                transition={{ duration: 0.3, delay: index * 0.05 }}
+                className="flex items-start gap-4 p-4 hover:bg-gray-50/80 rounded-lg transition-all duration-200 border border-transparent hover:border-gray-200 hover:shadow-sm"
               >
                 <motion.div
-                  className={`p-2 rounded-full ${getBackgroundColor(activity.type)} flex-shrink-0`}
+                  className={`p-3 rounded-full ${getBackgroundColor(activity.type)} flex-shrink-0 shadow-sm`}
                   whileHover={{ rotate: 10, scale: 1.1 }}
                   transition={{ type: "spring", stiffness: 300, damping: 15 }}
                 >
                   {getIcon(activity.type)}
                 </motion.div>
-                <div className="flex-1 min-w-0"> {/* Ensure text doesn't overflow */}
-                  <p className="font-medium text-sm truncate">{activity.title}</p>
-                  <p className="text-sm text-gray-600 line-clamp-2">{activity.description}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{formatTimeAgo(activity.timestamp)}</p>
+                <div className="flex-1 min-w-0 space-y-1">
+                  <p className="font-semibold text-base text-gray-800 truncate">{activity.title}</p>
+                  <p className="text-sm text-gray-600 leading-relaxed break-words">{activity.description}</p>
+                  <p className="text-xs text-gray-500 mt-2 font-medium">{formatTimeAgo(activity.timestamp)}</p>
                 </div>
               </motion.div>
             ))}
           </AnimatePresence>
         )}
       </div>
-
-      {activities.length > 0 && (
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="w-full mt-4 text-sm text-gray-600 flex items-center justify-center gap-1 py-2 hover:bg-gray-100 rounded-md transition-all duration-200"
-        >
-          Ver más actividades {/* Adjusted text */}
-          <ChevronRight className="w-4 h-4" />
-        </motion.button>
-      )}
     </motion.div>
   );
 }

@@ -303,6 +303,12 @@ export interface Endpoints {
       UPDATE: ApiEndpoint;
       DELETE: ApiEndpoint;
     };
+    STORAGE: {
+      UPLOAD_SINGLE: ApiEndpoint;
+      UPLOAD_MULTIPLE: ApiEndpoint;
+      DELETE_FILE: ApiEndpoint;
+      LIST_FILES: ApiEndpoint;
+    };
   };
 }
 

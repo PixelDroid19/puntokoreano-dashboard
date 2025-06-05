@@ -11,15 +11,23 @@ import {
   Switch,
   message,
   Tooltip,
+  Divider,
 } from "antd";
 import {
   EditOutlined,
   DeleteOutlined,
   SearchOutlined,
   PlusOutlined,
+  DownloadOutlined,
+  UploadOutlined,
+  FileExcelOutlined,
+  InfoCircleOutlined,
 } from "@ant-design/icons";
 import VehicleFamiliesService, { GetVehiclesResponse } from "../../services/vehicle-families.service";
 import VehicleMainForm from "./forms/VehicleMainForm";
+import VehicleImportModal from "./components/VehicleImportModal";
+import { axiosInstance } from "../../utils/axios-interceptor";
+import ENDPOINTS from "../../api";
 
 interface Vehicle {
   _id: string;
@@ -55,6 +63,7 @@ const VehicleView: React.FC = () => {
   const [searchText, setSearchText] = useState("");
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
 
@@ -165,7 +174,17 @@ const VehicleView: React.FC = () => {
 
   const columns = [
     {
-      title: "Identificador",
+      title: (
+        <div className="flex items-center gap-1">
+          <span>Identificador del Vehículo</span>
+          <Tooltip 
+            title="Este es el identificador único asignado al vehículo al momento de crearlo. Se utiliza para asociar el vehículo con productos cuando se cargan mediante Excel."
+            placement="top"
+          >
+            <InfoCircleOutlined className="text-blue-500 cursor-help text-xs" />
+          </Tooltip>
+        </div>
+      ),
       dataIndex: "tag_id",
       key: "tag_id",
     },
@@ -240,6 +259,36 @@ const VehicleView: React.FC = () => {
       ),
     },
   ];
+
+  // Función para descargar plantilla
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await axiosInstance.get(ENDPOINTS.VEHICLES.DOWNLOAD_TEMPLATE.url, {
+        responseType: 'blob',
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'plantilla_vehiculos.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      message.success('Plantilla descargada exitosamente');
+    } catch (error) {
+      console.error('Error descargando plantilla:', error);
+      message.error('Error al descargar la plantilla');
+    }
+  };
+
+  // Manejar éxito de importación
+  const handleImportSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+    message.success("Vehículos importados exitosamente");
+  };
+
   return (
     <div>
       <div
@@ -270,6 +319,59 @@ const VehicleView: React.FC = () => {
             Buscar
           </Button>
         </Space>
+        
+        <Space.Compact>
+          {/* Botón para descargar plantilla */}
+          <Tooltip 
+            title={
+              <div>
+                <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Plantilla Excel para Vehículos</div>
+                <div style={{ fontSize: '12px' }}>
+                  Descarga la plantilla con el formato correcto incluyendo:
+                  <br />• Campos obligatorios: MARCA, FAMILIA, AÑO, TRANSMISION, COMBUSTIBLE
+                  <br />• Campos opcionales: MOTOR, PRECIO, COLOR
+                  <br />• Ejemplos de datos válidos
+                </div>
+              </div>
+            }
+            placement="topRight"
+          >
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={handleDownloadTemplate}
+              style={{ borderRadius: '6px 0 0 6px' }}
+            >
+              Descargar Plantilla
+            </Button>
+          </Tooltip>
+
+          {/* Botón para importar */}
+          <Tooltip 
+            title={
+              <div>
+                <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Importar Vehículos desde Excel</div>
+                <div style={{ fontSize: '12px' }}>
+                  Sube un archivo Excel con múltiples vehículos:
+                  <br />• Formato: .xlsx o .xls (máx. 10MB)
+                  <br />• Procesamiento por lotes configurable
+                  <br />• Validación automática de datos
+                  <br />• Reporte detallado de errores y advertencias
+                </div>
+              </div>
+            }
+            placement="topLeft"
+          >
+            <Button
+              icon={<UploadOutlined />}
+              onClick={() => setIsImportModalVisible(true)}
+              style={{ borderRadius: '0 6px 6px 0', borderLeft: 'none' }}
+            >
+              Importar Excel
+            </Button>
+          </Tooltip>
+
+          <Divider type="vertical" style={{ height: '100%', margin: '0 12px' }} />
+
         <Button
           type="primary"
           icon={<PlusOutlined style={{ fontSize: 16 }} />}
@@ -281,6 +383,7 @@ const VehicleView: React.FC = () => {
         >
           Nuevo Vehículo
         </Button>
+        </Space.Compact>
       </div>
 
       <Table
@@ -301,6 +404,7 @@ const VehicleView: React.FC = () => {
         scroll={{ x: "max-content" }}
       />
 
+      {/* Modal para crear/editar vehículo */}
       <Modal
         title={editingVehicle ? "Editar Vehículo" : "Añadir Vehículo"}
         open={isModalVisible}
@@ -312,6 +416,13 @@ const VehicleView: React.FC = () => {
       >
         <VehicleMainForm />
       </Modal>
+
+      {/* Modal para importar vehículos */}
+      <VehicleImportModal
+        visible={isImportModalVisible}
+        onClose={() => setIsImportModalVisible(false)}
+        onSuccess={handleImportSuccess}
+      />
     </div>
   );
 };

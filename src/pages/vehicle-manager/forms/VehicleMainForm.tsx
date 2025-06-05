@@ -105,7 +105,7 @@ export default function VehicleMainForm() {
           page: 1,
           limit: 1,
           sortBy: "createdAt",
-          sortOrder: "desc",
+          sortOrder: "desc" as "desc" | "asc",
           tag_id: data.tag_id.trim(),
         };
         const response = await VehicleFamiliesService.getVehicles(params);
@@ -236,23 +236,21 @@ export default function VehicleMainForm() {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        
-        
             <div>
               <div className="flex items-center gap-2">
                 <label htmlFor="tag_id" className="block text-sm font-medium mb-1 text-gray-700">
-                  Identificador Único <span className="text-red-500">*</span>
+                  Identificador del Vehículo <span className="text-red-500">*</span>
                 </label>
-                <Tooltip title="Ingresa un identificador único para el vehículo. Solo se permiten letras, números, guiones y guiones bajos. Este campo es obligatorio y no puede repetirse.">
+                <Tooltip title="Este es el identificador único asignado al vehículo al momento de crearlo. Se utiliza para asociar el vehículo con productos cuando se cargan mediante Excel.">
                   <InfoCircleOutlined className="text-blue-500 cursor-help" />
                 </Tooltip>
               </div>
               <div className="relative">
                 <Input
                   id="tag_id"
-                  placeholder="Ingrese el identificador único del vehículo"
+                  placeholder="Ingrese el identificador del vehículo"
                   {...register("tag_id", {
-                    required: "El identificador único es requerido",
+                    required: "El identificador del vehículo es requerido",
                     pattern: {
                       value: /^[\p{L}0-9_-]+$/u,
                       message: "Solo se permiten letras, números, guiones y guiones bajos",
@@ -269,7 +267,7 @@ export default function VehicleMainForm() {
                 )}
               </div>
               {errors.tag_id && (
-                <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-sm text-red-500 mt-1">
+                <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-red-500 text-sm mt-1">
                   {errors.tag_id.message}
                 </motion.p>
               )}

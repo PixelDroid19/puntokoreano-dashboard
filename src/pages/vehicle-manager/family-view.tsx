@@ -36,7 +36,7 @@ const FamilyView: React.FC = () => {
     page: 1,
     limit: 10,
     sortBy: "name",
-    sortOrder: "asc",
+    sortOrder: "asc" as "asc" | "desc",
     search: "",
     activeOnly: true,
     brand_id: null,
@@ -193,7 +193,7 @@ const FamilyView: React.FC = () => {
     },
     {
       title: "Marca",
-      dataIndex: ["brand", "name"],
+      dataIndex: ["brand_id", "name"],
       key: "brand",
       sorter: true,
     },
@@ -314,7 +314,7 @@ const FamilyView: React.FC = () => {
         onCancel={handleModalCancel}
         footer={null}
         destroyOnClose
-      >{console.log("editingFamily", editingFamily)}
+      >
         {editingFamily ? (
           <FamilyForm
             mode="edit"

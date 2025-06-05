@@ -26,8 +26,10 @@ import {
   DatabaseOutlined,
   ShopOutlined,
   InfoCircleOutlined,
+  CloudUploadOutlined,
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
+import StorageTestModal from "../../../components/storage/StorageTestModal";
 
 const { Title, Text } = Typography;
 
@@ -104,6 +106,7 @@ const HeaderTable = () => {
   const queryClient = useQueryClient();
   const [exportLimit, setExportLimit] = useState<number>();
   const [isExportModalVisible, setIsExportModalVisible] = useState(false);
+  const [isStorageTestModalOpen, setIsStorageTestModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleClick = () => {
@@ -255,6 +258,15 @@ const HeaderTable = () => {
                 Excel
               </Button>
             </Dropdown>
+         {/*    <Button
+              onClick={() => setIsStorageTestModalOpen(true)}
+              icon={<CloudUploadOutlined />}
+              size="large"
+              className="hover:bg-blue-50 transition-colors"
+              title="Probar Google Cloud Storage"
+            >
+              Storage
+            </Button> */}
             <input
               ref={inputRef}
               type="file"
@@ -308,6 +320,12 @@ const HeaderTable = () => {
           </div>
         </Space>
       </Modal>
+
+      {/* Modal de prueba de Storage */}
+    {/*   <StorageTestModal
+        open={isStorageTestModalOpen}
+        onClose={() => setIsStorageTestModalOpen(false)}
+      /> */}
     </div>
   );
 };

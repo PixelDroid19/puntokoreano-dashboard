@@ -358,8 +358,7 @@ const ApplicabilityGroupsView: React.FC = () => {
     <div className="space-y-4">
       {/* Controles y filtros */}
       <Card size="default" bodyStyle={{ padding: "16px" }}>
-        <div className="flex flex-wrap gap-4 justify-between">
-          <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3 items-center">
             <Input
               placeholder="Buscar grupos..."
               value={searchText}
@@ -396,27 +395,56 @@ const ApplicabilityGroupsView: React.FC = () => {
               <Option value="true">Activos</Option>
               <Option value="false">Inactivos</Option>
             </Select>
-          </div>
           
-          <div className="flex flex-wrap gap-3">
-            <Button onClick={resetFilters} icon={<FilterOutlined />} size="large">
-              Limpiar
+          {/* Separador visual */}
+          <div className="hidden sm:block w-px h-8 bg-gray-200 mx-1" />
+          
+          {/* Acciones */}
+          <Tooltip title="Limpiar filtros">
+            <Button 
+              onClick={resetFilters} 
+              icon={<FilterOutlined />} 
+              size="large"
+              className="sm:min-w-0"
+            >
+              <span className="hidden md:inline">Limpiar</span>
             </Button>
-            <Button onClick={handleSearch} type="primary" icon={<SearchOutlined />} size="large">
-              Buscar
+          </Tooltip>
+          
+          <Tooltip title="Buscar grupos">
+            <Button 
+              onClick={handleSearch} 
+              type="primary" 
+              icon={<SearchOutlined />} 
+              size="large"
+              className="sm:min-w-0"
+            >
+              <span className="hidden md:inline">Buscar</span>
             </Button>
-            <Button onClick={handleExport} icon={<ExportOutlined />} size="large">
-              Exportar
+          </Tooltip>
+          
+          <Tooltip title="Exportar datos">
+            <Button 
+              onClick={handleExport} 
+              icon={<ExportOutlined />} 
+              size="large"
+              className="sm:min-w-0"
+            >
+              <span className="hidden md:inline">Exportar</span>
             </Button>
+          </Tooltip>
+          
+          <Tooltip title="Crear nuevo grupo">
             <Button
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => setIsModalVisible(true)}
               size="large"
+              className="sm:min-w-0"
             >
-              Nuevo
+              <span className="hidden md:inline">Nuevo</span>
             </Button>
-          </div>
+          </Tooltip>
         </div>
       </Card>
 
@@ -428,6 +456,10 @@ const ApplicabilityGroupsView: React.FC = () => {
           rowKey="_id"
           onChange={handleTableChange}
           pagination={{
+            style: {
+              marginBottom: '20px',
+              padding: '0 16px 16px 16px',
+            },
             current: paginationData?.currentPage || 1,
             total: paginationData?.totalItems || 0,
             pageSize: paginationData?.itemsPerPage || 10,
@@ -439,7 +471,7 @@ const ApplicabilityGroupsView: React.FC = () => {
           }}
           scroll={{ x: 900 }}
           size="middle"
-          style={{ fontSize: '15px' }}
+          style={{ fontSize: '20px' }}
           columns={[
             {
               title: "Nombre",

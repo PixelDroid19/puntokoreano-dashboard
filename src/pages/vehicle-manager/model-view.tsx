@@ -66,7 +66,13 @@ const ModelView: React.FC = () => {
   // Obtener familias para el filtro y el formulario
   const { data: familiesData } = useQuery({
     queryKey: ["families"],
-    queryFn: () => VehicleFamiliesService.getFamilies({ page: 1, limit: 100, sortBy: "name", sortOrder: "asc" }),
+    queryFn: () =>
+      VehicleFamiliesService.getFamilies({
+        page: 1,
+        limit: 100,
+        sortBy: "name",
+        sortOrder: "asc",
+      }),
   });
 
   const modelsData = apiResponse?.models;
@@ -177,7 +183,7 @@ const ModelView: React.FC = () => {
           familyId: values.family_id,
           year: values.year.toString(),
           engineType: values.engine_type,
-          active: values.active
+          active: values.active,
         };
 
         if (editingModel) {
@@ -201,12 +207,6 @@ const ModelView: React.FC = () => {
   };
 
   const columns = [
-    {
-      title: "Nombre",
-      dataIndex: "name",
-      key: "name",
-      sorter: true,
-    },
     {
       title: "Año",
       dataIndex: "year",
@@ -311,7 +311,7 @@ const ModelView: React.FC = () => {
             options={
               familiesData?.families?.map((family) => ({
                 value: family._id,
-                label: `${family.brand_id?.name || ''} - ${family.name}`,
+                label: `${family.brand_id?.name || ""} - ${family.name}`,
               })) || []
             }
           />
@@ -370,7 +370,9 @@ const ModelView: React.FC = () => {
                   form.resetFields();
                 })
                 .catch((error) => {
-                  message.error(error?.message || "Error al actualizar el modelo");
+                  message.error(
+                    error?.message || "Error al actualizar el modelo"
+                  );
                 });
             }}
           />
@@ -382,4 +384,4 @@ const ModelView: React.FC = () => {
   );
 };
 
-export default ModelView; 
+export default ModelView;
