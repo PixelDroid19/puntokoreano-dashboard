@@ -80,19 +80,21 @@ export default function VehicleManagement() {
             <span>Vehículos</span>
           </TabsTrigger>
      
+        
+          <TabsTrigger 
+            value="setup" 
+            className="flex items-center gap-3 px-6 py-3 text-base data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm"
+          >
+            <Settings className="h-5 w-5" />
+            <span>Gestión de Vehículos</span>
+          </TabsTrigger>
+
           <TabsTrigger 
             value="metrics" 
             className="flex items-center gap-3 px-6 py-3 text-base data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm"
           >
             <LineChart className="h-5 w-5" />
             <span>Métricas</span>
-          </TabsTrigger>
-          <TabsTrigger 
-            value="setup" 
-            className="flex items-center gap-3 px-6 py-3 text-base data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm"
-          >
-            <Settings className="h-5 w-5" />
-            <span>Configuración</span>
           </TabsTrigger>
         </TabsList>
         

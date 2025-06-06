@@ -26,7 +26,7 @@ export default function VehicleForm({...props}) {
       {...props}
     >
       <div className="p-6">
-        <h2 className="text-xl font-semibold mb-4">Gestión de Vehículos</h2>
+        <h2 className="text-xl font-semibold mb-4">Configuración de vehículos</h2>
 
         <Tabs className="w-full" defaultValue="marca">
           <TabsList className="grid grid-cols-6 mb-6 border-b">

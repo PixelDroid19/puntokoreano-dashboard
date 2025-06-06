@@ -76,8 +76,8 @@ const menuItems = [
     children: [
       {
         key: "/vehicle-families",
-        label: <Link to={"/vehicle-families"}>Creación de vehículos</Link>,
-        title: "Creación de vehículos",
+        label: <Link to={"/vehicle-families"}>Sistema de Gestión de Vehículos</Link>,
+        title: "Sistema de Gestión de Vehículos",
       },
       {
         key: "/brand-management",
