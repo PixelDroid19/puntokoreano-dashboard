@@ -22,9 +22,14 @@ import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import type { RcFile, UploadFile } from "antd/es/upload";
 import type { SelectProps } from "antd";
-import type { BlogPost, Brand } from "../../../types/blog.types";
-import { axiosInstance } from "../../../../utils/axios-interceptor";
-import axios from "axios";
+import type { BlogPost } from "../../../../types/blog";
+
+interface Brand {
+  id: string;
+  display_name: string;
+}
+import FilesService from "../../../../services/files.service";
+import StorageService from "../../../../services/storage.service";
 
 interface BlogPostFormProps {
   initialValues?: Partial<BlogPost>;
@@ -74,6 +79,11 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
   const [previewImage, setPreviewImage] = useState("");
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [galleryFiles, setGalleryFiles] = useState<UploadFile[]>([]);
+  // Estados para el patrón diferido de subida
+  const [featuredImageFile, setFeaturedImageFile] = useState<File | null>(null);
+  const [galleryImageFiles, setGalleryImageFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     if (initialValues) {
@@ -123,57 +133,91 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
       reader.onerror = (error) => reject(error);
     });
 
+  // Manejo de subida diferida (almacenar archivos localmente)
   const handleUpload = async (file: RcFile, type: "featured" | "gallery") => {
-    const formData = new FormData();
-    formData.append("image", file);
-
     try {
-      setUploadLoading(true);
-      const response = await axios.post(
-        `https://api.imgbb.com/1/upload?key=${
-          import.meta.env.VITE_IMGBB_API_KEY
-        }`,
-        formData
-      );
-
+      // Crear vista previa base64
+      const previewUrl = await getBase64(file);
+      
       const newFile = {
         uid: String(Math.random()),
         name: file.name,
         status: "done" as const,
-        url: response.data.data.url,
+        url: previewUrl,
+        originFileObj: file, // Mantener referencia al archivo original
       };
 
       if (type === "featured") {
         setFileList([newFile]);
-        form.setFieldsValue({
-          featured_image: {
-            url: response.data.data.url,
-            alt: form.getFieldValue("title") || "Featured image",
-          },
-        });
+        setFeaturedImageFile(file);
       } else {
-        setGalleryFiles((prev) => {
-          const newFiles = [...prev, newFile];
-          form.setFieldsValue({
-            gallery: newFiles.map((file) => ({
-              url: file.url,
-              alt: form.getFieldValue("title") || "Gallery image",
-              caption: "",
-            })),
-          });
-          return newFiles;
-        });
+        setGalleryFiles((prev) => [...prev, newFile]);
+        setGalleryImageFiles((prev) => [...prev, file]);
       }
 
-      message.success("Imagen cargada exitosamente");
+      message.success("Imagen preparada (se subirá al guardar)");
     } catch (error) {
-      message.error("Error al cargar la imagen");
-      console.error("Error uploading image:", error);
-    } finally {
-      setUploadLoading(false);
+      message.error("Error al procesar la imagen");
+      console.error("Error processing image:", error);
     }
 
     return false;
+  };
+
+  // Función para subir todas las imágenes pendientes a GCS
+  const uploadAllImages = async () => {
+    const imagesToUpload = [];
+    
+    if (featuredImageFile) {
+      imagesToUpload.push({ file: featuredImageFile, type: "featured" });
+    }
+    
+    galleryImageFiles.forEach((file) => {
+      imagesToUpload.push({ file, type: "gallery" });
+    });
+
+    if (imagesToUpload.length === 0) {
+      return { featuredImageUrl: null, galleryUrls: [] };
+    }
+
+    try {
+      setIsProcessing(true);
+      const results = { featuredImageUrl: null, galleryUrls: [] };
+
+      // Subir cada imagen individualmente con progreso
+      for (const { file, type } of imagesToUpload) {
+        try {
+          setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
+          
+          const uploadResponse = await StorageService.uploadSingleFile(file, 'blog/images');
+          
+          setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
+          
+          if (uploadResponse.success && uploadResponse.data) {
+            if (type === "featured") {
+              results.featuredImageUrl = uploadResponse.data.url;
+            } else {
+              results.galleryUrls.push(uploadResponse.data.url);
+            }
+          }
+        } catch (error) {
+          console.error(`Error subiendo ${file.name}:`, error);
+          message.error(`Error al subir ${file.name}`);
+        }
+      }
+
+      console.log("✅ Todas las imágenes subidas a GCS");
+      return results;
+    } catch (error) {
+      console.error("Error general en subida de imágenes:", error);
+      throw error;
+    } finally {
+      // Limpiar progreso al final
+      setTimeout(() => {
+        setUploadProgress({});
+        setIsProcessing(false);
+      }, 2000);
+    }
   };
 
   const handlePreview = async (file: UploadFile) => {
@@ -202,24 +246,37 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
     return false;
   };
 
-  const handleSubmit = (values: any) => {
-    const formData = {
-      ...values,
-      content,
-      featured_image: fileList[0]
-        ? {
-            url: fileList[0].url,
-            alt: values.title,
-          }
-        : undefined,
-      gallery: galleryFiles.map((file) => ({
-        url: file.url,
-        alt: values.title || "Gallery image",
-        caption: "",
-      })),
-    };
+  const handleSubmit = async (values: any) => {
+    try {
+      setUploadLoading(true);
+      
+      // Subir todas las imágenes pendientes a GCS
+      const { featuredImageUrl, galleryUrls } = await uploadAllImages();
+      
+      const formData = {
+        ...values,
+        content,
+        featuredImage: featuredImageUrl || (fileList[0] && !featuredImageFile ? fileList[0].url : null),
+        gallery: galleryUrls.length > 0 
+          ? galleryUrls.map((url) => ({
+              url,
+              alt: values.title || "Gallery image",
+              caption: "",
+            }))
+          : galleryFiles.filter(file => !galleryImageFiles.some(f => f.name === file.name)).map((file) => ({
+              url: file.url,
+              alt: values.title || "Gallery image", 
+              caption: "",
+            })),
+      };
 
-    onSubmit(formData);
+      onSubmit(formData);
+    } catch (error) {
+      message.error("Error al subir las imágenes");
+      console.error("Error uploading images:", error);
+    } finally {
+      setUploadLoading(false);
+    }
   };
 
   const uploadButton = (
@@ -511,11 +568,43 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
           </Col>
         </Row>
 
+        {/* Progreso de subida */}
+        {isProcessing && Object.keys(uploadProgress).length > 0 && (
+          <Card size="small" bordered className="mb-6 bg-gray-50">
+            <h4 className="text-center mb-4">Subiendo Imágenes a Google Cloud Storage</h4>
+            {Object.entries(uploadProgress).map(([fileName, progress]) => (
+              <div key={fileName} className="mb-3">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm" style={{ maxWidth: "65%" }}>
+                    {fileName}
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    {progress}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </Card>
+        )}
+
         <div className="flex justify-end">
           <Space>
             <Button onClick={() => form.resetFields()}>Cancelar</Button>
-            <Button type="primary" htmlType="submit" loading={loading}>
-              {initialValues ? "Actualizar" : "Crear"} Artículo
+            <Button 
+              type="primary" 
+              htmlType="submit" 
+              loading={loading || uploadLoading || isProcessing}
+              disabled={isProcessing}
+            >
+              {isProcessing 
+                ? `Subiendo imágenes...` 
+                : initialValues ? "Actualizar" : "Crear"} Artículo
             </Button>
           </Space>
         </div>

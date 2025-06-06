@@ -307,6 +307,7 @@ export interface Endpoints {
       UPLOAD_SINGLE: ApiEndpoint;
       UPLOAD_MULTIPLE: ApiEndpoint;
       DELETE_FILE: ApiEndpoint;
+      DELETE_FILE_BY_URL: ApiEndpoint;
       LIST_FILES: ApiEndpoint;
     };
   };

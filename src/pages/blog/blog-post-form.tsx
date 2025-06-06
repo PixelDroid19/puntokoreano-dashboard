@@ -45,7 +45,7 @@ interface BlogPostFormProps {
 
 export default function BlogPostForm({ postId, onCancel }: BlogPostFormProps) {
   const [activeTab, setActiveTab] = useState("content");
-  const [postStatus, setPostStatus] = useState<string>("draft");
+  const [postStatus, setPostStatus] = useState<"draft" | "published" | "scheduled">("draft");
   const [scheduledDate, setScheduledDate] = useState<dayjs.Dayjs | null>(null);
   const [previewVisible, setPreviewVisible] = useState(false);
   const [seoPreviewVisible, setSeoPreviewVisible] = useState(false);
@@ -147,7 +147,7 @@ export default function BlogPostForm({ postId, onCancel }: BlogPostFormProps) {
     }
   };
 
-  const handleStatusChange = (value: string) => {
+  const handleStatusChange = (value: "draft" | "published" | "scheduled") => {
     setPostStatus(value);
     setValue("status", value);
   };
@@ -199,12 +199,15 @@ export default function BlogPostForm({ postId, onCancel }: BlogPostFormProps) {
 
   // Preparamos los datos para la preview SEO usando getValues al abrir el modal
   // para no depender de watch() constantemente
-  const currentSeoValues = getValues([
-    "metaTitle",
-    "title",
-    "metaDescription",
-    "excerpt",
-  ]);
+  const getCurrentSeoValues = () => {
+    const values = getValues();
+    return {
+      metaTitle: values.metaTitle || "",
+      title: values.title || "",
+      metaDescription: values.metaDescription || "",
+      excerpt: values.excerpt || ""
+    };
+  };
 
   const tabItems = [
     {
@@ -527,10 +530,14 @@ export default function BlogPostForm({ postId, onCancel }: BlogPostFormProps) {
       >
         <SEOPreview
           // Usar getValues para obtener los datos actuales al mostrar
-          title={currentSeoValues.metaTitle || currentSeoValues.title || ""}
-          description={
-            currentSeoValues.metaDescription || currentSeoValues.excerpt || ""
-          }
+          title={(() => {
+            const values = getCurrentSeoValues();
+            return values.metaTitle || values.title || "";
+          })()}
+          description={(() => {
+            const values = getCurrentSeoValues();
+            return values.metaDescription || values.excerpt || "";
+          })()}
         />
         {/* Resto del contenido del modal SEO (sin cambios) */}
         <div className="mt-4 text-sm text-gray-500">

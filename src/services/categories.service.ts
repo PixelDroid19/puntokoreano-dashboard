@@ -19,6 +19,7 @@ export interface CategoryCreateInput {
   name: string;
   description: string;
   image: string;
+  active?: boolean;
   subgroups: Array<{
     name: string;
     active?: boolean;
@@ -62,6 +63,11 @@ class CategoriesService {
       `${this.BASE_URL}/${categoryId}/subgroups/${subgroupId}/status`,
       { active }
     );
+    return response.data.data;
+  }
+
+  static async deleteCategory(id: string) {
+    const response = await axiosInstance.delete(`${this.BASE_URL}/${id}`);
     return response.data.data;
   }
 

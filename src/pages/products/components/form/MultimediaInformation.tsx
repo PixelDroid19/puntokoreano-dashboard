@@ -47,9 +47,8 @@ const ALLOWED_MIME_TYPES = [
   "image/webp",
 ];
 
-// Extender la interfaz UploadFile para incluir delete_url
+// Extender la interfaz UploadFile para archivos con vista previa
 interface UploadFile extends AntdUploadFile<any> {
-  delete_url?: string;
   preview?: string;
 }
 

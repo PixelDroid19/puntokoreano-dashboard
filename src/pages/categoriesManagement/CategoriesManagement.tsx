@@ -80,6 +80,11 @@ const CategoriesManagement = () => {
   const [imageUrl, setImageUrl] = useState<string>("");
   const [uploadLoading, setUploadLoading] = useState<boolean>(false);
   const [detailsVisible, setDetailsVisible] = useState(false);
+  // Estados para el patrón diferido de subida
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["categories", searchText, currentPage, pageSize],
@@ -92,7 +97,7 @@ const CategoriesManagement = () => {
   });
 
   const createCategory = useMutation({
-    mutationFn: (data: CategoryCreateInput) =>
+    mutationFn: (data: Omit<Category, '_id'>) =>
       CategoriesService.createCategory(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
@@ -102,7 +107,7 @@ const CategoriesManagement = () => {
   });
 
   const updateCategory = useMutation({
-    mutationFn: (data: CategoryUpdateInput) =>
+    mutationFn: (data: { id: string } & Partial<Omit<Category, '_id'>>) =>
       CategoriesService.updateCategory(data.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
@@ -136,6 +141,7 @@ const CategoriesManagement = () => {
         form.setFieldsValue(category);
         if (category.image) {
           setImageUrl(category.image);
+          setImagePreview(category.image); // Para modo edit, usar la imagen existente
           setFileList([
             {
               uid: "-1",
@@ -147,12 +153,18 @@ const CategoriesManagement = () => {
         } else {
           setFileList([]);
           setImageUrl("");
+          setImagePreview("");
         }
+        setImageFile(null); // No hay archivo pendiente en modo edit
       } else {
         form.resetFields();
         setFileList([]);
         setImageUrl("");
+        setImagePreview("");
+        setImageFile(null);
       }
+      setUploadProgress({});
+      setIsProcessing(false);
       setIsModalVisible(true);
     },
     [form]
@@ -164,6 +176,11 @@ const CategoriesManagement = () => {
     form.resetFields();
     setFileList([]);
     setImageUrl("");
+    // Limpiar estados del patrón diferido
+    setImageFile(null);
+    setImagePreview("");
+    setUploadProgress({});
+    setIsProcessing(false);
   }, [form]);
 
   const showCategoryDetails = (category: Category) => {
@@ -171,40 +188,28 @@ const CategoriesManagement = () => {
     setDetailsVisible(true);
   };
 
-  const handleImageUpload = async (file: RcFile, type: "image" | "logo") => {
+  // Función para manejar preparación de imagen (sin subir inmediatamente)
+  const handleImageUpload = async (file: RcFile) => {
     if (!beforeUpload(file)) {
       return;
     }
 
     try {
-      setUploadLoading(true);
-      const result = await FilesService.uploadToGCS(file, 'categories');
-      const imageData = {
-        url: result.data.url,
-        display_url: result.data.display_url,
-        delete_url: result.data.delete_url,
-        alt: file.name,
+      // Generar vista previa usando FileReader
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImagePreview(reader.result as string);
+        setImageFile(file);
+        setImageUrl(""); // Limpiar URL anterior
+        
+        message.success(
+          "Imagen preparada correctamente. Se subirá al guardar la categoría."
+        );
       };
-
-      if (type === "image") {
-        setImageUrl(imageData.display_url);
-        form.setFieldValue("image", imageData);
-      } else {
-        form.setFieldValue("logo", imageData);
-      }
-
-      message.success(
-        `${type === "image" ? "Imagen" : "Logo"} subido correctamente`
-      );
+      reader.readAsDataURL(file);
     } catch (error) {
-      console.error("Error subiendo imagen:", error);
-      message.error(
-        `Error al subir ${
-          type === "image" ? "la imagen" : "el logo"
-        }. Por favor, intente nuevamente.`
-      );
-    } finally {
-      setUploadLoading(false);
+      console.error("Error preparando imagen:", error);
+      message.error("Error al preparar la imagen. Por favor, intente nuevamente.");
     }
   };
 
@@ -270,17 +275,39 @@ const CategoriesManagement = () => {
   const handleSubmit = useCallback(
     async (values: CategoryCreateInput) => {
       try {
-        // Make sure we're sending the image URL, not the file object
+        // Subir imagen si hay una pendiente
+        let finalImageUrl = imageUrl;
+        if (imageFile) {
+          setIsProcessing(true);
+          setUploadProgress({ [imageFile.name]: 0 });
+          
+          try {
+            const uploadResult = await FilesService.uploadToGCS(imageFile, 'categories');
+            if (uploadResult.success && uploadResult.data) {
+              finalImageUrl = uploadResult.data.url;
+              setUploadProgress({ [imageFile.name]: 100 });
+            }
+          } catch (error) {
+            message.error("Error al subir la imagen");
+            return;
+          } finally {
+            setTimeout(() => {
+              setUploadProgress({});
+              setIsProcessing(false);
+            }, 1000);
+          }
+        }
+
+        // Preparar datos para envío
         const dataToSubmit = {
           ...values,
-          image: imageUrl, // Use the imageUrl state variable directly
+          active: values.active !== undefined ? values.active : true,
+          image: finalImageUrl,
+          subgroups: values.subgroups?.map(subgroup => ({
+            ...subgroup,
+            active: subgroup.active !== undefined ? subgroup.active : true
+          })) || []
         };
-
-        // Remove any file object that might have been added by the form
-        if (dataToSubmit.image && typeof dataToSubmit.image === "object") {
-          // If somehow the image is still an object, use the URL we stored
-          console.log("Converting image object to URL string");
-        }
 
         if (modalMode === "create") {
           await createCategory.mutateAsync(dataToSubmit);
@@ -294,7 +321,7 @@ const CategoriesManagement = () => {
         message.error("Error al procesar la categoría");
       }
     },
-    [modalMode, selectedCategory, createCategory, updateCategory, imageUrl]
+    [modalMode, selectedCategory, createCategory, updateCategory, imageUrl, imageFile]
   );
 
   const handleDelete = useCallback(
@@ -620,29 +647,34 @@ const CategoriesManagement = () => {
                     beforeUpload={async (file) => {
                       const isValid = await beforeUpload(file);
                       if (isValid) {
-                        handleImageUpload(file, "image");
+                        handleImageUpload(file);
                       }
                       return false; // Siempre retornar false para manejar la subida manualmente
                     }}
                     style={{ width: "100%" }}
                   >
-                    {imageUrl ? (
+                    {(imagePreview || imageUrl) ? (
                       <div className="relative w-full h-48 overflow-hidden rounded-lg">
                         <img
-                          src={imageUrl}
+                          src={imagePreview || imageUrl}
                           alt="imagen"
                           className="w-full h-full object-cover"
                           onError={() => handleImageError("image")}
                         />
-                        {uploadLoading && (
+                        {(uploadLoading || isProcessing) && (
                           <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
                             <LoadingOutlined className="text-white text-2xl" />
+                          </div>
+                        )}
+                        {imageFile && (
+                          <div className="absolute top-2 left-2">
+                            <Tag color="orange">Pendiente de subir</Tag>
                           </div>
                         )}
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center p-6 h-48 w-full border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 transition-colors">
-                        {uploadLoading ? (
+                        {(uploadLoading || isProcessing) ? (
                           <LoadingOutlined className="text-2xl mb-2" />
                         ) : (
                           <PlusOutlined className="text-2xl mb-2" />
@@ -794,6 +826,35 @@ const CategoriesManagement = () => {
             </Card>
           </div>
 
+          {/* Progreso de subida (similar a productos) */}
+          {isProcessing && Object.keys(uploadProgress).length > 0 && (
+            <Card size="small" bordered className="mt-6 bg-gray-50">
+              <Title level={5} style={{ marginBottom: 12, textAlign: "center" }}>
+                Subiendo Imagen a Google Cloud Storage
+              </Title>
+              {Object.entries(uploadProgress).map(([fileName, progress]) => (
+                <div key={fileName} className="mb-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <Text ellipsis style={{ maxWidth: "65%" }} className="text-sm">
+                      {fileName}
+                    </Text>
+                    <Text type="secondary" className="text-sm">
+                      {progress}%
+                    </Text>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        progress === 100 ? 'bg-green-500' : 'bg-blue-500'
+                      }`}
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </Card>
+          )}
+
           {modalMode !== "view" && (
             <div className="flex justify-end gap-3 mt-6">
               <Button
@@ -809,13 +870,18 @@ const CategoriesManagement = () => {
                 loading={
                   createCategory.isPending ||
                   updateCategory.isPending ||
-                  imageUploading
+                  imageUploading ||
+                  isProcessing
                 }
-                disabled={imageUploading}
+                disabled={imageUploading || isProcessing}
                 size="large"
                 className="min-w-[120px]"
               >
-                {modalMode === "create" ? "Crear" : "Actualizar"}
+                {isProcessing
+                  ? "Subiendo imagen..."
+                  : createCategory.isPending || updateCategory.isPending
+                  ? "Guardando..."
+                  : modalMode === "create" ? "Crear" : "Actualizar"}
               </Button>
             </div>
           )}

@@ -4,7 +4,7 @@ import { PictureOutlined, EyeOutlined, InboxOutlined, DeleteOutlined, CloudUploa
 import { Product } from "../../../../api/types"
 import type { RcFile, UploadFile as AntUploadFile } from "antd/es/upload"
 import { motion } from "framer-motion"
-import ProductsService from "../../../../services/products.service"
+import StorageService from "../../../../services/storage.service"
 
 // Constantes para validación de imágenes
 const THUMB_WIDTH = 300
@@ -16,9 +16,8 @@ const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"
 // Tolerancia para dimensiones (5% de diferencia permitida)
 const DIMENSION_TOLERANCE_PERCENT = 5
 
-// Interfaz extendida para incluir la propiedad delete_url
+// Interfaz extendida para archivos con referencia local
 interface UploadFile extends AntUploadFile<any> {
-  delete_url?: string;
   localFile?: File;
 }
 
@@ -281,11 +280,17 @@ const MultimediaTab: React.FC<MultimediaTabProps> = ({
   }
 
   // Eliminar imagen principal
-  const handleRemoveThumb = () => {
+  const handleRemoveThumb = async () => {
     if (thumbImage) {
-      // Si existe delete_url, abrir en nueva pestaña para eliminación en el servicio externo
-      if (thumbImage.delete_url) {
-        window.open(thumbImage.delete_url, '_blank')
+      // Si tiene URL de GCS, eliminarla del storage
+      if (thumbImage.url && thumbImage.url.includes('storage.googleapis.com')) {
+        try {
+          await StorageService.deleteFileByUrl(thumbImage.url);
+          message.success("Imagen eliminada de Google Cloud Storage");
+        } catch (error) {
+          console.error('Error al eliminar imagen de GCS:', error);
+          message.warning("Imagen removida localmente, pero no se pudo eliminar del almacenamiento");
+        }
       }
       
       setThumbImage(null)
@@ -297,13 +302,19 @@ const MultimediaTab: React.FC<MultimediaTabProps> = ({
   }
 
   // Eliminar imagen de carrusel
-  const handleRemoveCarouselImage = (uid: string) => {
-    // Encontrar la imagen para obtener su URL de eliminación
+  const handleRemoveCarouselImage = async (uid: string) => {
+    // Encontrar la imagen para obtener su URL
     const imageToRemove = carouselImages.find(img => img.uid === uid)
     
-    // Si existe delete_url, abrir en nueva pestaña para eliminación en el servicio externo
-    if (imageToRemove && imageToRemove.delete_url) {
-      window.open(imageToRemove.delete_url, '_blank')
+    // Si tiene URL de GCS, eliminarla del storage
+    if (imageToRemove && imageToRemove.url && imageToRemove.url.includes('storage.googleapis.com')) {
+      try {
+        await StorageService.deleteFileByUrl(imageToRemove.url);
+        message.success("Imagen eliminada de Google Cloud Storage");
+      } catch (error) {
+        console.error('Error al eliminar imagen de GCS:', error);
+        message.warning("Imagen removida localmente, pero no se pudo eliminar del almacenamiento");
+      }
     }
     
     setCarouselImages(prev => prev.filter(img => img.uid !== uid))
@@ -359,23 +370,22 @@ const MultimediaTab: React.FC<MultimediaTabProps> = ({
       if (thumbImage?.localFile) {
         try {
           console.log("Subiendo imagen principal:", thumbImage.name);
-          const uploadResult = await ProductsService.uploadImage(thumbImage.localFile);
+          const uploadResult = await StorageService.uploadSingleFile(thumbImage.localFile, 'products/thumbnails');
           
           if (uploadResult && uploadResult.success) {
-            result.thumbUrl = uploadResult.url;
+            result.thumbUrl = uploadResult.data?.url;
             
             // Actualizar el estado local con la URL real
             const updatedThumb: UploadFile = {
               ...thumbImage,
               status: 'done',
-              url: uploadResult.url,
-              thumbUrl: uploadResult.thumbUrl || uploadResult.url,
-              delete_url: uploadResult.delete_url,
+              url: uploadResult.data?.url,
+              thumbUrl: uploadResult.data?.url,
             };
             
             setThumbImage(updatedThumb);
-            form.setFieldValue("thumb", uploadResult.url);
-            console.log("Imagen principal subida exitosamente:", uploadResult.url);
+            form.setFieldValue("thumb", uploadResult.data?.url);
+            console.log("Imagen principal subida exitosamente:", uploadResult.data?.url);
           } else {
             message.error(`Error al subir la imagen principal: ${thumbImage.name}`);
           }
@@ -398,21 +408,22 @@ const MultimediaTab: React.FC<MultimediaTabProps> = ({
         if (img.localFile) {
           try {
             console.log("Subiendo imagen de carrusel:", img.name);
-            const uploadResult = await ProductsService.uploadImage(img.localFile);
+            const uploadResult = await StorageService.uploadSingleFile(img.localFile, 'products/carousel');
             
             if (uploadResult && uploadResult.success) {
               // Actualizar la imagen con la URL real
               updatedCarouselImages[i] = {
                 ...img,
                 status: 'done',
-                url: uploadResult.url,
-                thumbUrl: uploadResult.thumbUrl || uploadResult.url,
-                delete_url: uploadResult.delete_url,
+                url: uploadResult.data?.url,
+                thumbUrl: uploadResult.data?.url,
               };
               
               // Añadir la URL al resultado
-              result.carouselUrls.push(uploadResult.url);
-              console.log("Imagen de carrusel subida exitosamente:", uploadResult.url);
+              if (uploadResult.data?.url) {
+                result.carouselUrls.push(uploadResult.data.url);
+              }
+              console.log("Imagen de carrusel subida exitosamente:", uploadResult.data?.url);
             } else {
               message.error(`Error al subir la imagen de carrusel: ${img.name}`);
             }

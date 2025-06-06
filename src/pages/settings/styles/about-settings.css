@@ -32,3 +32,105 @@
     width: 100%;
     height: 200px;
   }
+
+  /* Nuevos estilos para componentes mejorados */
+  .upload-component-container {
+    width: 100%;
+  }
+
+  .upload-component-container .ant-upload.ant-upload-select-picture-card {
+    width: 96px;
+    height: 96px;
+    margin: 0;
+  }
+
+  .upload-component-container .ant-upload.ant-upload-select-picture-card > .ant-upload {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .delete-image-button {
+    margin-top: 8px;
+  }
+
+  .delete-image-button:hover {
+    transform: scale(1.05);
+    transition: transform 0.2s ease;
+  }
+
+  /* Animación para la vista previa */
+  .upload-component-container .mt-3 {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Mejorar hover en las imágenes */
+  .upload-component-container .relative:hover .absolute {
+    opacity: 1;
+  }
+
+  .upload-component-container .absolute {
+    transition: opacity 0.3s ease;
+  }
+
+  /* Estilos para corregir Upload de imágenes en EditableConsultantCard */
+  .editable-consultant-card .ant-upload {
+    background: none !important;
+    border: none !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .editable-consultant-card .ant-upload:hover {
+    border: none !important;
+  }
+
+  .editable-consultant-card .ant-upload-select {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .editable-consultant-card .ant-upload-select .ant-upload {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Estilos para el upload de la misión social */
+  .social-mission-upload .ant-upload.ant-upload-select-picture-card {
+    width: 100% !important;
+    height: 200px !important;
+    margin: 0 !important;
+    border: 2px dashed #d9d9d9 !important;
+    border-radius: 8px !important;
+  }
+
+  .social-mission-upload .ant-upload.ant-upload-select-picture-card:hover {
+    border-color: #1890ff !important;
+  }
+
+  .social-mission-upload .ant-upload {
+    width: 100% !important;
+    height: 100% !important;
+  }

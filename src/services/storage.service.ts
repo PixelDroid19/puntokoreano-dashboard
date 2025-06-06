@@ -96,6 +96,47 @@ class StorageService {
   }
 
   /**
+   * Elimina un archivo del Google Cloud Storage usando la URL completa
+   */
+  async deleteFileByUrl(fileUrl: string): Promise<{ success: boolean; message: string }> {
+    const { url, method } = ENDPOINTS.DASHBOARD.STORAGE.DELETE_FILE_BY_URL;
+    
+    console.log('🗑️ StorageService.deleteFileByUrl called with:', {
+      fileUrl,
+      endpoint: url,
+      method,
+      payload: { url: fileUrl }
+    });
+
+    try {
+      const response = await axiosInstance({
+        url,
+        method,
+        data: { url: fileUrl },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('✅ StorageService.deleteFileByUrl response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ StorageService.deleteFileByUrl error:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          data: error.config?.data
+        }
+      });
+      
+      // Re-lanzar el error para que pueda ser manejado por el componente
+      throw error;
+    }
+  }
+
+  /**
    * Lista archivos en una carpeta específica
    */
   async listFiles(folder: string = ''): Promise<ListFilesResponse> {

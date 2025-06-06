@@ -653,6 +653,10 @@ const ENDPOINTS: Endpoints = {
         url: `${BASE_URL}/storage/files/:filename`,
         method: "DELETE",
       },
+      DELETE_FILE_BY_URL: {
+        url: `${BASE_URL}/storage/files/by-url`,
+        method: "DELETE",
+      },
       LIST_FILES: {
         url: `${BASE_URL}/storage/files`,
         method: "GET",

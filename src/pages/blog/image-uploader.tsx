@@ -4,14 +4,21 @@ import { useState } from "react"
 import { Upload, Button, message, Spin } from "antd"
 import { UploadOutlined } from "@ant-design/icons"
 import { ImageIcon, X } from "lucide-react"
+import StorageService from "../../services/storage.service"
 
 interface ImageUploaderProps {
   value?: string | null
   onChange?: (url: string | null, file?: File | null) => void
   aspectRatio?: "square" | "landscape" | "portrait"
+  uploadMode?: "immediate" | "deferred" // Nuevo prop para controlar el modo de subida
 }
 
-export default function ImageUploader({ value, onChange, aspectRatio = "landscape" }: ImageUploaderProps) {
+export default function ImageUploader({ 
+  value, 
+  onChange, 
+  aspectRatio = "landscape", 
+  uploadMode = "deferred" 
+}: ImageUploaderProps) {
   const [loading, setLoading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(value || null)
 
@@ -21,23 +28,30 @@ export default function ImageUploader({ value, onChange, aspectRatio = "landscap
     setLoading(true)
 
     try {
-      // In a real implementation, this would call your image upload API
-      // For demo purposes, we'll simulate an upload and create an object URL
-
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Create a local object URL for demo purposes
-      const imageUrl = URL.createObjectURL(file)
-
-      setPreviewUrl(imageUrl)
-      onChange?.(imageUrl, file)
-      onSuccess("ok", file)
-      message.success("Image uploaded successfully")
+      if (uploadMode === "immediate") {
+        // Subida inmediata a GCS
+        const uploadResponse = await StorageService.uploadSingleFile(file, 'blog/featured-images')
+        
+        if (uploadResponse.success && uploadResponse.data) {
+          setPreviewUrl(uploadResponse.data.url)
+          onChange?.(uploadResponse.data.url, file)
+          onSuccess("ok", file)
+          message.success("Imagen subida exitosamente a Google Cloud Storage")
+        } else {
+          throw new Error(uploadResponse.error || "Upload failed")
+        }
+      } else {
+        // Modo diferido - solo crear vista previa local
+        const imageUrl = URL.createObjectURL(file)
+        setPreviewUrl(imageUrl)
+        onChange?.(imageUrl, file)
+        onSuccess("ok", file)
+        message.success("Imagen preparada (se subirá al guardar)")
+      }
     } catch (error) {
       console.error("Upload failed:", error)
       onError(error)
-      message.error("Failed to upload image")
+      message.error("Error al procesar la imagen")
     } finally {
       setLoading(false)
     }
