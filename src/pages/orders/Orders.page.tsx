@@ -36,6 +36,7 @@ import dayjs from "dayjs";
 import OrdersService from "../../services/orders.service";
 import { useOrdersWebSocket } from "../../hooks/useOrdersWebSocket";
 import { ACCESS_TOKEN_KEY } from "../../api";
+import WebSocketStatus from "../../components/shared/WebSocketStatus";
 
 const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
@@ -258,14 +259,26 @@ const Orders = () => {
     }
   };
 
-  const { isConnected } = useOrdersWebSocket({
+  // 🆕 Callbacks estables para evitar re-creación de listeners
+  const handlePaymentUpdate = useCallback((data: any) => {
+    console.log("Payment updated:", data);
+    // Invalidar queries para refrescar automáticamente
+    queryClient.invalidateQueries({ queryKey: ["orders"] });
+  }, [queryClient]);
+
+  const handleConnectionChange = useCallback((connected: boolean) => {
+    console.log("WebSocket connection status:", connected);
+    if (connected) {
+      console.log("✅ Conexión WebSocket restaurada - sincronizando datos");
+      // Refrescar datos cuando se reconecte
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+    }
+  }, [queryClient]);
+
+  const { isConnected, reconnect, reset } = useOrdersWebSocket({
     token,
-    onPaymentUpdate: (data) => {
-      console.log("Payment updated:", data);
-    },
-    onConnectionChange: (connected) => {
-      console.log("WebSocket connection status:", connected);
-    },
+    onPaymentUpdate: handlePaymentUpdate,
+    onConnectionChange: handleConnectionChange,
   });
 
   // Calcular estadísticas
@@ -335,13 +348,13 @@ const Orders = () => {
       dataIndex: ["payment", "status"],
       key: "paymentStatus",
       render: (status: PaymentStatus, record: Order) => (
-        <div>
+        <>
           {" "}
           <Space align="center" size={4}>
             {" "}
             <Tag
               color={PAYMENT_STATUS_COLORS[status]}
-              className="px-3 py-1 rounded-full font-medium m-0"
+              className="px-3 py-1 rounded-full font-medium"
             >
               {" "}
               {status.toUpperCase()}{" "}
@@ -373,7 +386,7 @@ const Orders = () => {
               </Tooltip>
             )}{" "}
           </Space>{" "}
-        </div>
+        </>
       ),
     },
     {
@@ -468,21 +481,11 @@ const Orders = () => {
               <Title level={2} className="!mb-2 text-gray-800">
                 Gestión de Órdenes
               </Title>
-              <div className="flex items-center space-x-4">
-                <Badge
-                  status={isConnected ? "success" : "error"}
-                  text={
-                    <span className="text-sm text-gray-600">
-                      {isConnected
-                        ? "Conectado en tiempo real"
-                        : "Desconectado"}
-                    </span>
-                  }
-                />
-                <WifiOutlined
-                  className={isConnected ? "text-green-500" : "text-red-500"}
-                />
-              </div>
+              <WebSocketStatus 
+                isConnected={isConnected}
+                onReconnect={reconnect}
+                onReset={reset}
+              />
             </div>
             <Button
               type="primary"

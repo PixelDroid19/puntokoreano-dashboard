@@ -3,6 +3,61 @@ import { useEffect, useCallback, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { message } from "antd";
+import { getWebSocketConfig } from "../config/websocket.config";
+
+/**
+ * 🆕 Debouncer para evitar notificaciones duplicadas
+ */
+class NotificationDebouncer {
+  private pendingNotifications = new Map<string, NodeJS.Timeout>();
+  private recentNotifications = new Set<string>();
+  private readonly config = getWebSocketConfig().NOTIFICATION_DEBOUNCE;
+
+  private generateKey(type: string, orderId?: string, data?: any): string {
+    if (orderId) {
+      return `${type}:${orderId}`;
+    }
+    if (data?.orderNumber) {
+      return `${type}:${data.orderNumber}`;
+    }
+    return `${type}:${JSON.stringify(data)}`;
+  }
+
+  debounce(type: string, callback: () => void, orderId?: string, data?: any): void {
+    const key = this.generateKey(type, orderId, data);
+    
+    // Si ya se mostró una notificación reciente del mismo tipo, cancelar
+    if (this.recentNotifications.has(key)) {
+      console.log(`🔇 Notificación bloqueada (reciente): ${key}`);
+      return;
+    }
+
+    // Cancelar notificación pendiente si existe
+    if (this.pendingNotifications.has(key)) {
+      clearTimeout(this.pendingNotifications.get(key)!);
+    }
+
+    // Programar nueva notificación
+    const timeout = setTimeout(() => {
+      callback();
+      this.pendingNotifications.delete(key);
+      this.recentNotifications.add(key);
+      
+      // Limpiar de recientes después del tiempo límite
+      setTimeout(() => {
+        this.recentNotifications.delete(key);
+      }, this.config.RECENT_TIME);
+    }, this.config.DEBOUNCE_TIME);
+
+    this.pendingNotifications.set(key, timeout);
+  }
+
+  clear(): void {
+    this.pendingNotifications.forEach(timeout => clearTimeout(timeout));
+    this.pendingNotifications.clear();
+    this.recentNotifications.clear();
+  }
+}
 
 /**
  * Función inteligente para obtener la URL de WebSocket
@@ -75,6 +130,22 @@ export const useOrdersWebSocket = ({
   
   // Ref para evitar re-renders innecesarios
   const hasInitialized = useRef(false);
+  
+  // 🆕 Instancia del debouncer
+  const debouncerRef = useRef<NotificationDebouncer>(new NotificationDebouncer());
+  
+  // 🆕 Refs estables para callbacks para evitar re-creación de listeners
+  const onPaymentUpdateRef = useRef(onPaymentUpdate);
+  const onConnectionChangeRef = useRef(onConnectionChange);
+  
+  // Actualizar refs cuando cambien los callbacks
+  useEffect(() => {
+    onPaymentUpdateRef.current = onPaymentUpdate;
+  }, [onPaymentUpdate]);
+  
+  useEffect(() => {
+    onConnectionChangeRef.current = onConnectionChange;
+  }, [onConnectionChange]);
 
   const connectSocket = useCallback(() => {
     if (!token) {
@@ -127,7 +198,7 @@ export const useOrdersWebSocket = ({
       
       reconnectAttemptsRef.current = 0;
       setIsConnected(true); // Actualizar estado local
-      onConnectionChange?.(true);
+      onConnectionChangeRef.current?.(true);
       
       // Unirse a las salas necesarias
       socket.emit("join:payment-status");
@@ -159,7 +230,7 @@ export const useOrdersWebSocket = ({
     socket.on("disconnect", (reason) => {
       console.log("🔌 WebSocket desconectado:", reason);
       setIsConnected(false); // Actualizar estado local
-      onConnectionChange?.(false);
+      onConnectionChangeRef.current?.(false);
       
       // Log adicional para debugging
       if (reason === "io server disconnect") {
@@ -192,7 +263,12 @@ export const useOrdersWebSocket = ({
 
     socket.on("payments:check-required", (data) => {
       if (data.pendingCount > 0) {
-        message.info(`Verificando ${data.pendingCount} pagos pendientes`);
+        debouncerRef.current.debounce(
+          "payments:check",
+          () => message.info(`Verificando ${data.pendingCount} pagos pendientes`),
+          undefined,
+          data
+        );
       }
     });
 
@@ -202,8 +278,13 @@ export const useOrdersWebSocket = ({
       const { updated, failed } = data.results;
       if (updated > 0) {
         queryClient.invalidateQueries({ queryKey: ["orders"] });
-        message.success(
-          `Verificación completada: ${updated} ${updated === 1 ? 'actualización' : 'actualizaciones'}`
+        debouncerRef.current.debounce(
+          "payments:verification",
+          () => message.success(
+            `Verificación completada: ${updated} ${updated === 1 ? 'actualización' : 'actualizaciones'}`
+          ),
+          undefined,
+          data
         );
       }
     });
@@ -215,9 +296,14 @@ export const useOrdersWebSocket = ({
       // Invalidar queries para refrescar la lista
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       
-      // Mostrar notificación
-      message.info(
-        `Nueva orden #${data.orderNumber} - $${data.total?.toLocaleString("es-CO")} ${data.isDevelopment ? '(PRUEBA)' : ''}`
+      // Mostrar notificación con debounce
+      debouncerRef.current.debounce(
+        "order:created",
+        () => message.info(
+          `Nueva orden #${data.orderNumber} - $${data.total?.toLocaleString("es-CO")} ${data.isDevelopment ? '(PRUEBA)' : ''}`
+        ),
+        data.orderId || data.orderNumber,
+        data
       );
     });
 
@@ -228,7 +314,7 @@ export const useOrdersWebSocket = ({
       // Invalidar queries para refrescar la lista
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       
-      // Mostrar notificación según el estado
+      // Mostrar notificación según el estado con debounce
       const statusMessages = {
         'completed': '✅ Pago aprobado',
         'failed': '❌ Pago fallido',
@@ -238,18 +324,42 @@ export const useOrdersWebSocket = ({
       
       const statusMessage = statusMessages[data.paymentStatus] || 'Estado actualizado';
       
-      message.info(
-        `${statusMessage} - Orden #${data.orderNumber} (${data.source})`
+      debouncerRef.current.debounce(
+        "order:payment-updated",
+        () => message.info(
+          `${statusMessage} - Orden #${data.orderNumber} (${data.source})`
+        ),
+        data.orderId || data.orderNumber,
+        data
       );
     });
 
-    if (onPaymentUpdate) {
-      socket.on("payment:updated", onPaymentUpdate);
+    // 🆕 Escuchar notificaciones de stock liberado
+    socket.on("stock:released", (data) => {
+      console.log("Stock liberado:", data);
+      
+      // Invalidar queries para refrescar el inventario
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      
+      // Mostrar notificación con debounce
+      debouncerRef.current.debounce(
+        "stock:released",
+        () => message.info(
+          `📦 Stock liberado - Orden #${data.orderNumber} (${data.reason})`
+        ),
+        data.orderId || data.orderNumber,
+        data
+      );
+    });
+
+    if (onPaymentUpdateRef.current) {
+      socket.on("payment:updated", onPaymentUpdateRef.current);
     }
 
     socketRef.current = socket;
     return socket;
-  }, [token, onPaymentUpdate, queryClient, onConnectionChange]);
+  }, [token, queryClient]); // Remover dependencias que causan re-creación
 
   useEffect(() => {
     // Solo inicializar una vez si tenemos token
@@ -272,6 +382,8 @@ export const useOrdersWebSocket = ({
       setIsConnected(false); // Actualizar estado local
       socketRef.current = null;
       reconnectAttemptsRef.current = 0;
+      // 🆕 Limpiar debouncer
+      debouncerRef.current.clear();
     };
   }, [token]); // Solo depender del token
 
