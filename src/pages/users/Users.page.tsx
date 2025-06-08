@@ -103,17 +103,20 @@ const Users = () => {
   });
 
   const createUser = useMutation({
-    mutationFn: (data: CreateUserData) =>
-      userTypeFilter === UserType.ADMIN
+    mutationFn: (data: CreateUserData) => {
+      const isAdminUser = data.userType === "dashboard";
+      return isAdminUser
         ? UsersService.createAdminUser(data)
-        : UsersService.createCustomerUser(data),
+        : UsersService.createCustomerUser(data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["usersManagerPage"] });
       toast.success("Usuario creado correctamente");
       setCreateModalVisible(false);
       form.resetFields();
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("Error al crear usuario:", error);
       toast.error("Error al crear el usuario");
     },
   });

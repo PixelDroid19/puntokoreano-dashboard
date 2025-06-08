@@ -14,12 +14,42 @@ const PERMISSIONS = {
     { value: "manage_content", label: "Gestionar contenido" },
     { value: "manage_settings", label: "Gestionar configuración" },
   ],
-  ECOMMERCE: [
-    { value: "place_orders", label: "Realizar pedidos" },
-    { value: "write_reviews", label: "Escribir reseñas" },
-    { value: "view_orders", label: "Ver pedidos" },
-    { value: "manage_profile", label: "Gestionar perfil" },
-  ],
+};
+
+// Función para convertir array de permisos a objeto estructurado
+const convertPermissionsArrayToObject = (permissionsArray: string[]) => {
+  const permissions = {
+    users: { view: false, create: false, edit: false, delete: false },
+    products: { view: true, create: false, edit: false, delete: false },
+    orders: { view: true, process: false, refund: false },
+    analytics: { view: false },
+    settings: { view: false, edit: false },
+  };
+
+  permissionsArray.forEach((permission) => {
+    switch (permission) {
+      case "manage_users":
+        permissions.users = { view: true, create: true, edit: true, delete: true };
+        break;
+      case "manage_products":
+        permissions.products = { view: true, create: true, edit: true, delete: true };
+        break;
+      case "manage_orders":
+        permissions.orders = { view: true, process: true, refund: true };
+        break;
+      case "view_analytics":
+        permissions.analytics = { view: true };
+        break;
+      case "manage_content":
+        // Agregar lógica para contenido si es necesario
+        break;
+      case "manage_settings":
+        permissions.settings = { view: true, edit: true };
+        break;
+    }
+  });
+
+  return permissions;
 };
 
 const CreateUserModal = ({
@@ -49,16 +79,32 @@ const CreateUserModal = ({
 
   // Reset form when user type changes
   useEffect(() => {
-    form.resetFields(["permissions"]);
+    form.resetFields(["permissions", "phone", "document_type", "document_number"]);
   }, [userType, form]);
 
   const handleSubmit = (values: any) => {
     // Preparar los datos según el tipo de usuario
-    const userData = {
-      ...values,
-      userType, // Incluir el tipo de usuario
-      role: userType === "dashboard" ? "admin" : "customer",
-    };
+    let userData;
+    
+    if (userType === "dashboard") {
+      // Para usuarios administradores: incluir permisos, excluir campos de e-commerce
+      const { phone, document_type, document_number, confirmPassword, permissions, ...adminData } = values;
+      userData = {
+        ...adminData,
+        userType,
+        role: "admin",
+        // Convertir array de permisos a objeto estructurado
+        permissions: permissions ? convertPermissionsArrayToObject(permissions) : undefined,
+      };
+    } else {
+      // Para usuarios de e-commerce: incluir campos específicos, excluir permisos
+      const { permissions, confirmPassword, ...customerData } = values;
+      userData = {
+        ...customerData,
+        userType,
+        role: "customer",
+      };
+    }
 
     onSubmit(userData);
   };
@@ -158,32 +204,31 @@ const CreateUserModal = ({
           <Input.Password />
         </Form.Item>
 
-        {/* Permisos según tipo de usuario */}
-        <Form.Item
-          name="permissions"
-          label="Permisos"
-          rules={[
-            {
-              required: true,
-              message: "Seleccione al menos un permiso",
-            },
-          ]}
-        >
-          <Select
-            mode="multiple"
-            placeholder="Seleccione los permisos"
-            style={{ width: "100%" }}
+        {/* Permisos solo para usuarios de dashboard */}
+        {userType === "dashboard" && (
+          <Form.Item
+            name="permissions"
+            label="Permisos"
+            rules={[
+              {
+                required: true,
+                message: "Seleccione al menos un permiso",
+              },
+            ]}
           >
-            {(userType === "dashboard"
-              ? PERMISSIONS.DASHBOARD
-              : PERMISSIONS.ECOMMERCE
-            ).map((permission) => (
-              <Option key={permission.value} value={permission.value}>
-                {permission.label}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
+            <Select
+              mode="multiple"
+              placeholder="Seleccione los permisos"
+              style={{ width: "100%" }}
+            >
+              {PERMISSIONS.DASHBOARD.map((permission) => (
+                <Option key={permission.value} value={permission.value}>
+                  {permission.label}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+        )}
 
         {/* Campos adicionales para usuarios de e-commerce */}
         {userType === "ecommerce" && (

@@ -27,22 +27,62 @@ const menuItems = [
     title: "Resumen",
   },
   {
+    key: "/vehicle-families",
+    label: "Familias de Vehículos",
+    icon: <CarryOutOutlined />,
+    title: "Familias de Vehículos",
+    children: [
+      {
+        key: "/vehicle-families",
+        label: (
+          <Link to={"/vehicle-families"}>Sistema de Gestión de Vehículos</Link>
+        ),
+        title: "Sistema de Gestión de Vehículos",
+      },
+      {
+        key: "/brand-management",
+        label: <Link to="/brand-management">Marcas</Link>,
+        title: "Configuración de Marcas",
+      },
+      {
+        key: "/family-management",
+        label: <Link to="/family-management">Familias</Link>,
+        title: "Configuración de Familias",
+      },
+      {
+        key: "/model-management",
+        label: <Link to="/model-management">Modelos</Link>,
+        title: "Configuración de Modelos",
+      },
+      {
+        key: "/transmission-management",
+        label: <Link to="/transmission-management">Transmisiones</Link>,
+        title: "Configuración de Transmisiones",
+      },
+      {
+        key: "/fuel-management",
+        label: <Link to="/fuel-management">Combustibles</Link>,
+        title: "Configuración de Combustibles",
+      },
+    ],
+  },
+  {
     key: "/products",
     label: <Link to={"/products"}>Productos</Link>,
     icon: <ShopOutlined />,
     title: "Productos",
   },
   {
-    key: "/image-manager",
-    label: <Link to={"/image-manager"}>Gestor de Imágenes</Link>,
-    icon: <FileImageOutlined />,
-    title: "Gestor de Imágenes",
-  },
-  {
     key: "/categoriesManagement",
     label: <Link to={"/categoriesManagement"}>Gestión de categorías</Link>,
     icon: <UnorderedListOutlined />,
     title: "Gestión de categorías",
+  },
+  {
+    key: "/image-manager",
+    label: <Link to={"/image-manager"}>Gestor de Imágenes</Link>,
+    icon: <FileImageOutlined />,
+    title: "Gestor de Imágenes",
   },
   {
     key: "/orders",
@@ -67,49 +107,6 @@ const menuItems = [
     label: <Link to={"/reviews"}>Reseñas</Link>,
     icon: <StarOutlined />,
     title: "Reseñas",
-  },
-  {
-    key: "/vehicle-families",
-    label: 'Familias de Vehículos',
-    icon: <CarryOutOutlined />,
-    title: "Familias de Vehículos",
-    children: [
-      {
-        key: "/vehicle-families",
-        label: <Link to={"/vehicle-families"}>Sistema de Gestión de Vehículos</Link>,
-        title: "Sistema de Gestión de Vehículos",
-      },
-      {
-        key: "/brand-management",
-        label: <Link to="/brand-management">Marcas</Link>,
-        title: "Configuración de Marcas",
-      },
-      {
-        key: "/family-management",
-        label: <Link to="/family-management">Familias</Link>,
-        title: "Configuración de Familias",
-      },
-      {
-        key: "/model-management",
-        label: <Link to="/model-management">Modelos</Link>,
-        title: "Configuración de Modelos",
-      },
-    /*   {
-        key: "/line-management",
-        label: <Link to="/line-management">Líneas</Link>,
-        title: "Configuración de Líneas",
-      }, */
-      {
-        key: "/transmission-management",
-        label: <Link to="/transmission-management">Transmisiones</Link>,
-        title: "Configuración de Transmisiones",
-      },
-      {
-        key: "/fuel-management",
-        label: <Link to="/fuel-management">Combustibles</Link>,
-        title: "Configuración de Combustibles",
-      },
-    ],
   },
   {
     key: "settings",
@@ -140,6 +137,7 @@ const menuItems = [
     ],
   },
 ];
+
 
 const MenuCollapsed = () => {
   const dispatch = useDispatch();
