@@ -80,6 +80,9 @@ export interface Endpoints {
       UPDATE_LOCATION_MULTIPLIERS: ApiEndpoint;
       UPDATE_DELIVERY_TIMES: ApiEndpoint;
       UPDATE_FREE_SHIPPING: ApiEndpoint;
+      GET_PROCESSING_FEES: ApiEndpoint;
+      UPDATE_PROCESSING_FEES: ApiEndpoint;
+      TOGGLE_PROCESSING_FEES: ApiEndpoint;
     };
     BRAND: {
       CREATE: ApiEndpoint;

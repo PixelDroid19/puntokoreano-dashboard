@@ -179,6 +179,43 @@ class StorageService {
   }
 
   /**
+   * Obtiene la configuración actual de optimización de imágenes
+   */
+  async getOptimizationConfig(): Promise<any> {
+    const { url, method } = ENDPOINTS.DASHBOARD.STORAGE.OPTIMIZATION_CONFIG;
+    const response = await axiosInstance({
+      url,
+      method,
+    });
+    return response.data;
+  }
+
+  /**
+   * Actualiza la configuración de optimización de imágenes
+   */
+  async updateOptimizationConfig(config: {
+    quality?: number;
+    maxWidth?: number;
+    maxHeight?: number;
+    format?: 'webp' | 'jpeg' | 'png' | 'auto';
+    enableResize?: boolean;
+    enableCompression?: boolean;
+    generateHash?: boolean;
+    seoFriendlyNames?: boolean;
+  }): Promise<any> {
+    const { url, method } = ENDPOINTS.DASHBOARD.STORAGE.UPDATE_OPTIMIZATION_CONFIG;
+    const response = await axiosInstance({
+      url,
+      method,
+      data: config,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data;
+  }
+
+  /**
    * Valida archivos antes de subirlos
    */
   validateFiles(files: File[], options: {

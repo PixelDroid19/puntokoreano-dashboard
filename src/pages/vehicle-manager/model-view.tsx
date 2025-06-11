@@ -24,8 +24,7 @@ import ModelForm from "./forms/model-form";
 
 interface ModelData {
   _id: string;
-  name: string;
-  year: number;
+  year: number[];
   engine_type: string;
   family_id: {
     _id: string;
@@ -51,7 +50,7 @@ const ModelView: React.FC = () => {
     page: 1,
     limit: 10,
     sortBy: "name",
-    sortOrder: "asc",
+    sortOrder: "asc" as "asc" | "desc",
     search: "",
     active: true,
     family_id: null as string | null,
@@ -101,7 +100,7 @@ const ModelView: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ["models"] });
       message.success("Modelo actualizado correctamente");
       setIsModalVisible(false);
-      form.resetFields();
+      setEditingModel(null);
     },
     onError: (error: any) => {
       message.error(error?.message || "Error al actualizar el modelo");
@@ -146,8 +145,7 @@ const ModelView: React.FC = () => {
   const handleEdit = (record: ModelData) => {
     setEditingModel(record);
     form.setFieldsValue({
-      name: record.name,
-      year: record.year,
+      year: record.year[0],
       engine_type: record.engine_type,
       family_id: record.family_id?._id,
       active: record.active,
@@ -179,7 +177,6 @@ const ModelView: React.FC = () => {
       .validateFields()
       .then((values) => {
         const modelData = {
-          name: values.name,
           familyId: values.family_id,
           year: values.year.toString(),
           engineType: values.engine_type,
@@ -212,7 +209,7 @@ const ModelView: React.FC = () => {
       dataIndex: "year",
       key: "year",
       sorter: true,
-      render: (year: number) => <>{year.toString()}</>,
+      render: (year: number[]) => <>{year[0]?.toString()}</>,
     },
     {
       title: "Tipo de Motor",
@@ -250,9 +247,8 @@ const ModelView: React.FC = () => {
           <Tooltip title="Editar Modelo">
             <Button
               icon={<EditOutlined style={{ fontSize: 16 }} />}
-              onClick={() => {}}
-              aria-label={`Editar ${record.name}`}
-              disabled
+              onClick={() => handleEdit(record)}
+              aria-label={`Editar ${record._id}`}
             />
           </Tooltip>
           <Tooltip title="Eliminar Modelo">
@@ -270,7 +266,7 @@ const ModelView: React.FC = () => {
               <Button
                 danger
                 icon={<DeleteOutlined style={{ fontSize: 16 }} />}
-                aria-label={`Eliminar ${record.name}`}
+                aria-label={`Eliminar ${record._id}`}
                 disabled={
                   deleteMutation.isPending &&
                   deleteMutation.variables === record._id
@@ -354,26 +350,25 @@ const ModelView: React.FC = () => {
           <ModelForm
             mode="edit"
             initialValues={{
-              name: editingModel.name,
-              year: editingModel.year,
+              year: editingModel.year[0],
+              years: editingModel.year,
               engine_type: editingModel.engine_type,
               family_id: editingModel.family_id?._id,
+              family_label: `${editingModel.family_id?.brand_id?.name || ""} - ${editingModel.family_id?.name || ""}`,
+              brand_id: editingModel.family_id?.brand_id?._id,
+              family_id_obj: {
+                value: editingModel.family_id?._id,
+                label: `${editingModel.family_id?.brand_id?.name || ""} - ${editingModel.family_id?.name || ""}`,
+                brand_id: editingModel.family_id?.brand_id?._id,
+                familyData: editingModel.family_id,
+              },
               active: editingModel.active,
             }}
             onSubmit={(values) => {
-              VehicleFamiliesService.updateModel(editingModel._id, values)
-                .then(() => {
-                  queryClient.invalidateQueries({ queryKey: ["models"] });
-                  message.success("Modelo actualizado correctamente");
-                  setIsModalVisible(false);
-                  setEditingModel(null);
-                  form.resetFields();
-                })
-                .catch((error) => {
-                  message.error(
-                    error?.message || "Error al actualizar el modelo"
-                  );
-                });
+              updateMutation.mutate({
+                id: editingModel._id,
+                data: values,
+              });
             }}
           />
         ) : (

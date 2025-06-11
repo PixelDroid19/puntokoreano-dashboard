@@ -59,6 +59,29 @@ export const ENDPOINTS = {
     UPDATE: `${BASE_URL}/dashboard/orders`,
     DELETE: `${BASE_URL}/dashboard/orders`,
     STATUS: `${BASE_URL}/dashboard/orders/status`,
+  },
+  
+  DASHBOARD: {
+    SHIPPING_SETTINGS: {
+      GET_ALL: { url: `${BASE_URL}/dashboard/shipping-settings` },
+      UPDATE_BASE_COSTS: { url: `${BASE_URL}/dashboard/shipping-settings/base-costs` },
+      UPDATE_WEIGHT_RULES: { url: `${BASE_URL}/dashboard/shipping-settings/weight-rules` },
+      UPDATE_LOCATION_MULTIPLIERS: { url: `${BASE_URL}/dashboard/shipping-settings/location-multipliers` },
+      UPDATE_DELIVERY_TIMES: { url: `${BASE_URL}/dashboard/shipping-settings/delivery-times` },
+      UPDATE_FREE_SHIPPING: { url: `${BASE_URL}/dashboard/shipping-settings/free-shipping` },
+      GET_PROCESSING_FEES: { url: `${BASE_URL}/dashboard/shipping-settings/processing-fees` },
+      UPDATE_PROCESSING_FEES: { url: `${BASE_URL}/dashboard/shipping-settings/processing-fees` },
+      TOGGLE_PROCESSING_FEES: { url: `${BASE_URL}/dashboard/shipping-settings/processing-fees/toggle` },
+    },
+    STORAGE: {
+      UPLOAD_SINGLE: { url: `${BASE_URL}/storage/upload`, method: 'POST' },
+      UPLOAD_MULTIPLE: { url: `${BASE_URL}/storage/upload/multiple`, method: 'POST' },
+      DELETE_FILE: { url: `${BASE_URL}/storage/files/:filename`, method: 'DELETE' },
+      DELETE_FILE_BY_URL: { url: `${BASE_URL}/storage/files/by-url`, method: 'DELETE' },
+      LIST_FILES: { url: `${BASE_URL}/storage/files`, method: 'GET' },
+      OPTIMIZATION_CONFIG: { url: `${BASE_URL}/storage/config/optimization`, method: 'GET' },
+      UPDATE_OPTIMIZATION_CONFIG: { url: `${BASE_URL}/storage/config/optimization`, method: 'PUT' }
+    }
   }
 };
 

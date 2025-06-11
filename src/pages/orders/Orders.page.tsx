@@ -364,7 +364,7 @@ const Orders = () => {
                 {" "}
                 <Tag
                   color="purple"
-                  className="px-3 py-1 rounded-full font-medium m-0"
+                   className="px-3 py-1 rounded-full font-medium"
                 >
                   {" "}
                   PRUEBA{" "}

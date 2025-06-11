@@ -410,8 +410,17 @@ const AchievementCard = ({
   const handleDeleteImage = async (e: React.MouseEvent) => {
     e.stopPropagation();
     
+    // Solo eliminar de GCS si es realmente una URL de Google Cloud Storage
+    const isGoogleCloudStorageUrl = (url: string): boolean => {
+      return url.includes('storage.googleapis.com') || 
+             url.includes('storage.cloud.google.com') ||
+             url.includes('.googleusercontent.com');
+    };
+    
     // Si hay una URL de imagen existente en GCS, eliminarla
-    if (achievement.icon && achievement.icon.startsWith('http')) {
+    if (achievement.icon && 
+        achievement.icon.startsWith('http') && 
+        isGoogleCloudStorageUrl(achievement.icon)) {
       try {
         console.log(`🗑️ Eliminando imagen de GCS: ${achievement.icon}`);
         const deleteResult = await StorageService.deleteFileByUrl(achievement.icon);
@@ -430,6 +439,9 @@ const AchievementCard = ({
         });
         message.warning('Error al eliminar del almacenamiento, pero se quitará localmente');
       }
+    } else if (achievement.icon && achievement.icon.startsWith('http')) {
+      console.log(`ℹ️ La imagen ${achievement.icon} no es de GCS, solo se quitará localmente`);
+      message.info('Imagen quitada (no estaba almacenada en nuestro sistema)');
     }
     
     setLocalPreviewUrl(undefined);
@@ -904,15 +916,29 @@ const HighlightedServicesSettings = () => {
   const uploadAllImages = async () => {
     const imagesToUpload = [];
 
+    // Función helper para verificar si una URL es de Google Cloud Storage
+    const isGoogleCloudStorageUrl = (url: string): boolean => {
+      return url.includes('storage.googleapis.com') || 
+             url.includes('storage.cloud.google.com') ||
+             url.includes('.googleusercontent.com');
+    };
+
     // Recopilar servicios con imágenes pendientes
     services.forEach((service, index) => {
       if (service.imageFile) {
+        // Solo incluir oldImageUrl si es realmente de GCS
+        const oldImageUrl = service.image && 
+                           service.image.startsWith('http') && 
+                           isGoogleCloudStorageUrl(service.image) 
+                           ? service.image 
+                           : undefined;
+        
         imagesToUpload.push({
           type: "service",
           index,
           file: service.imageFile,
           identifier: service.identifier || `service-${index}`,
-          oldImageUrl: service.image && service.image.startsWith('http') ? service.image : undefined,
+          oldImageUrl,
         });
       }
     });
@@ -920,12 +946,19 @@ const HighlightedServicesSettings = () => {
     // Recopilar logros con imágenes pendientes
     achievements.forEach((achievement, index) => {
       if (achievement.iconFile) {
+        // Solo incluir oldImageUrl si es realmente de GCS
+        const oldImageUrl = achievement.icon && 
+                           achievement.icon.startsWith('http') && 
+                           isGoogleCloudStorageUrl(achievement.icon) 
+                           ? achievement.icon 
+                           : undefined;
+        
         imagesToUpload.push({
           type: "achievement",
           index,
           file: achievement.iconFile,
           identifier: achievement.id || `achievement-${index}`,
-          oldImageUrl: achievement.icon && achievement.icon.startsWith('http') ? achievement.icon : undefined,
+          oldImageUrl,
         });
       }
     });
@@ -1400,8 +1433,17 @@ const HighlightedServicesSettings = () => {
       onOk: async () => {
         const achievement = achievements[index];
         
-        // Eliminar imagen de GCS si existe
-        if (achievement.icon && achievement.icon.startsWith('http')) {
+        // Función helper para verificar si una URL es de Google Cloud Storage
+        const isGoogleCloudStorageUrl = (url: string): boolean => {
+          return url.includes('storage.googleapis.com') || 
+                 url.includes('storage.cloud.google.com') ||
+                 url.includes('.googleusercontent.com');
+        };
+        
+        // Eliminar imagen de GCS solo si es realmente de GCS
+        if (achievement.icon && 
+            achievement.icon.startsWith('http') && 
+            isGoogleCloudStorageUrl(achievement.icon)) {
           try {
             console.log(`🗑️ Eliminando imagen de GCS al eliminar logro: ${achievement.icon}`);
             const deleteResult = await StorageService.deleteFileByUrl(achievement.icon);
@@ -1418,6 +1460,8 @@ const HighlightedServicesSettings = () => {
             });
             // Continuar con la eliminación del logro aunque falle la eliminación de la imagen
           }
+        } else if (achievement.icon && achievement.icon.startsWith('http')) {
+          console.log(`ℹ️ La imagen del logro ${achievement.icon} no es de GCS, no se eliminará del almacenamiento`);
         }
         
         if (achievement.id) {
@@ -1456,8 +1500,17 @@ const HighlightedServicesSettings = () => {
       onOk: async () => {
         const service = services[index];
         
-        // Eliminar imagen de GCS si existe
-        if (service.image && service.image.startsWith('http')) {
+        // Función helper para verificar si una URL es de Google Cloud Storage
+        const isGoogleCloudStorageUrl = (url: string): boolean => {
+          return url.includes('storage.googleapis.com') || 
+                 url.includes('storage.cloud.google.com') ||
+                 url.includes('.googleusercontent.com');
+        };
+        
+        // Eliminar imagen de GCS solo si es realmente de GCS
+        if (service.image && 
+            service.image.startsWith('http') && 
+            isGoogleCloudStorageUrl(service.image)) {
           try {
             console.log(`🗑️ Eliminando imagen de GCS al eliminar servicio: ${service.image}`);
             const deleteResult = await StorageService.deleteFileByUrl(service.image);
@@ -1474,6 +1527,8 @@ const HighlightedServicesSettings = () => {
             });
             // Continuar con la eliminación del servicio aunque falle la eliminación de la imagen
           }
+        } else if (service.image && service.image.startsWith('http')) {
+          console.log(`ℹ️ La imagen del servicio ${service.image} no es de GCS, no se eliminará del almacenamiento`);
         }
         
         if (service.identifier) {

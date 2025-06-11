@@ -76,13 +76,13 @@ const FamilyView: React.FC = () => {
 
   // Mutación para actualizar familia
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: { name: string; brand_id: string; active: boolean } }) =>
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
       VehicleFamiliesService.updateFamily(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["families"] });
       message.success("Familia actualizada correctamente");
       setIsModalVisible(false);
-      form.resetFields();
+      setEditingFamily(null);
     },
     onError: (error: any) => {
       message.error(error?.message || "Error al actualizar la familia");
@@ -125,15 +125,8 @@ const FamilyView: React.FC = () => {
     setIsModalVisible(true);
   };
 
-  const handleEdit = (record) => {
+  const handleEdit = (record: any) => {
     setEditingFamily(record);
-    form.setFieldsValue({
-      name: record.name,
-      brand_id: record.brand_id
-        ? { value: record.brand_id._id, label: record.brand_id.name, brandData: record.brand_id }
-        : null,
-      active: record.active,
-    });
     setIsModalVisible(true);
   };
 
@@ -217,7 +210,6 @@ const FamilyView: React.FC = () => {
               icon={<EditOutlined style={{ fontSize: 16 }} />}
               onClick={() => handleEdit(record)}
               aria-label={`Editar ${record.name}`}
-              //disabled
             />
           </Tooltip>
           <Tooltip title="Eliminar Familia">
@@ -320,24 +312,17 @@ const FamilyView: React.FC = () => {
             mode="edit"
             initialValues={{
               name: editingFamily.name,
-              brand: {
-                value: editingFamily?.brand?._id? editingFamily.brand._id : null,
-                label: editingFamily?.brand?._id? editingFamily.brand.name : null,
-              },
               active: editingFamily.active,
+              brand: {
+                value: editingFamily.brand_id?._id,
+                label: editingFamily.brand_id?.name,
+              },
             }}
             onSubmit={(values) => {
-              VehicleFamiliesService.updateFamily(editingFamily._id, values)
-                .then(() => {
-                  queryClient.invalidateQueries({ queryKey: ["families"] });
-                  message.success("Familia actualizada correctamente");
-                  setIsModalVisible(false);
-                  setEditingFamily(null);
-                  form.resetFields();
-                })
-                .catch((error) => {
-                  message.error(error?.message || "Error al actualizar la familia");
-                });
+              updateMutation.mutate({
+                id: editingFamily._id,
+                data: values,
+              });
             }}
           />
         ) : (

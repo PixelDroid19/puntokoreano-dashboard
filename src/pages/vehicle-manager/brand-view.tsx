@@ -46,21 +46,36 @@ const BrandView: React.FC = () => {
   const brandsData = apiResponse?.brands;
   const paginationData = apiResponse?.pagination;
 
+  // Mutación para actualizar marca
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      VehicleFamiliesService.updateBrand(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["brands"] });
+      message.success("Marca actualizada correctamente");
+      setIsModalVisible(false);
+      setEditingBrand(null);
+      form.resetFields();
+    },
+    onError: (error: any) => {
+      message.error(error?.message || "Error al actualizar la marca");
+      console.error(error);
+    },
+  });
+
   // Mutación para eliminar marca
   const deleteMutation = useMutation({
-    // Asegúrate que el servicio espera _id
     mutationFn: (id: string) => VehicleFamiliesService.deleteBrand(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["brands"] });
       message.success("Marca eliminada correctamente");
     },
-    onError: (error) => {
-      message.error(error.message || "Error al eliminar la marca");
+    onError: (error: any) => {
+      message.error(error?.message || "Error al eliminar la marca");
     },
   });
 
   const handleSearch = () => {
-    // Reiniciar a la página 1 al buscar
     setQueryParams((prevParams) => ({
       ...prevParams,
       search: searchText,
@@ -68,12 +83,8 @@ const BrandView: React.FC = () => {
     }));
   };
 
-  const handleEdit = (record) => {
+  const handleEdit = (record: any) => {
     setEditingBrand(record);
-    form.setFieldsValue({
-      name: { value: record._id, label: record.name, brandData: record },
-      active: record.active,
-    });
     setIsModalVisible(true);
   };
 
@@ -86,14 +97,13 @@ const BrandView: React.FC = () => {
       ...prevParams,
       page: pagination.current,
       limit: pagination.pageSize,
-      // Asegurarse de que sorter.field sea un campo válido para ordenar en el backend
       sortBy: sorter.field || "name",
       sortOrder:
         sorter.order === "ascend"
           ? "asc"
           : sorter.order === "descend"
           ? "desc"
-          : prevParams.sortOrder, // Mantener orden si no hay sorter
+          : prevParams.sortOrder,
     }));
   };
 
@@ -109,26 +119,25 @@ const BrandView: React.FC = () => {
 
   const columns = [
     {
-      title: "Nombre", // Traducido
+      title: "Nombre",
       dataIndex: "name",
       key: "name",
       sorter: true,
     },
     {
-      title: "Estado", // Traducido
+      title: "Estado",
       dataIndex: "active",
       key: "active",
-      // No necesita sorter generalmente, pero se podría añadir si el backend lo soporta
       render: (active: boolean) => (
         <span style={{ color: active ? "green" : "red" }}>
-          {active ? "Activo" : "Inactivo"} {/* Traducido */}
+          {active ? "Activo" : "Inactivo"}
         </span>
       ),
     },
     {
-      title: "Acciones", // Traducido
+      title: "Acciones",
       key: "actions",
-      render: (_: any, record) => (
+      render: (_: any, record: any) => (
         <Space size="middle">
           <Tooltip title="Editar Marca">
             <Button
@@ -221,10 +230,19 @@ const BrandView: React.FC = () => {
         destroyOnClose
       >
         {editingBrand ? (
-          <div>
-            <p>Modo de edición para marca: {editingBrand.name}</p>
-            <p>Función de edición en desarrollo.</p>
-          </div>
+          <BrandForm
+            mode="edit"
+            initialValues={{
+              name: editingBrand.name,
+              active: editingBrand.active,
+            }}
+            onSubmit={(values) => {
+              updateMutation.mutate({
+                id: editingBrand._id,
+                data: values,
+              });
+            }}
+          />
         ) : (
           <BrandForm />
         )}

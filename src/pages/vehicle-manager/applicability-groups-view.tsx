@@ -169,13 +169,7 @@ const ApplicabilityGroupsView: React.FC = () => {
     }));
   };
 
-  const handleActiveChange = (value: string) => {
-    setQueryParams((prevParams) => ({
-      ...prevParams,
-      activeOnly: value === "true",
-      page: 1,
-    }));
-  };
+
 
   const handleEdit = (record: VehicleApplicabilityGroup) => {
     setEditingGroup(record);
@@ -224,18 +218,7 @@ const ApplicabilityGroupsView: React.FC = () => {
     setIsViewingVehicles(true);
   };
 
-  const handleExport = async () => {
-    try {
-      await VehicleApplicabilityGroupsService.exportGroups({
-        search: searchText,
-        category: selectedCategory,
-        activeOnly: queryParams.activeOnly,
-      });
-      message.success("Exportación iniciada. El archivo se descargará automáticamente.");
-    } catch (error) {
-      message.error(`Error al exportar: ${error.message}`);
-    }
-  };
+
 
   const resetFilters = () => {
     setSearchText("");
@@ -366,8 +349,6 @@ const ApplicabilityGroupsView: React.FC = () => {
               onPressEnter={handleSearch}
               prefix={<SearchOutlined />}
               className="w-full sm:w-48 md:w-64"
-              size="large"
-              style={{ fontSize: '16px' }}
             />
             <Select
               placeholder="Categoría"
@@ -375,25 +356,12 @@ const ApplicabilityGroupsView: React.FC = () => {
               onChange={handleCategoryChange}
               allowClear
               className="w-full sm:w-40"
-              size="large"
-              style={{ fontSize: '16px' }}
             >
               <Option value="repuestos">Repuestos</Option>
               <Option value="accesorios">Accesorios</Option>
               <Option value="servicio">Servicio</Option>
               <Option value="blog">Blog</Option>
               <Option value="general">General</Option>
-            </Select>
-            <Select
-              placeholder="Estado"
-              value={queryParams.activeOnly ? "true" : "false"}
-              onChange={handleActiveChange}
-              className="w-full sm:w-32"
-              size="large"
-              style={{ fontSize: '16px' }}
-            >
-              <Option value="true">Activos</Option>
-              <Option value="false">Inactivos</Option>
             </Select>
           
           {/* Separador visual */}
@@ -404,7 +372,6 @@ const ApplicabilityGroupsView: React.FC = () => {
             <Button 
               onClick={resetFilters} 
               icon={<FilterOutlined />} 
-              size="large"
               className="sm:min-w-0"
             >
               <span className="hidden md:inline">Limpiar</span>
@@ -416,30 +383,19 @@ const ApplicabilityGroupsView: React.FC = () => {
               onClick={handleSearch} 
               type="primary" 
               icon={<SearchOutlined />} 
-              size="large"
               className="sm:min-w-0"
             >
               <span className="hidden md:inline">Buscar</span>
             </Button>
           </Tooltip>
           
-          <Tooltip title="Exportar datos">
-            <Button 
-              onClick={handleExport} 
-              icon={<ExportOutlined />} 
-              size="large"
-              className="sm:min-w-0"
-            >
-              <span className="hidden md:inline">Exportar</span>
-            </Button>
-          </Tooltip>
+         
           
           <Tooltip title="Crear nuevo grupo">
             <Button
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => setIsModalVisible(true)}
-              size="large"
               className="sm:min-w-0"
             >
               <span className="hidden md:inline">Nuevo</span>

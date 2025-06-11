@@ -109,7 +109,7 @@ const LineView: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ["lines"] });
       message.success("Línea actualizada correctamente");
       setIsModalVisible(false);
-      form.resetFields();
+      setEditingLine(null);
     },
     onError: (error: any) => {
       message.error(error?.message || "Error al actualizar la línea");
@@ -151,15 +151,8 @@ const LineView: React.FC = () => {
     setIsModalVisible(true);
   };
 
-  const handleEdit = (record: LineData) => {
+  const handleEdit = (record: any) => {
     setEditingLine(record);
-    form.setFieldsValue({
-      name: record.name,
-      model_id: record.model_id
-        ? { value: record.model_id._id, label: record.model_id.name, modelData: record.model_id }
-        : null,
-      active: record.active,
-    });
     setIsModalVisible(true);
   };
 
@@ -258,9 +251,8 @@ const LineView: React.FC = () => {
           <Tooltip title="Editar Línea">
             <Button
               icon={<EditOutlined style={{ fontSize: 16 }} />}
-              onClick={() => {}}
+              onClick={() => handleEdit(record)}
               aria-label={`Editar ${record.name}`}
-              disabled
             />
           </Tooltip>
           <Tooltip title="Eliminar Línea">
@@ -365,17 +357,10 @@ const LineView: React.FC = () => {
               active: editingLine.active,
             }}
             onSubmit={(values) => {
-              VehicleFamiliesService.updateLine(editingLine._id, values)
-                .then(() => {
-                  queryClient.invalidateQueries({ queryKey: ["lines"] });
-                  message.success("Línea actualizada correctamente");
-                  setIsModalVisible(false);
-                  setEditingLine(null);
-                  form.resetFields();
-                })
-                .catch((error) => {
-                  message.error(error?.message || "Error al actualizar la línea");
-                });
+              updateMutation.mutate({
+                id: editingLine._id,
+                data: values,
+              });
             }}
           />
         ) : (

@@ -196,6 +196,9 @@ export interface Endpoints {
       UPDATE_LOCATION_MULTIPLIERS: ApiEndpoint;
       UPDATE_DELIVERY_TIMES: ApiEndpoint;
       UPDATE_FREE_SHIPPING: ApiEndpoint;
+      GET_PROCESSING_FEES: ApiEndpoint;
+      UPDATE_PROCESSING_FEES: ApiEndpoint;
+      TOGGLE_PROCESSING_FEES: ApiEndpoint;
     };
     BRAND: {
       CREATE: ApiEndpoint;
@@ -279,7 +282,9 @@ export interface Endpoints {
         };
         CUSTOMERS: {
           GET_ALL: ApiEndpoint;
+          CREATE: ApiEndpoint;
           GET_DETAILS: ApiEndpoint;
+          UPDATE: ApiEndpoint;
           GET_PURCHASES: ApiEndpoint;
           GET_REVIEWS: ApiEndpoint;
           BLOCK: ApiEndpoint;
@@ -309,6 +314,8 @@ export interface Endpoints {
       DELETE_FILE: ApiEndpoint;
       DELETE_FILE_BY_URL: ApiEndpoint;
       LIST_FILES: ApiEndpoint;
+      OPTIMIZATION_CONFIG: ApiEndpoint;
+      UPDATE_OPTIMIZATION_CONFIG: ApiEndpoint;
     };
   };
 }

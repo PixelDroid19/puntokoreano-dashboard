@@ -52,6 +52,29 @@ const convertPermissionsArrayToObject = (permissionsArray: string[]) => {
   return permissions;
 };
 
+// Validación personalizada para contraseña
+const validatePassword = (value: string) => {
+  if (!value) {
+    return Promise.reject("La contraseña es requerida");
+  }
+  
+  if (value.length < 8) {
+    return Promise.reject("La contraseña debe tener al menos 8 caracteres");
+  }
+  
+  // Verificar que tenga al menos una letra
+  if (!/[A-Za-z]/.test(value)) {
+    return Promise.reject("La contraseña debe contener al menos una letra");
+  }
+  
+  // Verificar que tenga al menos un número
+  if (!/\d/.test(value)) {
+    return Promise.reject("La contraseña debe contener al menos un número");
+  }
+  
+  return Promise.resolve();
+};
+
 const CreateUserModal = ({
   visible,
   onClose,
@@ -67,15 +90,6 @@ const CreateUserModal = ({
   const [userType, setUserType] = useState<"dashboard" | "ecommerce">(
     "ecommerce"
   );
-
-  const passwordValidationRules = [
-    { required: true, message: "La contraseña es requerida" },
-    { min: 8, message: "La contraseña debe tener al menos 8 caracteres" },
-    {
-      pattern: /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/,
-      message: "La contraseña debe contener letras y números",
-    },
-  ];
 
   // Reset form when user type changes
   useEffect(() => {
@@ -178,10 +192,14 @@ const CreateUserModal = ({
         <Form.Item
           name="password"
           label="Contraseña"
-          rules={passwordValidationRules}
+          rules={[
+            {
+              validator: (_, value) => validatePassword(value)
+            }
+          ]}
           hasFeedback
         >
-          <Input.Password />
+          <Input.Password placeholder="Mínimo 8 caracteres, debe incluir letras y números" />
         </Form.Item>
 
         <Form.Item
@@ -189,10 +207,16 @@ const CreateUserModal = ({
           label="Confirmar Contraseña"
           dependencies={["password"]}
           rules={[
-            ...passwordValidationRules,
+            {
+              required: true,
+              message: "Confirme su contraseña"
+            },
             ({ getFieldValue }) => ({
               validator(_, value) {
-                if (!value || getFieldValue("password") === value) {
+                if (!value) {
+                  return Promise.reject("Confirme su contraseña");
+                }
+                if (getFieldValue("password") === value) {
                   return Promise.resolve();
                 }
                 return Promise.reject("Las contraseñas no coinciden");
@@ -201,7 +225,7 @@ const CreateUserModal = ({
           ]}
           hasFeedback
         >
-          <Input.Password />
+          <Input.Password placeholder="Repita la contraseña anterior" />
         </Form.Item>
 
         {/* Permisos solo para usuarios de dashboard */}

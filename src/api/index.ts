@@ -290,6 +290,18 @@ const ENDPOINTS: Endpoints = {
         url: `${BASE_URL}/dashboard/shipping-settings/free-shipping`,
         method: "PATCH",
       },
+      GET_PROCESSING_FEES: {
+        url: `${BASE_URL}/dashboard/shipping-settings/processing-fees`,
+        method: "GET",
+      },
+      UPDATE_PROCESSING_FEES: {
+        url: `${BASE_URL}/dashboard/shipping-settings/processing-fees`,
+        method: "PATCH",
+      },
+      TOGGLE_PROCESSING_FEES: {
+        url: `${BASE_URL}/dashboard/shipping-settings/processing-fees/toggle`,
+        method: "PATCH",
+      },
     },
     BRAND: {
       CREATE: {
@@ -559,9 +571,17 @@ const ENDPOINTS: Endpoints = {
             url: `${BASE_URL}/dashboard/users/customers`,
             method: "GET",
           },
+          CREATE: {
+            url: `${BASE_URL}/dashboard/users/customers`,
+            method: "POST",
+          },
           GET_DETAILS: {
             url: `${BASE_URL}/dashboard/users/customers/:id`,
             method: "GET",
+          },
+          UPDATE: {
+            url: `${BASE_URL}/dashboard/users/customers/:id`,
+            method: "PATCH",
           },
           GET_PURCHASES: {
             url: `${BASE_URL}/dashboard/users/customers/:id/purchases`,
@@ -660,6 +680,14 @@ const ENDPOINTS: Endpoints = {
       LIST_FILES: {
         url: `${BASE_URL}/storage/files`,
         method: "GET",
+      },
+      OPTIMIZATION_CONFIG: {
+        url: `${BASE_URL}/storage/config/optimization`,
+        method: "GET",
+      },
+      UPDATE_OPTIMIZATION_CONFIG: {
+        url: `${BASE_URL}/storage/config/optimization`,
+        method: "PUT",
       },
     },
   },

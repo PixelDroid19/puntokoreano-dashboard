@@ -91,17 +91,18 @@ const FuelView: React.FC = () => {
     },
   });
 
-  const updateFuelMutation = useMutation({
-    mutationFn: (values: { id: string; name: string }) =>
-      VehicleFamiliesService.updateFuel(values.id, { name: values.name }),
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      VehicleFamiliesService.updateFuel(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fuels"] });
-      message.success("Combustible actualizado exitosamente");
+      message.success("Combustible actualizado correctamente");
       setIsModalVisible(false);
-      form.resetFields();
+      setEditingFuel(null);
     },
-    onError: (error: Error) => {
-      message.error(error?.message || "Error al actualizar combustible");
+    onError: (error: any) => {
+      message.error(error?.message || "Error al actualizar el combustible");
+      console.error(error);
     },
   });
 
@@ -122,9 +123,6 @@ const FuelView: React.FC = () => {
 
   const handleEditFuel = (record: FuelData) => {
     setEditingFuel(record);
-    form.setFieldsValue({
-      name: { value: record._id, label: record.name, fuelData: record },
-    });
     setIsModalVisible(true);
   };
 
@@ -139,9 +137,9 @@ const FuelView: React.FC = () => {
         name: values.name?.label,
       };
       if (editingFuel) {
-        updateFuelMutation.mutate({
+        updateMutation.mutate({
           id: editingFuel._id,
-          ...payload,
+          data: payload,
         });
       } else {
         createFuelMutation.mutate(payload);
@@ -196,11 +194,10 @@ const FuelView: React.FC = () => {
           <Tooltip title="Editar Combustible">
             <Button
               icon={<EditOutlined style={{ fontSize: 16 }} />}
-              onClick={() => {}}
+              onClick={() => handleEditFuel(record)}
               type="default"
               size="small"
               aria-label={`Editar ${record.name}`}
-              disabled
             />
           </Tooltip>
           <Tooltip title="Eliminar Combustible">
@@ -269,10 +266,11 @@ const FuelView: React.FC = () => {
       </Card>
 
       <Modal
-        title={editingFuel ? 'Editar Combustible' : 'Agregar Combustible'}
+        title={editingFuel ? "Editar Combustible" : "Nuevo Combustible"}
         open={isModalVisible}
         onCancel={handleModalCancel}
         footer={null}
+        destroyOnClose
       >
         {editingFuel ? (
           <FuelForm
@@ -282,15 +280,9 @@ const FuelView: React.FC = () => {
               active: editingFuel.active,
             }}
             onSubmit={(values) => {
-              updateFuelMutation.mutate({
+              updateMutation.mutate({
                 id: editingFuel._id,
-                ...values,
-              }, {
-                onSuccess: () => {
-                  setIsModalVisible(false);
-                  setEditingFuel(null);
-                  form.resetFields();
-                }
+                data: values,
               });
             }}
           />

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -12,9 +12,20 @@ import FormError from "./FormError";
 
 interface BrandFormData {
   name: string;
+  active?: boolean;
 }
 
-export default function BrandForm() {
+interface BrandFormProps {
+  mode?: "create" | "edit";
+  initialValues?: Partial<BrandFormData>;
+  onSubmit?: (data: BrandFormData) => void;
+}
+
+export default function BrandForm({ 
+  mode = "create", 
+  initialValues, 
+  onSubmit 
+}: BrandFormProps) {
   const [formSuccess, setFormSuccess] = useState(false);
   const [formError, setFormError] = useState<{ message: string; errors?: string[] } | null>(null);
 
@@ -22,23 +33,33 @@ export default function BrandForm() {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<BrandFormData>({
     defaultValues: {
-      name: "",
+      name: initialValues?.name || "",
+      active: initialValues?.active ?? true,
     },
   });
 
   const queryClient = useQueryClient();
 
+  useEffect(() => {
+    if (mode === "edit" && initialValues) {
+      setValue("name", initialValues.name || "");
+      setValue("active", initialValues.active ?? true);
+    }
+  }, [initialValues, mode, setValue]);
+
   const { mutate, isPending: isSubmitting } = useMutation({
     mutationFn: (data: BrandFormData) => {
       return VehicleFamiliesService.createBrand({
         name: data.name.trim(),
-        active: true,
+        active: data.active ?? true,
       });
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["brands"] });
       queryClient.invalidateQueries({ queryKey: ["vehicleBrands"] });
       setFormSuccess(true);
       setFormError(null);
@@ -66,8 +87,18 @@ export default function BrandForm() {
     },
   });
 
-  const onSubmit = (data: BrandFormData) => {
-      mutate(data);
+  const handleFormSubmit = (data: BrandFormData) => {
+    setFormError(null);
+    const payload = {
+      name: data.name.trim(),
+      active: data.active ?? true,
+    };
+    
+    if (onSubmit) {
+      onSubmit(payload);
+    } else {
+      mutate(payload);
+    }
   };
 
   return (
@@ -92,14 +123,17 @@ export default function BrandForm() {
             <Check className="w-12 h-12" />
           </motion.div>
           <h3 className="text-xl font-medium text-gray-900 mb-2">
-            ¡Marca creada con éxito!
+            {mode === "edit" ? "¡Marca actualizada con éxito!" : "¡Marca creada con éxito!"}
           </h3>
           <p className="text-gray-500">
-            La marca ha sido registrada correctamente
+            {mode === "edit" 
+              ? "La marca ha sido actualizada correctamente" 
+              : "La marca ha sido registrada correctamente"
+            }
           </p>
         </motion.div>
       ) : (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 gap-4">
             <div>
             <div className="flex items-center gap-2">
@@ -146,7 +180,10 @@ export default function BrandForm() {
               disabled={isSubmitting}
               isLoading={isSubmitting}
             >
-              {isSubmitting ? "Creando Marca..." : "Crear Marca"}
+              {isSubmitting 
+                ? (mode === "edit" ? "Actualizando Marca..." : "Creando Marca...") 
+                : (mode === "edit" ? "Actualizar Marca" : "Crear Marca")
+              }
             </Button>
           </motion.div>
         </form>

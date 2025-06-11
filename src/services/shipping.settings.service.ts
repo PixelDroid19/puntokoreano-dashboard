@@ -125,6 +125,58 @@ class ShippingSettingsService {
   }
 
   /**
+   * 🆕 Get processing fees configuration
+   */
+  static async getProcessingFees(): Promise<any> {
+    try {
+      const { url } = ENDPOINTS.DASHBOARD.SHIPPING_SETTINGS.GET_PROCESSING_FEES;
+      const response = await axiosInstance.get(url);
+      return response.data.data;
+    } catch (error: any) {
+      throw new Error(
+        error.response?.data?.message ||
+          "Error al obtener la configuración de cuotas de procesamiento"
+      );
+    }
+  }
+
+  /**
+   * 🆕 Update processing fees configuration
+   */
+  static async updateProcessingFees(data: any): Promise<any> {
+    try {
+      const { url } = ENDPOINTS.DASHBOARD.SHIPPING_SETTINGS.UPDATE_PROCESSING_FEES;
+      const response = await axiosInstance.patch(url, {
+        processing_fees: data
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(
+        error.response?.data?.message ||
+          "Error al actualizar las cuotas de procesamiento"
+      );
+    }
+  }
+
+  /**
+   * 🆕 Toggle processing fees (enable/disable)
+   */
+  static async toggleProcessingFees(enabled: boolean): Promise<any> {
+    try {
+      const { url } = ENDPOINTS.DASHBOARD.SHIPPING_SETTINGS.TOGGLE_PROCESSING_FEES;
+      const response = await axiosInstance.patch(url, {
+        enabled
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(
+        error.response?.data?.message ||
+          "Error al cambiar el estado de las cuotas de procesamiento"
+      );
+    }
+  }
+
+  /**
    * Calculate shipping cost
    */
   static calculateShippingCost(

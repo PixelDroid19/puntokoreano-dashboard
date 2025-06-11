@@ -70,7 +70,43 @@ class UsersService {
    * Generic error handler for service requests
    */
   private static handleError(error: any): never {
-    const message = error.response?.data?.message || "An error occurred";
+    console.error("UsersService Error Details:", {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message,
+      stack: error.stack
+    });
+
+    // Extraer mensaje específico del backend
+    let message = "Ha ocurrido un error";
+    
+    if (error.response?.data) {
+      // Si el backend envía un mensaje específico
+      if (error.response.data.message) {
+        message = error.response.data.message;
+      }
+      // Si hay errores de validación específicos
+      else if (error.response.data.errors) {
+        const errors = Array.isArray(error.response.data.errors) 
+          ? error.response.data.errors 
+          : [error.response.data.errors];
+        message = errors.join(', ');
+      }
+      // Si hay detalles del error en desarrollo
+      else if (error.response.data.error && process.env.NODE_ENV === 'development') {
+        message = `Error del servidor: ${error.response.data.error}`;
+      }
+    }
+    // Errores de red
+    else if (error.request) {
+      message = "Error de conexión con el servidor";
+    }
+    // Otros errores
+    else if (error.message) {
+      message = error.message;
+    }
+
     console.error("UsersService Error:", message);
     throw new Error(message);
   }

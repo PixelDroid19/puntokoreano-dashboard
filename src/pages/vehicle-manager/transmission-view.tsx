@@ -38,7 +38,7 @@ const TransmissionView: React.FC = () => {
     page: 1,
     limit: 10,
     sortBy: "name",
-    sortOrder: "asc",
+    sortOrder: "asc" as "asc" | "desc",
     search: "",
   });
 
@@ -54,12 +54,12 @@ const TransmissionView: React.FC = () => {
   // Mutación para crear transmisión
   const createMutation = useMutation({
     mutationFn: (values: { name: string; active: boolean }) =>
-      VehicleFamiliesService.addTransmission(values.name, undefined),
+      VehicleFamiliesService.addTransmission(values.name),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transmissions"] });
       message.success("Transmisión creada correctamente");
       setIsModalVisible(false);
-      form.resetFields();
+      setEditingTransmission(null);
     },
     onError: (error: any) => {
       message.error(error?.message || "Error al crear la transmisión");
@@ -75,7 +75,7 @@ const TransmissionView: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ["transmissions"] });
       message.success("Transmisión actualizada correctamente");
       setIsModalVisible(false);
-      form.resetFields();
+      setEditingTransmission(null);
     },
     onError: (error: any) => {
       message.error(error?.message || "Error al actualizar la transmisión");
@@ -105,15 +105,12 @@ const TransmissionView: React.FC = () => {
   };
 
   const handleAddNew = () => {
+    setEditingTransmission(null);
     setIsModalVisible(true);
   };
 
   const handleEdit = (record: TransmissionData) => {
     setEditingTransmission(record);
-    form.setFieldsValue({
-      name: { value: record._id, label: record.name, transmissionData: record },
-      active: record.active,
-    });
     setIsModalVisible(true);
   };
 
@@ -136,32 +133,9 @@ const TransmissionView: React.FC = () => {
     }));
   };
 
-  const handleModalOk = () => {
-    form
-      .validateFields()
-      .then((values) => {
-        const payload = {
-          ...values,
-          name: values.name?.label,
-        };
-        if (editingTransmission) {
-          updateMutation.mutate({
-            id: editingTransmission._id,
-            data: payload,
-          });
-        } else {
-          createMutation.mutate(payload);
-        }
-      })
-      .catch((info) => {
-        console.log("Validate Failed:", info);
-      });
-  };
-
   const handleModalCancel = () => {
     setIsModalVisible(false);
     setEditingTransmission(null);
-    form.resetFields();
   };
 
   const columns = [
@@ -189,9 +163,8 @@ const TransmissionView: React.FC = () => {
           <Tooltip title="Editar Transmisión">
             <Button
               icon={<EditOutlined style={{ fontSize: 16 }} />}
-              onClick={() => {}}
+              onClick={() => handleEdit(record)}
               aria-label={`Editar ${record.name}`}
-              disabled
             />
           </Tooltip>
           <Tooltip title="Eliminar Transmisión">
@@ -284,21 +257,18 @@ const TransmissionView: React.FC = () => {
               active: editingTransmission.active,
             }}
             onSubmit={(values) => {
-              VehicleFamiliesService.updateTransmission(editingTransmission._id, values)
-                .then(() => {
-                  queryClient.invalidateQueries({ queryKey: ["transmissions"] });
-                  message.success("Transmisión actualizada correctamente");
-                  setIsModalVisible(false);
-                  setEditingTransmission(null);
-                  form.resetFields();
-                })
-                .catch((error) => {
-                  message.error(error?.message || "Error al actualizar la transmisión");
-                });
+              updateMutation.mutate({
+                id: editingTransmission._id,
+                data: values,
+              });
             }}
           />
         ) : (
-          <TransmissionForm />
+          <TransmissionForm
+            onSubmit={(values) => {
+              createMutation.mutate(values);
+            }}
+          />
         )}
       </Modal>
     </div>

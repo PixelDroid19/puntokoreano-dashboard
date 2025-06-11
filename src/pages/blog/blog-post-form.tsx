@@ -14,12 +14,15 @@ import {
   Divider,
   Modal,
   Drawer,
+  Progress,
+  Typography,
 } from "antd";
 import {
   SaveOutlined,
   EyeOutlined,
   ClockCircleOutlined,
   CheckCircleOutlined,
+  LoadingOutlined,
 } from "@ant-design/icons";
 import { FileText, Settings, ImageIcon, Globe } from "lucide-react";
 import dayjs from "dayjs";
@@ -37,6 +40,7 @@ import type { BlogPost, BlogCategory, BlogTag } from "../../types/blog";
 import LoadingSkeleton from "./loading-skeleton";
 import { BlogPostDataToSend } from "../../types/blog.types";
 import RichTextEditor from "./rich-text-editor";
+import StorageService from "../../services/storage.service";
 
 interface BlogPostFormProps {
   postId?: string | null;
@@ -50,6 +54,9 @@ export default function BlogPostForm({ postId, onCancel }: BlogPostFormProps) {
   const [previewVisible, setPreviewVisible] = useState(false);
   const [seoPreviewVisible, setSeoPreviewVisible] = useState(false);
   const [featuredImageFile, setFeaturedImageFile] = useState<File | null>(null);
+  const [featuredImagePreview, setFeaturedImagePreview] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [isUploading, setIsUploading] = useState(false);
 
   const { data: postData, isLoading: isLoadingPost } = useBlogDetail(
     postId || ""
@@ -113,19 +120,46 @@ export default function BlogPostForm({ postId, onCancel }: BlogPostFormProps) {
       });
       setPostStatus("draft");
       setScheduledDate(null);
+      setFeaturedImageFile(null);
+      setFeaturedImagePreview(null);
     }
   }, [postData, postId, reset]);
 
   const onSubmit = async (data: BlogPost) => {
     try {
-      const postDataToSend: Partial<
-        BlogPostDataToSend & { featuredImageFile?: File | null }
-      > = {
+      setIsUploading(true);
+      let finalFeaturedImageUrl = data.featuredImage;
+
+      // Si hay una imagen pendiente de subir, subirla ahora
+      if (featuredImageFile) {
+        console.log('📤 Subiendo imagen a GCS antes de guardar...');
+        const uploadedUrl = await uploadImageToGCS(featuredImageFile);
+        if (uploadedUrl) {
+          finalFeaturedImageUrl = uploadedUrl;
+          message.success('Imagen subida exitosamente a Google Cloud Storage');
+        } else {
+          message.error('Error al subir la imagen. Por favor intente nuevamente.');
+          return; // No continuar si falló la subida
+        }
+      }
+
+      // Asegurar que las categorías y tags sean arrays de strings
+      const categoriesAsStrings = Array.isArray(data.categories) 
+        ? data.categories.map(cat => typeof cat === 'string' ? cat : cat._id)
+        : [];
+      
+      const tagsAsStrings = Array.isArray(data.tags)
+        ? data.tags.map(tag => typeof tag === 'string' ? tag : tag._id) 
+        : [];
+
+      const postDataToSend: Partial<BlogPostDataToSend> = {
         ...data,
+        featuredImage: finalFeaturedImageUrl,
+        categories: categoriesAsStrings,
+        tags: tagsAsStrings,
         status: postStatus,
         scheduledAt:
           postStatus === "scheduled" ? scheduledDate?.toISOString() : null,
-        featuredImageFile: featuredImageFile || undefined, 
       };
 
       if (postId) {
@@ -139,11 +173,18 @@ export default function BlogPostForm({ postId, onCancel }: BlogPostFormProps) {
         message.success("Post creado correctamente");
         reset();
         setFeaturedImageFile(null);
+        setFeaturedImagePreview(null);
       }
       onCancel();
     } catch (error) {
       message.error("Error al guardar el post");
       console.error(error);
+    } finally {
+      setIsUploading(false);
+      // Limpiar progreso después de un tiempo
+      setTimeout(() => {
+        setUploadProgress({});
+      }, 2000);
     }
   };
 
@@ -152,9 +193,56 @@ export default function BlogPostForm({ postId, onCancel }: BlogPostFormProps) {
     setValue("status", value);
   };
 
-  const handleImageChange = (url: string | null, file?: File | null) => {
-    setValue("featuredImage", url, { shouldDirty: true }); 
-    setFeaturedImageFile(file || null);
+  // Función para generar vista previa base64
+  const getBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+    });
+
+  // Función para subir imagen a GCS (solo al guardar)
+  const uploadImageToGCS = async (file: File): Promise<string | null> => {
+    try {
+      setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
+
+      const uploadResponse = await StorageService.uploadSingleFile(file, 'blog/images');
+      
+      setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
+      
+      if (uploadResponse.success && uploadResponse.data) {
+        console.log(`✅ Imagen "${file.name}" subida exitosamente a GCS`);
+        return uploadResponse.data.url;
+      } else {
+        throw new Error(uploadResponse.message || 'Error al subir imagen');
+      }
+    } catch (error) {
+      console.error('Error subiendo imagen a GCS:', error);
+      message.error(`Error al subir "${file.name}": ${error instanceof Error ? error.message : 'Error desconocido'}`);
+      return null;
+    }
+  };
+
+  const handleImageChange = async (url: string | null, file?: File | null) => {
+    if (file) {
+      // Solo preparar vista previa local, NO subir todavía
+      try {
+        const previewUrl = await getBase64(file);
+        setFeaturedImageFile(file);
+        setFeaturedImagePreview(previewUrl);
+        setValue("featuredImage", previewUrl, { shouldDirty: true }); // Vista previa temporal
+        message.success(`Imagen "${file.name}" preparada (se subirá al guardar)`);
+      } catch (error) {
+        message.error('Error al procesar la imagen');
+        console.error('Error processing image:', error);
+      }
+    } else {
+      // Si no hay archivo (eliminación), limpiar todo
+      setFeaturedImageFile(null);
+      setFeaturedImagePreview(null);
+      setValue("featuredImage", url, { shouldDirty: true }); 
+    }
   };
 
   const showPreview = () => setPreviewVisible(true);
@@ -165,7 +253,8 @@ export default function BlogPostForm({ postId, onCancel }: BlogPostFormProps) {
     isLoadingCategories ||
     isLoadingTags ||
     createMutation.isPending ||
-    updateMutation.isPending;
+    updateMutation.isPending ||
+    isUploading;
   const categories = categoriesData?.categories || [];
   const tags = tagsData?.tags || [];
 
@@ -467,7 +556,7 @@ export default function BlogPostForm({ postId, onCancel }: BlogPostFormProps) {
               icon={<SaveOutlined />}
               onClick={handleSubmit(onSubmit)}
               loading={isLoading}
-              disabled={!isDirty && !featuredImageFile}
+              disabled={(!isDirty && !featuredImageFile) || isUploading}
             >
               Guardar
             </Button>
@@ -475,6 +564,33 @@ export default function BlogPostForm({ postId, onCancel }: BlogPostFormProps) {
         </div>
         <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
       </Card>
+
+      {/* Progreso de subida de imágenes */}
+      {isUploading && Object.keys(uploadProgress).length > 0 && (
+        <Card size="small" bordered className="mb-6 bg-gray-50">
+          <Typography.Title level={5} style={{ marginBottom: 12, textAlign: "center" }}>
+            Subiendo Imagen a Google Cloud Storage
+          </Typography.Title>
+          {Object.entries(uploadProgress).map(([fileName, progress]) => (
+            <div key={fileName} className="mb-3">
+              <div className="flex justify-between items-center mb-1">
+                <Typography.Text ellipsis style={{ maxWidth: "70%" }} className="text-sm">
+                  {fileName}
+                </Typography.Text>
+                <Typography.Text type="secondary" className="text-sm">
+                  {progress}%
+                </Typography.Text>
+              </div>
+              <Progress 
+                percent={progress} 
+                size="small" 
+                status={progress === 100 ? "success" : "active"}
+                strokeColor={progress === 100 ? "#52c41a" : "#1890ff"}
+              />
+            </div>
+          ))}
+        </Card>
+      )}
       <div className="flex justify-end gap-2">
         <Button onClick={onCancel}>Cancelar</Button>
         <Button
@@ -490,9 +606,11 @@ export default function BlogPostForm({ postId, onCancel }: BlogPostFormProps) {
           }
           onClick={handleSubmit(onSubmit)}
           loading={isLoading}
-          disabled={!isDirty && !featuredImageFile}
+          disabled={(!isDirty && !featuredImageFile) || isUploading}
         >
-          {postStatus === "draft"
+          {isUploading 
+            ? "Subiendo imagen..." 
+            : postStatus === "draft"
             ? "Guardar como Borrador"
             : postStatus === "published"
             ? "Publicar"

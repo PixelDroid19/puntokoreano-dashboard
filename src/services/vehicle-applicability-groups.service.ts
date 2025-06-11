@@ -28,14 +28,14 @@ export interface VehicleApplicabilityGroup {
   category?: 'repuestos' | 'accesorios' | 'servicio' | 'blog' | 'general';
   tags?: string[];
   active: boolean;
-  createdAt?: string;  // Cambiado de Date a string para mejor compatibilidad con API
-  updatedAt?: string;  // Cambiado de Date a string para mejor compatibilidad con API
+  createdAt?: string; 
+  updatedAt?: string; 
   criteriaLevel?: 'basic' | 'medium' | 'detailed';
   criteriaDescription?: string;
   vehicleCount?: number;
   _criteriaHash?: string;
   _lastVehicleCount?: number;
-  _lastCountUpdate?: string;  // Cambiado de Date a string para mejor compatibilidad con API
+  _lastCountUpdate?: string; 
 }
 
 // Definición de respuesta con vehículos compatibles
@@ -45,7 +45,7 @@ export interface CompatibleVehiclesResponse {
     model_id: {
       _id: string;
       name: string;
-      year?: number[];  // Mejorado: array de años para manejar múltiples años modelo
+      year?: number[]; 
       engine_type?: string;
       family_id: {
         _id: string;
@@ -73,6 +73,7 @@ export interface CompatibleVehiclesResponse {
     limit: number;
     pages: number;
   };
+  searchTerm?: string | null;
 }
 
 // Definición de respuesta con estadísticas
@@ -373,27 +374,40 @@ class VehicleApplicabilityGroupsService {
   // Obtener vehículos compatibles con un grupo
   static async getCompatibleVehicles(
     groupId: string, 
-    params: { page?: number; limit?: number; useCache?: boolean } = {}
+    params: { 
+      page?: number; 
+      limit?: number; 
+      search?: string;
+      useCache?: boolean;
+    } = {}
   ): Promise<CompatibleVehiclesResponse> {
     const { useCache = true, ...apiParams } = params;
     
     try {
-      // Verificar caché si está habilitado
-      if (useCache) {
+      // Para búsquedas, desactivar caché por defecto
+      const shouldUseCache = useCache && !apiParams.search?.trim();
+      
+      // Verificar caché si está habilitado y no hay búsqueda
+      if (shouldUseCache) {
         const cacheKey = `vehicles_for_group_${groupId}_${JSON.stringify(apiParams)}`;
         const cached = this.getFromCache<CompatibleVehiclesResponse>(cacheKey);
         if (cached) return cached;
       }
       
+      // Construir parámetros de consulta
+      const queryParams = new URLSearchParams();
+      if (apiParams.page) queryParams.append('page', apiParams.page.toString());
+      if (apiParams.limit) queryParams.append('limit', apiParams.limit.toString());
+      if (apiParams.search?.trim()) queryParams.append('search', apiParams.search.trim());
+      
       const response = await axiosInstance.get(
-        `/dashboard/vehicles/applicability-groups/${groupId}/vehicles`,
-        { params: apiParams }
+        `/dashboard/vehicles/applicability-groups/${groupId}/vehicles?${queryParams.toString()}`
       );
       
       const result = response.data.data;
       
-      // Guardar en caché si está habilitado (caché más corto para vehículos)
-      if (useCache) {
+      // Guardar en caché solo si no hay búsqueda
+      if (shouldUseCache && !apiParams.search?.trim()) {
         const cacheKey = `vehicles_for_group_${groupId}_${JSON.stringify(apiParams)}`;
         this.setCache(cacheKey, result);
         

@@ -1,20 +1,24 @@
 // src/pages/images/components/HeaderTable.component.tsx
-import { Button, Alert, Card, Row, Col, Typography } from "antd";
+import { Button, Alert, Card, Row, Col, Typography, Space } from "antd";
 import { 
   InfoCircleOutlined, 
   PlusOutlined, 
   PictureOutlined, 
   TagOutlined, 
   FileImageOutlined, 
-  IdcardOutlined 
+  IdcardOutlined,
+  SettingOutlined
 } from "@ant-design/icons";
 import { useState } from "react";
 import CreateGroupModal from "./CreateGroupModal";
+import OptimizationConfigModal from "./OptimizationConfigModal";
+import OptimizationStatusBadge from "./OptimizationStatusBadge";
 
 const { Text, Title } = Typography;
 
 const HeaderImageManager = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isConfigModalVisible, setIsConfigModalVisible] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -24,27 +28,46 @@ const HeaderImageManager = () => {
           <p className="text-gray-500 mt-1">
             Organiza y administra grupos de imágenes para tu aplicación
           </p>
+          <div className="mt-2">
+            <OptimizationStatusBadge />
+          </div>
         </div>
-        <Button 
-          type="primary" 
-          icon={<PlusOutlined />}
-          size="large"
-          className="flex items-center"
-          onClick={() => setIsModalVisible(true)}
-          id="createGroupBtn"
-        >
-          Nuevo Grupo
-        </Button>
+        <Space size="middle">
+          <Button 
+            icon={<SettingOutlined />}
+            size="large"
+            className="flex items-center"
+            onClick={() => setIsConfigModalVisible(true)}
+            type="default"
+          >
+            Configurar Optimización
+          </Button>
+          <Button 
+            type="primary" 
+            icon={<PlusOutlined />}
+            size="large"
+            className="flex items-center"
+            onClick={() => setIsModalVisible(true)}
+            id="createGroupBtn"
+          >
+            Nuevo Grupo
+          </Button>
+        </Space>
       </div>
 
       <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
-        <div className="flex items-center mb-3">
-          <InfoCircleOutlined className="text-blue-500 mr-2 text-lg" />
-          <Title level={5} style={{margin: 0}}>Guía de uso</Title>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center">
+            <InfoCircleOutlined className="text-blue-500 mr-2 text-lg" />
+            <Title level={5} style={{margin: 0}}>Guía de uso</Title>
+          </div>
+          <Text className="text-xs text-gray-500">
+            Las imágenes se optimizan automáticamente según tu configuración
+          </Text>
         </div>
         
         <Row gutter={[16, 16]}>
-          <Col xs={24} sm={12} md={6}>
+          <Col xs={24} sm={12} lg={6}>
             <Card size="small" bordered={false} className="bg-white bg-opacity-70 h-full">
               <div className="flex items-start">
                 <PictureOutlined className="text-lg text-blue-500 mt-1 mr-2" />
@@ -58,21 +81,21 @@ const HeaderImageManager = () => {
             </Card>
           </Col>
           
-          <Col xs={24} sm={12} md={6}>
+          <Col xs={24} sm={12} lg={6}>
             <Card size="small" bordered={false} className="bg-white bg-opacity-70 h-full">
               <div className="flex items-start">
-                <FileImageOutlined className="text-lg text-blue-500 mt-1 mr-2" />
+                <SettingOutlined className="text-lg text-green-500 mt-1 mr-2" />
                 <div>
-                  <Text strong>Límites</Text>
+                  <Text strong>Optimización Automática</Text>
                   <div className="text-sm text-gray-600 mt-1">
-                    Máximo 2MB por imagen en formatos JPG, PNG, GIF, WEBP
+                    Compresión WebP y nombres SEO-friendly configurables
                   </div>
                 </div>
               </div>
             </Card>
           </Col>
           
-          <Col xs={24} sm={12} md={6}>
+          <Col xs={24} sm={12} lg={6}>
             <Card size="small" bordered={false} className="bg-white bg-opacity-70 h-full">
               <div className="flex items-start">
                 <IdcardOutlined className="text-lg text-blue-500 mt-1 mr-2" />
@@ -86,7 +109,7 @@ const HeaderImageManager = () => {
             </Card>
           </Col>
           
-          <Col xs={24} sm={12} md={6}>
+          <Col xs={24} sm={12} lg={6}>
             <Card size="small" bordered={false} className="bg-white bg-opacity-70 h-full">
               <div className="flex items-start">
                 <TagOutlined className="text-lg text-blue-500 mt-1 mr-2" />
@@ -105,6 +128,11 @@ const HeaderImageManager = () => {
       <CreateGroupModal 
         visible={isModalVisible}
         onClose={() => setIsModalVisible(false)}
+      />
+
+      <OptimizationConfigModal
+        visible={isConfigModalVisible}
+        onClose={() => setIsConfigModalVisible(false)}
       />
     </div>
   );

@@ -12,7 +12,10 @@ import {
   message,
   Image,
   Tooltip,
+  Typography,
 } from "antd";
+
+const { Title, Text } = Typography;
 import {
   PlusOutlined,
   LoadingOutlined,
@@ -24,15 +27,52 @@ import type { RcFile, UploadFile } from "antd/es/upload";
 import type { SelectProps } from "antd";
 import type { BlogPost } from "../../../../types/blog";
 
+// Tipo extendido para posts de blog de vehículos
+interface VehicleBlogPost extends Partial<BlogPost> {
+  vehicle?: {
+    brand?: {
+      _id?: string;
+    } | string;
+    model?: string;
+    engine?: string;
+    year_range?: {
+      start?: number;
+      end?: number;
+    };
+  };
+  featured_image?: {
+    url: string;
+  };
+  gallery?: Array<{
+    url: string;
+    alt?: string;
+    caption?: string;
+  }>;
+  maintenance_type?: string;
+  difficulty_level?: string;
+  estimated_time?: {
+    value?: number;
+    unit?: string;
+  };
+  parts_required?: Array<{
+    name: string;
+    part_number?: string;
+  }>;
+  seo?: {
+    title?: string;
+    description?: string;
+    keywords?: string[];
+  };
+}
+
 interface Brand {
   id: string;
   display_name: string;
 }
-import FilesService from "../../../../services/files.service";
 import StorageService from "../../../../services/storage.service";
 
 interface BlogPostFormProps {
-  initialValues?: Partial<BlogPost>;
+  initialValues?: Partial<VehicleBlogPost>;
   onSubmit: (values: any) => void;
   loading?: boolean;
   brands?: Brand[];
@@ -90,7 +130,9 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
       form.setFieldsValue({
         ...initialValues,
         "vehicle.brand":
-          initialValues.vehicle?.brand?._id || initialValues.vehicle?.brand,
+          typeof initialValues.vehicle?.brand === 'object' 
+            ? initialValues.vehicle?.brand?._id 
+            : initialValues.vehicle?.brand,
       });
       setContent(initialValues.content || "");
 
@@ -182,7 +224,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
 
     try {
       setIsProcessing(true);
-      const results = { featuredImageUrl: null, galleryUrls: [] };
+      const results = { featuredImageUrl: null as string | null, galleryUrls: [] as string[] };
 
       // Subir cada imagen individualmente con progreso
       for (const { file, type } of imagesToUpload) {
@@ -256,7 +298,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
       const formData = {
         ...values,
         content,
-        featuredImage: featuredImageUrl || (fileList[0] && !featuredImageFile ? fileList[0].url : null),
+        featured_image: featuredImageUrl ? { url: featuredImageUrl } : (fileList[0] && !featuredImageFile ? { url: fileList[0].url } : null),
         gallery: galleryUrls.length > 0 
           ? galleryUrls.map((url) => ({
               url,
@@ -571,20 +613,24 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
         {/* Progreso de subida */}
         {isProcessing && Object.keys(uploadProgress).length > 0 && (
           <Card size="small" bordered className="mb-6 bg-gray-50">
-            <h4 className="text-center mb-4">Subiendo Imágenes a Google Cloud Storage</h4>
+            <Title level={5} style={{ marginBottom: 12, textAlign: "center" }}>
+              Subiendo Imágenes a Google Cloud Storage
+            </Title>
             {Object.entries(uploadProgress).map(([fileName, progress]) => (
               <div key={fileName} className="mb-3">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm" style={{ maxWidth: "65%" }}>
+                  <Text ellipsis style={{ maxWidth: "65%" }} className="text-sm">
                     {fileName}
-                  </span>
-                  <span className="text-sm text-gray-500">
+                  </Text>
+                  <Text type="secondary" className="text-sm">
                     {progress}%
-                  </span>
+                  </Text>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      progress === 100 ? 'bg-green-500' : 'bg-blue-500'
+                    }`}
                     style={{ width: `${progress}%` }}
                   />
                 </div>

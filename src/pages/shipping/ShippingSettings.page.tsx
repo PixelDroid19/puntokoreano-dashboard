@@ -11,6 +11,10 @@ import {
   Typography,
   Space,
   Spin,
+  Switch,
+  Row,
+  Col,
+  Tooltip,
 } from "antd";
 import { NumericFormat } from "react-number-format";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -20,11 +24,54 @@ import {
   ClockCircleOutlined,
   GiftOutlined,
   ScanOutlined,
+  CreditCardOutlined,
+  QuestionCircleOutlined,
 } from "@ant-design/icons";
 import ShippingSettingsService from "../../services/shipping.settings.service";
 
 const { TabPane } = Tabs;
 const { Title } = Typography;
+
+// Tipos para mejor tipado
+interface ShippingSettings {
+  base_costs: {
+    standard: number;
+    express: number;
+  };
+  weight_rules: {
+    base_weight: number;
+    extra_cost_per_kg: number;
+  };
+  location_multipliers: Record<string, number>;
+  delivery_times: {
+    standard: { min: number; max: number };
+    express: { min: number; max: number };
+  };
+  free_shipping_rules: {
+    threshold: number;
+    eligible_locations: string[];
+    eligible_methods: string[];
+    min_purchase: number;
+  };
+}
+
+interface ProcessingFees {
+  enabled: boolean;
+  card: {
+    percentage: number;
+    installments: {
+      enabled: boolean;
+      percentage_per_installment: number;
+    };
+  };
+  pse: {
+    percentage: number;
+    max_amount: number;
+  };
+  nequi: {
+    percentage: number;
+  };
+}
 
 const COLOMBIA_LOCATIONS = [
   "Bogotá D.C.",
@@ -44,12 +91,33 @@ const SHIPPING_METHODS = [
   { label: "Express", value: "express" },
 ];
 
+// Tooltips explicativos
+const TOOLTIPS = {
+  standardCost: "Costo base para envíos estándar. Este valor se aplica como tarifa mínima antes de agregar costos por peso o ubicación.",
+  expressCost: "Costo base para envíos express. Generalmente mayor al estándar debido a la velocidad de entrega.",
+  baseWeight: "Peso máximo incluido en el costo base (en kg). Pesos superiores generarán costos adicionales.",
+  extraCostPerKg: "Costo adicional por cada kilogramo que exceda el peso base. Se calcula automáticamente.",
+  locationMultipliers: "Multiplicador de costo según la ubicación de entrega. 1.0 = sin recargo, 1.5 = 50% adicional.",
+  deliveryTimes: "Rango de días hábiles estimados para la entrega según el método de envío seleccionado.",
+  freeShippingThreshold: "Monto mínimo de compra para calificar al envío gratuito en ubicaciones elegibles.",
+  eligibleLocations: "Ubicaciones donde aplica el envío gratuito cuando se cumple el monto mínimo.",
+  eligibleMethods: "Métodos de envío incluidos en la promoción de envío gratuito.",
+  minPurchase: "Monto mínimo de productos (sin incluir envío) requerido para el envío gratuito.",
+  processingEnabled: "Activa o desactiva el cobro de cuotas de procesamiento por método de pago.",
+  cardPercentage: "Porcentaje cobrado sobre el total por usar tarjetas de crédito/débito.",
+  installmentsEnabled: "Activa el cobro adicional por cuotas en tarjetas de crédito.",
+  installmentsPercentage: "Porcentaje adicional por cada cuota extra (a partir de la segunda cuota).",
+  psePercentage: "Porcentaje cobrado sobre el total por usar PSE (transferencia bancaria).",
+  pseMaxAmount: "Monto máximo de cuota de procesamiento para PSE, sin importar el porcentaje.",
+  nequiPercentage: "Porcentaje cobrado sobre el total por usar Nequi como método de pago.",
+};
+
 // Componentes personalizados para inputs numéricos
-const MoneyInput = ({ value, onChange, className, ...props }) => {
+const MoneyInput = ({ value, onChange, className = "", ...props }: any) => {
   return (
     <NumericFormat
       value={value}
-      onValueChange={({ floatValue }) => onChange(floatValue)}
+      onValueChange={({ floatValue }) => onChange?.(floatValue)}
       thousandSeparator={true}
       prefix="$"
       customInput={Input}
@@ -60,11 +128,11 @@ const MoneyInput = ({ value, onChange, className, ...props }) => {
   );
 };
 
-const WeightInput = ({ value, onChange, className, ...props }) => {
+const WeightInput = ({ value, onChange, className = "", ...props }: any) => {
   return (
     <NumericFormat
       value={value}
-      onValueChange={({ floatValue }) => onChange(floatValue)}
+      onValueChange={({ floatValue }) => onChange?.(floatValue)}
       thousandSeparator={true}
       suffix=" kg"
       customInput={Input}
@@ -75,11 +143,11 @@ const WeightInput = ({ value, onChange, className, ...props }) => {
   );
 };
 
-const DaysInput = ({ value, onChange, className, ...props }) => {
+const DaysInput = ({ value, onChange, className = "", ...props }: any) => {
   return (
     <NumericFormat
       value={value}
-      onValueChange={({ floatValue }) => onChange(floatValue)}
+      onValueChange={({ floatValue }) => onChange?.(floatValue)}
       suffix=" días"
       customInput={Input}
       className={`ant-input ${className}`}
@@ -91,6 +159,16 @@ const DaysInput = ({ value, onChange, className, ...props }) => {
   );
 };
 
+// Componente para etiquetas con tooltip
+const LabelWithTooltip = ({ label, tooltip }: { label: string; tooltip: string }) => (
+  <Space>
+    {label}
+    <Tooltip title={tooltip} placement="topLeft">
+      <QuestionCircleOutlined style={{ color: '#1890ff', cursor: 'help' }} />
+    </Tooltip>
+  </Space>
+);
+
 const ShippingSettings = () => {
   const queryClient = useQueryClient();
   const [baseCostsForm] = Form.useForm();
@@ -98,61 +176,110 @@ const ShippingSettings = () => {
   const [locationMultipliersForm] = Form.useForm();
   const [deliveryTimesForm] = Form.useForm();
   const [freeShippingForm] = Form.useForm();
+  const [processingFeesForm] = Form.useForm();
 
   // Fetch settings
-  const { data: settings, isLoading } = useQuery({
+  const { data: settings, isLoading } = useQuery<ShippingSettings>({
     queryKey: ["shippingSettings"],
     queryFn: () => ShippingSettingsService.getSettings(),
-    onError: (error) => {
-      message.error("Error al cargar la configuración: " + error.message);
-    },
+  });
+
+  // Fetch processing fees
+  const { data: processingFees, isLoading: loadingFees } = useQuery<ProcessingFees>({
+    queryKey: ["processingFees"],
+    queryFn: () => ShippingSettingsService.getProcessingFees(),
   });
 
   // Mutations
   const updateBaseCosts = useMutation({
-    mutationFn: (data) => ShippingSettingsService.updateBaseCosts(data),
+    mutationFn: (data: { standard_cost: number; express_cost: number }) => 
+      ShippingSettingsService.updateBaseCosts(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["shippingSettings"]);
+      queryClient.invalidateQueries({ queryKey: ["shippingSettings"] });
       message.success("Costos base actualizados");
+    },
+    onError: (error: any) => {
+      message.error("Error al actualizar costos base: " + error.message);
     },
   });
 
   const updateWeightRules = useMutation({
-    mutationFn: (data) => ShippingSettingsService.updateWeightRules(data),
+    mutationFn: (data: { base_weight: number; extra_cost_per_kg: number }) => 
+      ShippingSettingsService.updateWeightRules(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["shippingSettings"]);
+      queryClient.invalidateQueries({ queryKey: ["shippingSettings"] });
       message.success("Reglas de peso actualizadas");
+    },
+    onError: (error: any) => {
+      message.error("Error al actualizar reglas de peso: " + error.message);
     },
   });
 
   const updateLocationMultipliers = useMutation({
-    mutationFn: (data) => ShippingSettingsService.updateLocationMultipliers(data),
+    mutationFn: (data: { multipliers: Record<string, number> }) => 
+      ShippingSettingsService.updateLocationMultipliers(data),
     onSuccess: () => {
-      const updatedData = locationMultipliersForm.getFieldsValue();
-      ShippingSettingsService.updateLocationMultipliers(updatedData)
-        .then(() => {
-          queryClient.invalidateQueries(["shippingSettings"]);
+      queryClient.invalidateQueries({ queryKey: ["shippingSettings"] });
           message.success("Multiplicadores por ubicación actualizados");
-        })
-        .catch((error) => {
+    },
+    onError: (error: any) => {
           message.error("Error al actualizar multiplicadores: " + error.message);
-        });
     },
   });
   
   const updateDeliveryTimes = useMutation({
-    mutationFn: (data) => ShippingSettingsService.updateDeliveryTimes(data),
+    mutationFn: (data: { 
+      delivery_times: { 
+        standard: { min: number; max: number }; 
+        express: { min: number; max: number } 
+      } 
+    }) => ShippingSettingsService.updateDeliveryTimes(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["shippingSettings"]);
+      queryClient.invalidateQueries({ queryKey: ["shippingSettings"] });
       message.success("Tiempos de entrega actualizados");
+    },
+    onError: (error: any) => {
+      message.error("Error al actualizar tiempos: " + error.message);
     },
   });
 
   const updateFreeShipping = useMutation({
-    mutationFn: (data) => ShippingSettingsService.updateFreeShipping(data),
+    mutationFn: (data: { 
+      threshold: number; 
+      eligible_locations: string[]; 
+      eligible_methods: string[]; 
+      min_purchase: number 
+    }) => ShippingSettingsService.updateFreeShipping(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["shippingSettings"]);
+      queryClient.invalidateQueries({ queryKey: ["shippingSettings"] });
       message.success("Reglas de envío gratis actualizadas");
+    },
+    onError: (error: any) => {
+      message.error("Error al actualizar envío gratis: " + error.message);
+    },
+  });
+
+  // Mutations para cuotas de procesamiento
+  const updateProcessingFees = useMutation({
+    mutationFn: (data: ProcessingFees) => ShippingSettingsService.updateProcessingFees(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["processingFees"] });
+      queryClient.invalidateQueries({ queryKey: ["shippingSettings"] });
+      message.success("Cuotas de procesamiento actualizadas");
+    },
+    onError: (error: any) => {
+      message.error("Error al actualizar cuotas: " + error.message);
+    },
+  });
+
+  const toggleProcessingFees = useMutation({
+    mutationFn: (enabled: boolean) => ShippingSettingsService.toggleProcessingFees(enabled),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["processingFees"] });
+      message.success("Estado de cuotas actualizado");
+    },
+    onError: (error: any) => {
+      message.error("Error al cambiar estado: " + error.message);
     },
   });
 
@@ -177,7 +304,22 @@ const ShippingSettings = () => {
         ...settings.free_shipping_rules,
       });
     }
-  }, [settings]);
+  }, [settings, baseCostsForm, weightRulesForm, locationMultipliersForm, deliveryTimesForm, freeShippingForm]);
+
+  // Inicializar formulario de cuotas de procesamiento
+  React.useEffect(() => {
+    if (processingFees) {
+      processingFeesForm.setFieldsValue({
+        enabled: processingFees.enabled ?? false,
+        card_percentage: (processingFees.card?.percentage ?? 0.029) * 100,
+        card_installments_enabled: processingFees.card?.installments?.enabled ?? false,
+        card_installments_percentage: (processingFees.card?.installments?.percentage_per_installment ?? 0.015) * 100,
+        pse_percentage: (processingFees.pse?.percentage ?? 0.025) * 100,
+        pse_max_amount: processingFees.pse?.max_amount ?? 3000,
+        nequi_percentage: (processingFees.nequi?.percentage ?? 0.02) * 100,
+      });
+    }
+  }, [processingFees, processingFeesForm]);
 
   const locationMultipliersColumns = [
     {
@@ -187,14 +329,19 @@ const ShippingSettings = () => {
       className: "font-medium",
     },
     {
-      title: "Multiplicador",
+      title: (
+        <LabelWithTooltip 
+          label="Multiplicador" 
+          tooltip={TOOLTIPS.locationMultipliers}
+        />
+      ),
       dataIndex: "multiplier",
       key: "multiplier",
       width: 200,
-      render: (_, record) => (
+      render: (_: any, record: any) => (
         <Form.Item
-          name={["multipliers", record.location]} // Estructura del nombre en cascada
-          initialValue={record.multiplier} // Valor inicial
+          name={["multipliers", record.location]}
+          initialValue={record.multiplier}
           rules={[{ required: true, message: "Este campo es obligatorio" }]}
           noStyle
         >
@@ -253,7 +400,7 @@ const ShippingSettings = () => {
                 <Space direction="vertical" className="w-full" size="middle">
                   <Form.Item
                     name="standard_cost"
-                    label="Costo Estándar"
+                    label={<LabelWithTooltip label="Costo Estándar" tooltip={TOOLTIPS.standardCost} />}
                     rules={[{ required: true, message: "Campo requerido" }]}
                   >
                     <MoneyInput placeholder="Ingrese el costo estándar" />
@@ -261,7 +408,7 @@ const ShippingSettings = () => {
 
                   <Form.Item
                     name="express_cost"
-                    label="Costo Express"
+                    label={<LabelWithTooltip label="Costo Express" tooltip={TOOLTIPS.expressCost} />}
                     rules={[{ required: true, message: "Campo requerido" }]}
                   >
                     <MoneyInput placeholder="Ingrese el costo express" />
@@ -302,7 +449,7 @@ const ShippingSettings = () => {
                 <Space direction="vertical" className="w-full" size="middle">
                   <Form.Item
                     name="base_weight"
-                    label="Peso Base"
+                    label={<LabelWithTooltip label="Peso Base" tooltip={TOOLTIPS.baseWeight} />}
                     rules={[{ required: true, message: "Campo requerido" }]}
                   >
                     <WeightInput placeholder="Ingrese el peso base" />
@@ -310,7 +457,7 @@ const ShippingSettings = () => {
 
                   <Form.Item
                     name="extra_cost_per_kg"
-                    label="Costo Extra por Kg"
+                    label={<LabelWithTooltip label="Costo Extra por Kg" tooltip={TOOLTIPS.extraCostPerKg} />}
                     rules={[{ required: true, message: "Campo requerido" }]}
                   >
                     <MoneyInput placeholder="Ingrese el costo extra por kg" />
@@ -345,7 +492,7 @@ const ShippingSettings = () => {
               <Form
                 form={locationMultipliersForm}
                 layout="vertical"
-                onFinish={(e)=> {console.log(e); updateLocationMultipliers.mutate(e)}}
+                onFinish={(values) => updateLocationMultipliers.mutate(values)}
               >
                 <Table
                   dataSource={
@@ -402,7 +549,7 @@ const ShippingSettings = () => {
                     >
                       <Form.Item
                         name={["delivery_times", "standard", "min"]}
-                        label="Mínimo"
+                        label={<LabelWithTooltip label="Mínimo" tooltip={TOOLTIPS.deliveryTimes} />}
                         rules={[{ required: true, message: "Campo requerido" }]}
                       >
                         <DaysInput placeholder="Días mínimos" />
@@ -410,7 +557,7 @@ const ShippingSettings = () => {
 
                       <Form.Item
                         name={["delivery_times", "standard", "max"]}
-                        label="Máximo"
+                        label={<LabelWithTooltip label="Máximo" tooltip={TOOLTIPS.deliveryTimes} />}
                         rules={[{ required: true, message: "Campo requerido" }]}
                       >
                         <DaysInput placeholder="Días máximos" />
@@ -427,7 +574,7 @@ const ShippingSettings = () => {
                     >
                       <Form.Item
                         name={["delivery_times", "express", "min"]}
-                        label="Mínimo"
+                        label={<LabelWithTooltip label="Mínimo" tooltip={TOOLTIPS.deliveryTimes} />}
                         rules={[{ required: true, message: "Campo requerido" }]}
                       >
                         <DaysInput placeholder="Días mínimos" />
@@ -435,7 +582,7 @@ const ShippingSettings = () => {
 
                       <Form.Item
                         name={["delivery_times", "express", "max"]}
-                        label="Máximo"
+                        label={<LabelWithTooltip label="Máximo" tooltip={TOOLTIPS.deliveryTimes} />}
                         rules={[{ required: true, message: "Campo requerido" }]}
                       >
                         <DaysInput placeholder="Días máximos" />
@@ -478,7 +625,7 @@ const ShippingSettings = () => {
                 <Space direction="vertical" className="w-full" size="middle">
                   <Form.Item
                     name="threshold"
-                    label="Monto Mínimo para Envío Gratis"
+                    label={<LabelWithTooltip label="Monto Mínimo para Envío Gratis" tooltip={TOOLTIPS.freeShippingThreshold} />}
                     rules={[{ required: true, message: "Campo requerido" }]}
                   >
                     <MoneyInput placeholder="Ingrese el monto mínimo" />
@@ -486,7 +633,7 @@ const ShippingSettings = () => {
 
                   <Form.Item
                     name="eligible_locations"
-                    label="Ubicaciones Elegibles"
+                    label={<LabelWithTooltip label="Ubicaciones Elegibles" tooltip={TOOLTIPS.eligibleLocations} />}
                     rules={[{ required: true, message: "Campo requerido" }]}
                   >
                     <Select
@@ -502,7 +649,7 @@ const ShippingSettings = () => {
 
                   <Form.Item
                     name="eligible_methods"
-                    label="Métodos de Envío Elegibles"
+                    label={<LabelWithTooltip label="Métodos de Envío Elegibles" tooltip={TOOLTIPS.eligibleMethods} />}
                     rules={[{ required: true, message: "Campo requerido" }]}
                   >
                     <Select
@@ -515,7 +662,7 @@ const ShippingSettings = () => {
 
                   <Form.Item
                     name="min_purchase"
-                    label="Compra Mínima Requerida"
+                    label={<LabelWithTooltip label="Compra Mínima Requerida" tooltip={TOOLTIPS.minPurchase} />}
                     rules={[{ required: true, message: "Campo requerido" }]}
                   >
                     <MoneyInput placeholder="Ingrese el monto mínimo de compra" />
@@ -533,6 +680,174 @@ const ShippingSettings = () => {
                   </Form.Item>
                 </Space>
               </Form>
+            </Card>
+          </TabPane>
+
+          {/* Cuotas de Procesamiento */}
+          <TabPane
+            tab={
+              <span className="flex items-center gap-2">
+                <CreditCardOutlined />
+                Cuotas de Procesamiento
+              </span>
+            }
+            key="6"
+          >
+            <Card className="shadow-sm">
+              {loadingFees ? (
+                <div className="flex justify-center py-8">
+                  <Spin size="large" />
+                </div>
+              ) : (
+                <Form
+                  form={processingFeesForm}
+                  layout="vertical"
+                  onFinish={(values) => {
+                    // Convertir porcentajes de vuelta a decimales
+                    const data: ProcessingFees = {
+                      enabled: values.enabled,
+                      card: {
+                        percentage: values.card_percentage / 100,
+                        installments: {
+                          enabled: values.card_installments_enabled,
+                          percentage_per_installment: values.card_installments_percentage / 100,
+                        },
+                      },
+                      pse: {
+                        percentage: values.pse_percentage / 100,
+                        max_amount: values.pse_max_amount,
+                      },
+                      nequi: {
+                        percentage: values.nequi_percentage / 100,
+                      },
+                    };
+                    updateProcessingFees.mutate(data);
+                  }}
+                >
+                  <Space direction="vertical" className="w-full" size="large">
+                    {/* Control principal */}
+                    <Card size="small" title="Configuración General">
+                      <Form.Item
+                        name="enabled"
+                        label={<LabelWithTooltip label="Activar cuotas de procesamiento" tooltip={TOOLTIPS.processingEnabled} />}
+                        extra="Cuando está desactivado, no se cobran cuotas adicionales por método de pago"
+                        valuePropName="checked"
+                      >
+                        <Switch
+                          onChange={(checked) => {
+                            toggleProcessingFees.mutate(checked);
+                          }}
+                        />
+                      </Form.Item>
+                    </Card>
+
+                    {/* Configuración por método de pago */}
+                    <Row gutter={[16, 16]}>
+                      {/* Tarjetas de crédito */}
+                      <Col xs={24} lg={12}>
+                        <Card size="small" title="💳 Tarjetas de Crédito/Débito" className="h-full">
+                          <Form.Item
+                            name="card_percentage"
+                            label={<LabelWithTooltip label="Porcentaje de procesamiento (%)" tooltip={TOOLTIPS.cardPercentage} />}
+                            rules={[{ required: true, message: "Campo requerido" }]}
+                          >
+                            <Input
+                              type="number"
+                              min={0}
+                              max={10}
+                              step={0.1}
+                              suffix="%"
+                              placeholder="2.9"
+                            />
+                          </Form.Item>
+
+                          <Form.Item
+                            name="card_installments_enabled"
+                            label={<LabelWithTooltip label="Cobrar por cuotas adicionales" tooltip={TOOLTIPS.installmentsEnabled} />}
+                            valuePropName="checked"
+                          >
+                            <Switch />
+                          </Form.Item>
+
+                          <Form.Item
+                            name="card_installments_percentage"
+                            label={<LabelWithTooltip label="Porcentaje por cuota adicional (%)" tooltip={TOOLTIPS.installmentsPercentage} />}
+                            rules={[{ required: true, message: "Campo requerido" }]}
+                          >
+                            <Input
+                              type="number"
+                              min={0}
+                              max={5}
+                              step={0.1}
+                              suffix="%"
+                              placeholder="1.5"
+                            />
+                          </Form.Item>
+                        </Card>
+                      </Col>
+
+                      {/* PSE */}
+                      <Col xs={24} lg={12}>
+                        <Card size="small" title="🏦 PSE" className="h-full">
+                          <Form.Item
+                            name="pse_percentage"
+                            label={<LabelWithTooltip label="Porcentaje de procesamiento (%)" tooltip={TOOLTIPS.psePercentage} />}
+                            rules={[{ required: true, message: "Campo requerido" }]}
+                          >
+                            <Input
+                              type="number"
+                              min={0}
+                              max={10}
+                              step={0.1}
+                              suffix="%"
+                              placeholder="2.5"
+                            />
+                          </Form.Item>
+
+                          <Form.Item
+                            name="pse_max_amount"
+                            label={<LabelWithTooltip label="Monto máximo de cuota" tooltip={TOOLTIPS.pseMaxAmount} />}
+                            rules={[{ required: true, message: "Campo requerido" }]}
+                          >
+                            <MoneyInput placeholder="3000" />
+                          </Form.Item>
+                        </Card>
+                      </Col>
+
+                      {/* Nequi */}
+                      <Col xs={24} lg={12}>
+                        <Card size="small" title="📱 Nequi" className="h-full">
+                          <Form.Item
+                            name="nequi_percentage"
+                            label={<LabelWithTooltip label="Porcentaje de procesamiento (%)" tooltip={TOOLTIPS.nequiPercentage} />}
+                            rules={[{ required: true, message: "Campo requerido" }]}
+                          >
+                            <Input
+                              type="number"
+                              min={0}
+                              max={10}
+                              step={0.1}
+                              suffix="%"
+                              placeholder="2.0"
+                            />
+                          </Form.Item>
+                        </Card>
+                      </Col>
+                    </Row>
+
+                    <Form.Item>
+                      <Button
+                        type="primary"
+                        htmlType="submit"
+                        loading={updateProcessingFees.isPending}
+                        className="w-full md:w-auto"
+                      >
+                        Actualizar Cuotas de Procesamiento
+                      </Button>
+                    </Form.Item>
+                  </Space>
+                </Form>
+              )}
             </Card>
           </TabPane>
         </Tabs>
