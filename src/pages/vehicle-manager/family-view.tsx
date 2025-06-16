@@ -98,8 +98,7 @@ const FamilyView: React.FC = () => {
       message.success("Familia eliminada correctamente");
     },
     onError: (error) => {
-      message.error("Error al eliminar la familia");
-      console.error(error);
+      message.error(error.message || "Error al eliminar la familia");
     },
   });
 
