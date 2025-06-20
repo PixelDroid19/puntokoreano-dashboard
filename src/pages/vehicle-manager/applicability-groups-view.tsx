@@ -434,12 +434,17 @@ const ApplicabilityGroupsView: React.FC = () => {
               dataIndex: "name",
               key: "name",
               sorter: true,
-              width: 180,
+              width: 200,
               render: (text: string, record: VehicleApplicabilityGroup) => (
                 <div>
                   <div className="font-medium text-sm">{text}</div>
+                  {record.applicabilityIdentifier && (
+                    <div className="text-blue-600 text-xs font-mono bg-blue-50 px-1 rounded mt-1 inline-block">
+                      {record.applicabilityIdentifier}
+                    </div>
+                  )}
                   {record.description && (
-                    <div className="text-gray-500 text-xs truncate max-w-[160px]">{record.description}</div>
+                    <div className="text-gray-500 text-xs truncate max-w-[180px] mt-1">{record.description}</div>
                   )}
                 </div>
               ),

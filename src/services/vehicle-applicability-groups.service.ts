@@ -6,6 +6,7 @@ export interface VehicleApplicabilityGroup {
   _id: string;
   name: string;
   description?: string;
+  applicabilityIdentifier?: string;
   criteria: {
     // Criterios jerárquicos de vehículos
     brands?: string[];

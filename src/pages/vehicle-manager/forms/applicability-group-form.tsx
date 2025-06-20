@@ -54,6 +54,7 @@ const { TextArea } = AntInput;
 interface ApplicabilityGroupFormData {
   name: string;
   description?: string;
+  applicabilityIdentifier?: string;
   category: "general" | "repuestos" | "accesorios" | "servicio" | "blog";
   tags: string[];
   active: boolean;
@@ -121,6 +122,7 @@ export default function ApplicabilityGroupForm({
     defaultValues: {
       name: "",
       description: "",
+      applicabilityIdentifier: "",
       category: "general",
       tags: [],
       active: true,
@@ -145,6 +147,7 @@ export default function ApplicabilityGroupForm({
     if (initialData && mode === "edit") {
       setValue("name", initialData.name || "");
       setValue("description", initialData.description || "");
+      setValue("applicabilityIdentifier", initialData.applicabilityIdentifier || "");
       setValue("category", initialData.category || "general");
       setValue("tags", initialData.tags || []);
       setValue(
@@ -449,6 +452,39 @@ export default function ApplicabilityGroupForm({
                     {...register("description")}
                   />
                   </div>
+
+                <div>
+                  <div className="flex items-center gap-2">
+                    <label className="block text-sm font-medium mb-1">
+                      Identificador de Aplicabilidad
+                    </label>
+                    <Tooltip title="Identificador único para importación Excel. Si se deja vacío, se generará automáticamente. Solo se permiten letras, números, guiones y guiones bajos.">
+                      <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                    </Tooltip>
+                  </div>
+                  <Input
+                    placeholder="Ej: VEH-ELEC-2020 (opcional - se autogenera si vacío)"
+                    className="rounded-md font-mono text-sm"
+                    {...register("applicabilityIdentifier", {
+                      pattern: {
+                        value: /^[a-zA-Z0-9_-]*$/,
+                        message: "Solo se permiten letras, números, guiones y guiones bajos"
+                      },
+                      maxLength: {
+                        value: 50,
+                        message: "Máximo 50 caracteres"
+                      }
+                    })}
+                  />
+                  {errors.applicabilityIdentifier && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.applicabilityIdentifier.message}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    Si no se especifica, se generará automáticamente basado en el nombre y categoría
+                  </p>
+                </div>
                 </div>
 
                 <div>
@@ -944,6 +980,28 @@ export default function ApplicabilityGroupForm({
                       Criterios de Año
                     </h3>
 
+                    {/* Información sobre límites de años */}
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 mb-4">
+                      <div className="flex items-start">
+                        <div className="p-2 bg-blue-100 rounded-full mr-3">
+                          <InfoCircleOutlined className="text-blue-600 text-lg" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-semibold text-blue-800 mb-1">
+                            Límites de Años Permitidos
+                          </h4>
+                          <ul className="text-xs text-blue-700 space-y-1">
+                            <li><strong>Año Mínimo:</strong> 1990 - {new Date().getFullYear()} (no años futuros)</li>
+                            <li><strong>Año Máximo:</strong> 1990 - {new Date().getFullYear() + 2} (hasta 2 años futuros)</li>
+                            <li><strong>Años Específicos:</strong> 1990 - {new Date().getFullYear() + 2}</li>
+                          </ul>
+                          <p className="text-xs text-blue-600 mt-2 italic">
+                            💡 Los límites evitan datos irreales y mantienen coherencia con el catálogo de vehículos.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Opción de Criterios de Año */}
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <div className="grid grid-cols-2 gap-4">
@@ -952,7 +1010,7 @@ export default function ApplicabilityGroupForm({
                             <label className="block text-sm font-medium mb-1">
                               Año Mínimo
                             </label>
-                            <Tooltip title="Año mínimo de fabricación. No se puede usar junto con años específicos.">
+                            <Tooltip title="Año mínimo de fabricación. Debe ser entre 1990 y año actual. No se puede usar junto con años específicos.">
                         <InfoCircleOutlined className="text-blue-500 cursor-help" />
                       </Tooltip>
                     </div>
@@ -960,11 +1018,21 @@ export default function ApplicabilityGroupForm({
                       type="number"
                       placeholder="Ej: 2010"
                             className="rounded-md"
+                            min={1990}
+                            max={new Date().getFullYear()}
                             disabled={
                               watch("criteria.specificYears")?.length > 0
                             }
                             {...register("criteria.minYear", {
                               valueAsNumber: true,
+                              min: {
+                                value: 1990,
+                                message: "El año mínimo debe ser mayor a 1990"
+                              },
+                              max: {
+                                value: new Date().getFullYear(),
+                                message: `El año mínimo no puede ser mayor al año actual (${new Date().getFullYear()})`
+                              },
                               onChange: (e) => {
                                 // Si se establece un año mínimo, limpiar años específicos
                                 if (
@@ -976,6 +1044,11 @@ export default function ApplicabilityGroupForm({
                               },
                             })}
                           />
+                          {errors.criteria?.minYear && (
+                            <p className="text-sm text-red-500 mt-1">
+                              {errors.criteria.minYear.message}
+                            </p>
+                          )}
                           {watch("criteria.specificYears")?.length > 0 && (
                             <div className="text-xs text-orange-600 mt-1">
                               Deshabilitado: se están usando años específicos
@@ -987,19 +1060,36 @@ export default function ApplicabilityGroupForm({
                             <label className="block text-sm font-medium mb-1">
                               Año Máximo
                             </label>
-                            <Tooltip title="Año máximo de fabricación. No se puede usar junto con años específicos.">
+                            <Tooltip title={`Año máximo de fabricación. Debe ser entre 1990 y ${new Date().getFullYear() + 2}. No se puede usar junto con años específicos.`}>
                         <InfoCircleOutlined className="text-blue-500 cursor-help" />
                       </Tooltip>
                     </div>
                     <Input
                       type="number"
-                      placeholder="Ej: 2023"
+                      placeholder={`Ej: ${new Date().getFullYear()}`}
                             className="rounded-md"
+                            min={1990}
+                            max={new Date().getFullYear() + 2}
                             disabled={
                               watch("criteria.specificYears")?.length > 0
                             }
                             {...register("criteria.maxYear", {
                               valueAsNumber: true,
+                              min: {
+                                value: 1990,
+                                message: "El año máximo debe ser mayor a 1990"
+                              },
+                              max: {
+                                value: new Date().getFullYear() + 2,
+                                message: `El año máximo no puede ser mayor a ${new Date().getFullYear() + 2} (año actual + 2)`
+                              },
+                              validate: (value) => {
+                                const minYear = watch("criteria.minYear");
+                                if (minYear && value && value < minYear) {
+                                  return "El año máximo debe ser mayor al año mínimo";
+                                }
+                                return true;
+                              },
                               onChange: (e) => {
                                 // Si se establece un año máximo, limpiar años específicos
                                 if (
@@ -1011,11 +1101,19 @@ export default function ApplicabilityGroupForm({
                               },
                             })}
                           />
+                          {errors.criteria?.maxYear && (
+                            <p className="text-sm text-red-500 mt-1">
+                              {errors.criteria.maxYear.message}
+                            </p>
+                          )}
                           {watch("criteria.specificYears")?.length > 0 && (
                             <div className="text-xs text-orange-600 mt-1">
                               Deshabilitado: se están usando años específicos
                   </div>
                           )}
+                          <div className="text-xs text-blue-600 mt-1">
+                            Rango permitido: 1990 - {new Date().getFullYear() + 2}
+                          </div>
                 </div>
               </div>
 
