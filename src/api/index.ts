@@ -691,6 +691,71 @@ const ENDPOINTS: Endpoints = {
       },
     },
   },
-};
+  PAYMENT_SETTINGS: {
+      GET_CURRENT: { 
+        url: `${BASE_URL}/dashboard/payment-settings`, 
+        method: 'GET' 
+      },
+      UPDATE: { 
+        url: `${BASE_URL}/dashboard/payment-settings`, 
+        method: 'PUT' 
+      },
+      GET_HISTORY: { 
+        url: `${BASE_URL}/dashboard/payment-settings/history`, 
+        method: 'GET' 
+      },
+      ACTIVATE: { 
+        url: `${BASE_URL}/dashboard/payment-settings/:settingsId/activate`, 
+        method: 'POST' 
+      },
+      GET_CRON_STATUS: { 
+        url: `${BASE_URL}/dashboard/payment-settings/cron/status`, 
+        method: 'GET' 
+      },
+      RESTART_CRON: { 
+        url: `${BASE_URL}/dashboard/payment-settings/cron/restart`, 
+        method: 'POST' 
+      },
+      MANUAL_VERIFICATION: { 
+        url: `${BASE_URL}/dashboard/payment-settings/verify/manual`, 
+        method: 'POST' 
+      },
+      GET_METRICS: { 
+        url: `${BASE_URL}/dashboard/payment-settings/metrics`, 
+        method: 'GET' 
+      },
+      VALIDATE_CRON: { 
+        url: `${BASE_URL}/dashboard/payment-settings/validate-cron`, 
+        method: 'POST' 
+      },
+      EXPORT: { 
+        url: `${BASE_URL}/dashboard/payment-settings/export`, 
+        method: 'GET' 
+      },
+      IMPORT: { 
+        url: `${BASE_URL}/dashboard/payment-settings/import`, 
+        method: 'POST' 
+      },
+      GET_SYSTEM_STATUS: { 
+        url: `${BASE_URL}/dashboard/payment-settings/system/status`, 
+        method: 'GET' 
+              },
+      },
+   /*  },
+    PAYMENT_SETTINGS: {
+      GET_CURRENT: { url: '/api/v1/dashboard/payment-settings', method: 'GET' },
+      UPDATE: { url: '/api/v1/dashboard/payment-settings', method: 'PUT' },
+      GET_HISTORY: { url: '/api/v1/dashboard/payment-settings/history', method: 'GET' },
+      ACTIVATE: { url: '/api/v1/dashboard/payment-settings/{settingsId}/activate', method: 'POST' },
+      GET_CRON_STATUS: { url: '/api/v1/dashboard/payment-settings/cron/status', method: 'GET' },
+      RESTART_CRON: { url: '/api/v1/dashboard/payment-settings/cron/restart', method: 'POST' },
+      MANUAL_VERIFICATION: { url: '/api/v1/dashboard/payment-settings/verify/manual', method: 'POST' },
+      GET_METRICS: { url: '/api/v1/dashboard/payment-settings/metrics', method: 'GET' },
+      VALIDATE_CRON: { url: '/api/v1/dashboard/payment-settings/validate-cron', method: 'POST' },
+      EXPORT: { url: '/api/v1/dashboard/payment-settings/export', method: 'GET' },
+      IMPORT: { url: '/api/v1/dashboard/payment-settings/import', method: 'POST' },
+      GET_SYSTEM_STATUS: { url: '/api/v1/dashboard/payment-settings/system/status', method: 'GET' }
+    } */
+  };
 
 export default ENDPOINTS;

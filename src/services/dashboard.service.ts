@@ -209,9 +209,9 @@ export class DashboardService {
     conversionRate: number;
   }> {
     try {
-      const { url, method } = ENDPOINTS.DASHBOARD.ANALYTICS.GET;
+      const { url, method } = ENDPOINTS.DASHBOARD.ANALYTICS.GET_PERFORMANCE;
       const response = await axiosInstance({
-        url: `${url}/performance`,
+        url,
         method,
         headers: this.getHeaders(),
       });
@@ -224,6 +224,90 @@ export class DashboardService {
         );
       }
       throw error;
+    }
+  }
+
+  /**
+   * Obtener métricas del sistema de verificaciones de pagos
+   */
+  static async getPaymentVerificationMetrics(): Promise<{
+    systemStatus: {
+      isActive: boolean;
+      frequency: string;
+      nextExecution: string;
+      pendingPayments: number;
+      isHealthy: boolean;
+    };
+    lastVerification: {
+      lastRun: string | null;
+      totalProcessed: number;
+      updated: number;
+      failed: number;
+      successRate: number;
+      duration?: number;
+    };
+    cronService: {
+      isInitialized: boolean;
+      activeTasks: string[];
+    };
+  }> {
+    try {
+      // Usar un endpoint que sabemos existe para el sistema de pagos
+      const response = await axiosInstance({
+        url: '/dashboard/payment-settings/system/status',
+        method: 'GET',
+        headers: this.getHeaders(),
+      });
+
+      const data = response.data.data;
+      
+      return {
+        systemStatus: {
+          isActive: data.system.isActive,
+          frequency: data.system.frequency,
+          nextExecution: data.system.nextExecution,
+          pendingPayments: data.metrics.pendingPayments,
+          isHealthy: data.metrics.systemHealth,
+        },
+        lastVerification: {
+          lastRun: data.lastStats.lastRun,
+          totalProcessed: data.lastStats.totalProcessed,
+          updated: data.lastStats.updated,
+          failed: data.lastStats.failed,
+          successRate: data.lastStats.successRate,
+          duration: data.lastStats.duration,
+        },
+        cronService: {
+          isInitialized: data.cronService.isInitialized,
+          activeTasks: data.cronService.activeTasks,
+        },
+      };
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error('Error fetching payment verification metrics:', error.response?.data?.message);
+      }
+      
+      // Retornar datos por defecto en caso de error
+      return {
+        systemStatus: {
+          isActive: false,
+          frequency: 'Unknown',
+          nextExecution: 'Unknown',
+          pendingPayments: 0,
+          isHealthy: false,
+        },
+        lastVerification: {
+          lastRun: null,
+          totalProcessed: 0,
+          updated: 0,
+          failed: 0,
+          successRate: 0,
+        },
+        cronService: {
+          isInitialized: false,
+          activeTasks: [],
+        },
+      };
     }
   }
 }

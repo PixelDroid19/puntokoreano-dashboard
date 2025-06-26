@@ -186,4 +186,82 @@ export interface Endpoints {
       };
     };
   };
+  PAYMENT_SETTINGS: {
+    GET_CURRENT: ApiEndpoint;
+    UPDATE: ApiEndpoint;
+    GET_HISTORY: ApiEndpoint;
+    ACTIVATE: ApiEndpoint;
+    GET_CRON_STATUS: ApiEndpoint;
+    RESTART_CRON: ApiEndpoint;
+    MANUAL_VERIFICATION: ApiEndpoint;
+    GET_METRICS: ApiEndpoint;
+    VALIDATE_CRON: ApiEndpoint;
+    EXPORT: ApiEndpoint;
+    IMPORT: ApiEndpoint;
+    GET_SYSTEM_STATUS: ApiEndpoint;
+  };
 }; 
+
+// Interfaces for Dashboard Analytics
+export interface DashboardAnalytics {
+  products: {
+    total: number;
+    active: number;
+    recentlyAdded: number;
+    categoryDistribution: Array<{
+      _id: string;
+      count: number;
+    }>;
+  };
+  inventory: {
+    lowStockAlerts: number;
+    totalValue: number;
+  };
+  vehicles: {
+    total: number;
+    active: number;
+    recentlyAdded: number;
+    monthlyGrowth: number;
+    growthPercentage: number;
+  };
+  brands: {
+    total: number;
+    active: number;
+    recentlyAdded: number;
+  };
+  families: {
+    total: number;
+    active: number;
+    recentlyAdded: number;
+  };
+  customers: {
+    total: number;
+    recentlyAdded: number;
+    monthlyGrowth: number;
+    growthPercentage: number;
+  };
+  lines: {
+    total: number;
+    active: number;
+    recentlyAdded: number;
+    brandDistribution: Array<{
+      brandName: string;
+      count: number;
+    }>;
+  };
+  recentActivityLogs: Array<{
+    id?: string;
+    type: string;
+    action: string;
+    userName: string;
+    details: string | object;
+    timestamp: string;
+  }>;
+  vehicleActivity: Array<{
+    id?: string;
+    type: string;
+    title: string;
+    description: string;
+    timestamp: string;
+  }>;
+} 

@@ -95,23 +95,31 @@ const VehicleSelector: React.FC<VehicleSelectorProps> = ({
         (vehicle: ApiVehicle) => {
           const brandName = vehicle.model_id?.family_id?.brand_id?.name || "";
           const familyName = vehicle.model_id?.family_id?.name || "";
-          
+
           // Usar displayName si está disponible, o construir manualmente
           let modelName = vehicle.model_id?.displayName;
           if (!modelName) {
             const engineType = vehicle.model_id?.engine_type || "";
-            const years = vehicle.model_id?.year && vehicle.model_id.year.length > 0 
-              ? vehicle.model_id.year.sort().join('-') 
-              : 'N/A';
-            modelName = `${familyName} ${engineType} ${years}`.trim();
+
+            const years = vehicle.model_id?.year;
+            const yearText =
+              Array.isArray(years) && years.length > 0
+                ? ` (${years.join(", ")})`
+                : years
+                ? ` (${years})`
+                : "";
+
+            modelName = `${familyName} ${engineType} ${yearText}`.trim();
           }
-          
+
           const tagId = vehicle.tag_id || "";
           const color = vehicle.color || "";
           const transmission = vehicle.transmission_id?.name || "";
           const fuel = vehicle.fuel_id?.name || "";
-          
-          const vehicleDisplayName = `${brandName} ${modelName} - ${tagId}${color ? ` (${color})` : ""} - ${transmission} ${fuel}`.trim();
+
+          const vehicleDisplayName = `${brandName} ${modelName} - ${tagId}${
+            color ? ` (${color})` : ""
+          } - ${transmission} ${fuel}`.trim();
 
           return {
             value: vehicle._id,

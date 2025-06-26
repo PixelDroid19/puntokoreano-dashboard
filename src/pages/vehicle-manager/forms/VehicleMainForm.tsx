@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { NumericFormat } from "react-number-format";
 import { Check, AlertCircle, Plus } from "lucide-react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";

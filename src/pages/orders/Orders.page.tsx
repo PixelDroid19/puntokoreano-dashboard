@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Table,
@@ -17,6 +17,12 @@ import {
   Badge,
   Card,
   Statistic,
+  Tabs,
+  Alert,
+  Switch,
+  InputNumber,
+  Divider,
+  Progress,
 } from "antd";
 import {
   DownloadOutlined,
@@ -29,6 +35,16 @@ import {
   DollarOutlined,
   ClockCircleOutlined,
   CheckCircleOutlined,
+  SettingOutlined,
+  BarChartOutlined,
+  PlayCircleOutlined,
+  PauseCircleOutlined,
+  ExportOutlined,
+  ImportOutlined,
+  ReloadOutlined,
+  AlertOutlined,
+  RobotOutlined,
+  ThunderboltOutlined,
 } from "@ant-design/icons";
 import type { RangePickerProps } from "antd/es/date-picker";
 import { Order, OrderStatus, PaymentStatus } from "../../types/orders";
@@ -37,9 +53,15 @@ import OrdersService from "../../services/orders.service";
 import { useOrdersWebSocket } from "../../hooks/useOrdersWebSocket";
 import { ACCESS_TOKEN_KEY } from "../../api";
 import WebSocketStatus from "../../components/shared/WebSocketStatus";
+import PaymentSettingsService from "../../services/payment-settings.service";
+import { PaymentSystemMetrics, CronServiceStatus, PaymentSettings } from "../../services/payment-settings.types";
+import { DashboardService } from "../../services/dashboard.service";
+import { CardContent, CardHeader, CardTitle } from "../vehicle-manager/ui/card";
+import { Activity, CheckCircle, Clock, DollarSign, ShoppingCart } from "lucide-react";
 
 const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
+const { TabPane } = Tabs;
 
 // Mapa de colores para estados
 const STATUS_COLORS: Record<OrderStatus, string> = {
@@ -85,9 +107,21 @@ const Orders = () => {
   const [form] = Form.useForm();
   const [refundForm] = Form.useForm();
   const [emailForm] = Form.useForm();
+  const [paymentSettingsForm] = Form.useForm();
+  const [isPaymentSettingsModalOpen, setIsPaymentSettingsModalOpen] = React.useState(false);
+  const [activePaymentTab, setActivePaymentTab] = React.useState("metrics");
   const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+  const [paymentVerificationStatus, setPaymentVerificationStatus] = useState<any>(null);
 
-  // Query para obtener pedidos
+  // Query para obtener pedidos con actualización automática
   const { data: ordersData, isLoading } = useQuery({
     queryKey: ["orders", dateRange, statusFilter],
     queryFn: () =>
@@ -96,6 +130,29 @@ const Orders = () => {
         toDate: dateRange?.[1]?.format("YYYY-MM-DD"),
         status: statusFilter || undefined,
       }),
+    refetchInterval: 60000, // Actualizar cada 60 segundos
+    refetchIntervalInBackground: true, // Continuar actualizando en background
+    staleTime: 30000, // Considerar datos obsoletos después de 30 segundos
+  });
+
+  const { data: paymentSettings, isLoading: isLoadingSettings } = useQuery({
+    queryKey: ["payment-settings"],
+    queryFn: () => PaymentSettingsService.getCurrentSettings(),
+  });
+
+  // Queries solo para el modal de configuración de pagos
+  const { data: paymentMetrics } = useQuery({
+    queryKey: ["payment-metrics"],
+    queryFn: () => PaymentSettingsService.getSystemMetrics("24h"),
+    enabled: isPaymentSettingsModalOpen, // Solo cargar cuando el modal esté abierto
+    refetchInterval: isPaymentSettingsModalOpen ? 60000 : false,
+  });
+
+  const { data: cronStatus } = useQuery({
+    queryKey: ["cron-status"],
+    queryFn: () => PaymentSettingsService.getCronStatus(),
+    enabled: isPaymentSettingsModalOpen, // Solo cargar cuando el modal esté abierto
+    refetchInterval: isPaymentSettingsModalOpen ? 30000 : false,
   });
 
   // Mutación para verificar pago
@@ -176,6 +233,44 @@ const Orders = () => {
       message.error(
         error.response?.data?.message || "Error al enviar la factura por correo"
       );
+    },
+  });
+
+  // Mutaciones para sistema de pagos
+  const restartCronService = useMutation({
+    mutationFn: () => PaymentSettingsService.restartCronService(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cron-status"] });
+      message.success("Servicio de cron reiniciado correctamente");
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.message || "Error al reiniciar el servicio");
+    },
+  });
+
+  const runManualVerification = useMutation({
+    mutationFn: (params: any) => PaymentSettingsService.runManualVerification(params),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["payment-metrics"] });
+      message.success(`Verificación completada. Procesados: ${data.data.data.processed}`);
+    },
+    onError: (error: any) => {
+      message.error("Error en la verificación manual");
+    },
+  });
+
+  const updatePaymentSettings = useMutation({
+    mutationFn: (settings: Partial<PaymentSettings>) => 
+      PaymentSettingsService.updateSettings(settings),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payment-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["cron-status"] });
+      message.success("Configuración actualizada correctamente");
+      setIsPaymentSettingsModalOpen(false);
+    },
+    onError: (error: any) => {
+      message.error("Error al actualizar la configuración");
     },
   });
 
@@ -282,18 +377,34 @@ const Orders = () => {
   });
 
   // Calcular estadísticas
-  const orders = ordersData?.data?.orders || [];
-  const totalOrders = orders.length;
-  const totalRevenue = orders.reduce(
+  const totalOrders = ordersData?.data?.orders?.length || 0;
+  const totalRevenue = ordersData?.data?.orders?.reduce(
     (sum: number, order: Order) => sum + (order.payment?.total || 0),
     0
-  );
-  const pendingOrders = orders.filter(
+  ) || 0;
+  const pendingOrders = ordersData?.data?.orders?.filter(
     (order: Order) => order.status === "pending"
-  ).length;
-  const completedOrders = orders.filter(
+  ).length || 0;
+  const completedOrders = ordersData?.data?.orders?.filter(
     (order: Order) => order.status === "completed"
-  ).length;
+  ).length || 0;
+
+  // Configuración del sistema de pagos
+  const paymentSettingsData = paymentSettings?.data?.data?.settings;
+  // Solo para el modal de configuración
+  const paymentMetricsData = paymentMetrics?.data?.data;
+  const cronStatusData = cronStatus?.data?.data;
+
+  const formatCurrency = (value: number) => {
+    return value?.toLocaleString("es-CO", {
+      style: "currency",
+      currency: "COP",
+    });
+  };
+
+  const formatPercentage = (value: number) => {
+    return `${(value || 0).toFixed(1)}%`;
+  };
 
   const columns = [
     {
@@ -471,6 +582,39 @@ const Orders = () => {
     },
   ];
 
+  // Nuevo efecto para obtener estado de verificaciones y sincronizar órdenes
+  useEffect(() => {
+    const fetchVerificationStatus = async () => {
+      try {
+        const response = await DashboardService.getPaymentVerificationMetrics();
+        setPaymentVerificationStatus(response);
+        
+        // Si hay una verificación reciente (últimos 2 minutos), refrescar órdenes
+        const lastRun = response.lastVerification?.lastRun;
+        if (lastRun) {
+          const lastRunTime = new Date(lastRun).getTime();
+          const now = new Date().getTime();
+          const timeDiff = now - lastRunTime;
+          
+          // Si la última verificación fue hace menos de 2 minutos, refrescar órdenes
+          if (timeDiff < 2 * 60 * 1000) {
+            queryClient.invalidateQueries({ queryKey: ["orders"] });
+            message.info("🔄 Órdenes actualizadas automáticamente - Verificación de pagos completada", 3);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching verification status:", error);
+      }
+    };
+
+    fetchVerificationStatus();
+    
+    // Actualizar estado cada 30 segundos
+    const interval = setInterval(fetchVerificationStatus, 30000);
+    
+    return () => clearInterval(interval);
+  }, [queryClient]);
+
   return (
     <div className="">
       <div className=" mx-auto space-y-6">
@@ -487,55 +631,166 @@ const Orders = () => {
                 onReset={reset}
               />
             </div>
-            <Button
-              type="primary"
-              icon={<SyncOutlined />}
-              loading={verifyPendingPayments.isPending}
-              onClick={() => verifyPendingPayments.mutate()}
-              size="large"
-              className="bg-blue-600 hover:bg-blue-700 border-0 shadow-md"
-            >
-              Verificar Pagos Pendientes
-            </Button>
+            <Space>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={() => queryClient.invalidateQueries({ queryKey: ["orders"] })}
+                size="large"
+                className="border-gray-400 text-gray-600 hover:bg-gray-50"
+                title="Actualizar vista de órdenes"
+              >
+                Actualizar Vista
+              </Button>
+              <Button
+                icon={<SettingOutlined />}
+                onClick={() => setIsPaymentSettingsModalOpen(true)}
+                size="large"
+                className="border-purple-500 text-purple-500 hover:bg-purple-50"
+              >
+                Configuración de Pagos
+              </Button>
+              <Button
+                type="primary"
+                icon={<SyncOutlined />}
+                loading={verifyPendingPayments.isPending}
+                onClick={() => verifyPendingPayments.mutate()}
+                size="large"
+                className="bg-blue-600 hover:bg-blue-700 border-0 shadow-md"
+              >
+                Verificar Pagos Pendientes
+              </Button>
+            </Space>
           </div>
         </div>
 
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="shadow-sm hover:shadow-md transition-shadow">
-            <Statistic
-              title="Total de Órdenes"
-              value={totalOrders}
-              prefix={<ShoppingCartOutlined className="text-blue-500" />}
-              valueStyle={{ color: "#1890ff" }}
-            />
+        {/* Estadísticas principales */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Total Órdenes
+                  </p>
+                  <p className="text-2xl font-bold">{totalOrders}</p>
+                </div>
+                <ShoppingCart className="h-8 w-8 text-blue-500" />
+              </div>
+            </CardContent>
           </Card>
-          <Card className="shadow-sm hover:shadow-md transition-shadow">
-            <Statistic
-              title="Ingresos Totales"
-              value={totalRevenue}
-              prefix={<DollarOutlined className="text-green-500" />}
-              valueStyle={{ color: "#52c41a" }}
-              formatter={(value) => `$${Number(value).toLocaleString("es-CO")}`}
-            />
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Pendientes
+                  </p>
+                  <p className="text-2xl font-bold text-orange-600">
+                    {pendingOrders}
+                  </p>
+                </div>
+                <Clock className="h-8 w-8 text-orange-500" />
+              </div>
+            </CardContent>
           </Card>
-          <Card className="shadow-sm hover:shadow-md transition-shadow">
-            <Statistic
-              title="Órdenes Pendientes"
-              value={pendingOrders}
-              prefix={<ClockCircleOutlined className="text-orange-500" />}
-              valueStyle={{ color: "#fa8c16" }}
-            />
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Completadas
+                  </p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {completedOrders}
+                  </p>
+                </div>
+                <CheckCircle className="h-8 w-8 text-green-500" />
+              </div>
+            </CardContent>
           </Card>
-          <Card className="shadow-sm hover:shadow-md transition-shadow">
-            <Statistic
-              title="Órdenes Completadas"
-              value={completedOrders}
-              prefix={<CheckCircleOutlined className="text-green-500" />}
-              valueStyle={{ color: "#52c41a" }}
-            />
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Ingresos Totales
+                  </p>
+                  <p className="text-2xl font-bold text-emerald-600">
+                    {formatCurrency(totalRevenue)}
+                  </p>
+                </div>
+                <DollarSign className="h-8 w-8 text-emerald-500" />
+              </div>
+            </CardContent>
           </Card>
         </div>
+
+        {/* Estado del Sistema de Verificaciones */}
+        {paymentVerificationStatus && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5 text-blue-500" />
+                Sistema de Verificaciones Automáticas (cada 3 minutos)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full ${
+                    paymentVerificationStatus.systemStatus?.isActive 
+                      ? 'bg-green-500 animate-pulse' 
+                      : 'bg-red-500'
+                  }`}></div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Estado</p>
+                    <p className="font-medium">
+                      {paymentVerificationStatus.systemStatus?.isActive ? 'Activo' : 'Inactivo'}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Frecuencia</p>
+                  <p className="font-medium">
+                    {paymentVerificationStatus.systemStatus?.frequency || 'Cada 3 minutos'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Pendientes</p>
+                  <p className="font-medium">
+                    {paymentVerificationStatus.systemStatus?.pendingPayments || 0} pagos
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Último procesamiento</p>
+                  <p className="font-medium text-xs">
+                    {paymentVerificationStatus.lastVerification?.lastRun 
+                      ? new Date(paymentVerificationStatus.lastVerification.lastRun).toLocaleString()
+                      : 'Nunca'
+                    }
+                  </p>
+                </div>
+              </div>
+              {paymentVerificationStatus.lastVerification?.totalProcessed > 0 && (
+                <div className="mt-4 pt-4 border-t">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Última verificación: {paymentVerificationStatus.lastVerification.totalProcessed} órdenes procesadas</span>
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      paymentVerificationStatus.lastVerification.failed === 0 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {paymentVerificationStatus.lastVerification.failed === 0 
+                        ? '✓ Sin errores' 
+                        : `${paymentVerificationStatus.lastVerification.failed} errores`
+                      }
+                    </span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Filters */}
         <Card className="shadow-sm">
@@ -912,6 +1167,236 @@ const Orders = () => {
               />
             </Form.Item>
           </Form>
+        </Modal>
+
+        {/* Modal de Configuración de Pagos */}
+        <Modal
+          title={
+            <div className="flex items-center space-x-2">
+              <SettingOutlined className="text-purple-500" />
+              <span>Configuración del Sistema de Pagos</span>
+            </div>
+          }
+          open={isPaymentSettingsModalOpen}
+          onCancel={() => {
+            setIsPaymentSettingsModalOpen(false);
+            paymentSettingsForm.resetFields();
+          }}
+          footer={null}
+          width={1200}
+          className="custom-modal"
+        >
+          <Tabs 
+            activeKey={activePaymentTab} 
+            onChange={setActivePaymentTab}
+            className="mt-4"
+          >
+            <TabPane 
+              tab={
+                <span>
+                  <BarChartOutlined />
+                  Métricas del Sistema
+                </span>
+              } 
+              key="metrics"
+            >
+              <div className="space-y-6">
+                {/* Estado del Sistema */}
+                <Card size="small" className="shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <Title level={4} className="!mb-0">Estado del Sistema</Title>
+                    <div className="flex items-center space-x-4">
+                      <div className={`w-3 h-3 rounded-full ${cronStatusData?.isRunning ? 'bg-green-500' : 'bg-red-500'}`} />
+                      <Text>{cronStatusData?.isRunning ? 'Activo' : 'Inactivo'}</Text>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {paymentMetricsData?.orders?.successRate || "0.0%"}
+                      </div>
+                      <div className="text-sm text-gray-600">Tasa de Éxito</div>
+                    </div>
+                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <div className="text-2xl font-bold text-green-600">
+                        {paymentMetricsData?.system?.lastVerification?.updated || 0}
+                      </div>
+                      <div className="text-sm text-gray-600">Pagos Automatizados</div>
+                    </div>
+                    <div className="text-center p-4 bg-purple-50 rounded-lg">
+                      <div className="text-2xl font-bold text-purple-600">
+                        {paymentMetricsData?.system?.lastVerification?.duration || 0}ms
+                      </div>
+                      <div className="text-sm text-gray-600">Tiempo Promedio</div>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Errores Recientes */}
+                {paymentMetricsData?.system?.lastVerification?.errors?.length > 0 && (
+                  <Card size="small" className="shadow-sm">
+                    <Title level={4} className="!mb-4">Errores Recientes</Title>
+                    <div className="space-y-2">
+                      {paymentMetricsData.system.lastVerification.errors.slice(0, 5).map((error, index) => (
+                                                 <Alert
+                           key={index}
+                           message={error.type || 'Error de verificación'}
+                           description={
+                             <div>
+                               <div>{error.message || 'Sin mensaje'}</div>
+                               {error.orderId && (
+                                 <Text type="secondary" className="text-xs">
+                                   Orden: {error.orderId}
+                                 </Text>
+                               )}
+                             </div>
+                           }
+                           type="error"
+                           showIcon
+                         />
+                      ))}
+                    </div>
+                  </Card>
+                )}
+
+                {/* Acciones Rápidas */}
+                <Card size="small" className="shadow-sm">
+                  <Title level={4} className="!mb-4">Acciones Rápidas</Title>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Button
+                      icon={<PlayCircleOutlined />}
+                      loading={runManualVerification.isPending}
+                      onClick={() => runManualVerification.mutate({ timeWindow: 24 })}
+                      size="large"
+                      block
+                    >
+                      Verificación Manual (24h)
+                    </Button>
+                    <Button
+                      icon={<ExportOutlined />}
+                      onClick={async () => {
+                        try {
+                          const blob = await PaymentSettingsService.downloadBackup();
+                          const filename = `payment-config-${new Date().toISOString().split('T')[0]}.json`;
+                          PaymentSettingsService.downloadFile(blob, filename);
+                          message.success("Configuración exportada correctamente");
+                        } catch (error) {
+                          message.error("Error al exportar configuración");
+                        }
+                      }}
+                      size="large"
+                      block
+                    >
+                      Exportar Configuración
+                    </Button>
+                  </div>
+                </Card>
+              </div>
+            </TabPane>
+
+            <TabPane 
+              tab={
+                <span>
+                  <SettingOutlined />
+                  Configuración
+                </span>
+              } 
+              key="settings"
+            >
+              {paymentSettingsData && (
+                <Form
+                  form={paymentSettingsForm}
+                  layout="vertical"
+                  initialValues={paymentSettingsData}
+                  onFinish={(values) => updatePaymentSettings.mutate(values)}
+                  className="space-y-6"
+                >
+                  <Card size="small" className="shadow-sm">
+                    <Title level={4} className="!mb-4">Verificación Automática</Title>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Form.Item
+                        name={["verification", "enabled"]}
+                        label="Activar Verificación Automática"
+                        valuePropName="checked"
+                      >
+                        <Switch />
+                      </Form.Item>
+                      <Form.Item
+                        name={["verification", "cronSchedule"]}
+                        label="Horario de Ejecución (Cron)"
+                      >
+                        <Input placeholder="*/5 * * * *" />
+                      </Form.Item>
+                      <Form.Item
+                        name={["verification", "timeWindow"]}
+                        label="Ventana de Tiempo (horas)"
+                      >
+                        <InputNumber min={1} max={168} className="w-full" />
+                      </Form.Item>
+                      <Form.Item
+                        name={["verification", "batchSize"]}
+                        label="Tamaño de Lote"
+                      >
+                        <InputNumber min={1} max={50} className="w-full" />
+                      </Form.Item>
+                    </div>
+                  </Card>
+
+                  <Card size="small" className="shadow-sm">
+                    <Title level={4} className="!mb-4">Timeout de Stock</Title>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Form.Item
+                        name={["stockTimeout", "enabled"]}
+                        label="Activar Timeout de Stock"
+                        valuePropName="checked"
+                      >
+                        <Switch />
+                      </Form.Item>
+                      <Form.Item
+                        name={["stockTimeout", "timeoutMinutes"]}
+                        label="Timeout en Minutos"
+                      >
+                        <InputNumber min={5} max={1440} className="w-full" />
+                      </Form.Item>
+                    </div>
+                  </Card>
+
+                  <Card size="small" className="shadow-sm">
+                    <Title level={4} className="!mb-4">Alertas</Title>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Form.Item
+                        name={["alerts", "enabled"]}
+                        label="Activar Alertas"
+                        valuePropName="checked"
+                      >
+                        <Switch />
+                      </Form.Item>
+                      <Form.Item
+                        name={["alerts", "failureThreshold"]}
+                        label="Umbral de Fallos"
+                      >
+                        <InputNumber min={1} max={100} className="w-full" />
+                      </Form.Item>
+                    </div>
+                  </Card>
+
+                  <div className="flex justify-end space-x-4">
+                    <Button onClick={() => setIsPaymentSettingsModalOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button 
+                      type="primary" 
+                      htmlType="submit"
+                      loading={updatePaymentSettings.isPending}
+                    >
+                      Guardar Configuración
+                    </Button>
+                  </div>
+                </Form>
+              )}
+            </TabPane>
+          </Tabs>
         </Modal>
 
         {/* Modal para Enviar Factura por Correo */}

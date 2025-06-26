@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Check, AlertCircle, Plus, Minus } from "lucide-react";
+import { Check, AlertCircle, Plus, Minus, AlertTriangle, X } from "lucide-react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import {
@@ -51,6 +51,187 @@ const { Option } = AntSelect;
 const { TabPane } = Tabs;
 const { TextArea } = AntInput;
 
+// Constantes de validación basadas en el modelo backend
+const VALIDATION_RULES = {
+  NAME: {
+    REQUIRED: true,
+    MAX_LENGTH: 100,
+    PATTERN: /^[a-zA-Z0-9\s\-_áéíóúñÁÉÍÓÚÑ]+$/,
+    MESSAGE: "El nombre solo puede contener letras, números, espacios, guiones y guiones bajos"
+  },
+  APPLICABILITY_IDENTIFIER: {
+    MAX_LENGTH: 50,
+    PATTERN: /^[a-zA-Z0-9\-_áéíóúñÁÉÍÓÚÑ]+$/,
+    MESSAGE: "El identificador solo puede contener letras, números, guiones y guiones bajos (sin espacios)"
+  },
+  DESCRIPTION: {
+    MAX_LENGTH: 500
+  },
+  TAG: {
+    MAX_LENGTH: 30,
+    PATTERN: /^[a-zA-Z0-9\s\-_áéíóúñÁÉÍÓÚÑ]+$/,
+    MESSAGE: "Los tags solo pueden contener letras, números, espacios, guiones y guiones bajos"
+  },
+  YEAR: {
+    MIN: 1900,
+    MAX: new Date().getFullYear() + 5,
+    MAX_RANGE: 50 // Advertencia si el rango es mayor a 50 años
+  },
+  ENGINE_TYPE: {
+    MAX_LENGTH: 50,
+    PATTERN: /^[a-zA-Z0-9\s\-_.áéíóúñÁÉÍÓÚÑ]+$/,
+    MESSAGE: "El tipo de motor contiene caracteres inválidos"
+  }
+};
+
+// Funciones de validación personalizadas
+const validateName = (value: string) => {
+  if (!value) return "El nombre es requerido";
+  if (value.length > VALIDATION_RULES.NAME.MAX_LENGTH) {
+    return `El nombre no puede exceder los ${VALIDATION_RULES.NAME.MAX_LENGTH} caracteres`;
+  }
+  if (!VALIDATION_RULES.NAME.PATTERN.test(value)) {
+    return VALIDATION_RULES.NAME.MESSAGE;
+  }
+  return true;
+};
+
+const validateApplicabilityIdentifier = (value?: string) => {
+  if (!value) return true; // Es opcional
+  if (value.length > VALIDATION_RULES.APPLICABILITY_IDENTIFIER.MAX_LENGTH) {
+    return `El identificador no puede exceder los ${VALIDATION_RULES.APPLICABILITY_IDENTIFIER.MAX_LENGTH} caracteres`;
+  }
+  if (!VALIDATION_RULES.APPLICABILITY_IDENTIFIER.PATTERN.test(value)) {
+    return VALIDATION_RULES.APPLICABILITY_IDENTIFIER.MESSAGE;
+  }
+  return true;
+};
+
+const validateDescription = (value?: string) => {
+  if (!value) return true; // Es opcional
+  if (value.length > VALIDATION_RULES.DESCRIPTION.MAX_LENGTH) {
+    return `La descripción no puede exceder los ${VALIDATION_RULES.DESCRIPTION.MAX_LENGTH} caracteres`;
+  }
+  return true;
+};
+
+const validateYear = (value?: number, fieldName = "año") => {
+  if (value === undefined || value === null) return true; // Es opcional
+  if (!Number.isInteger(value)) {
+    return `El ${fieldName} debe ser un número entero`;
+  }
+  if (value < VALIDATION_RULES.YEAR.MIN) {
+    return `El ${fieldName} debe ser mayor o igual a ${VALIDATION_RULES.YEAR.MIN}`;
+  }
+  if (value > VALIDATION_RULES.YEAR.MAX) {
+    return `El ${fieldName} no puede ser mayor a ${VALIDATION_RULES.YEAR.MAX}`;
+  }
+  return true;
+};
+
+const validateYearRange = (minYear?: number, maxYear?: number) => {
+  if (!minYear || !maxYear) return true;
+  if (minYear > maxYear) {
+    return "El año mínimo no puede ser mayor que el año máximo";
+  }
+  return true;
+};
+
+const validateSpecificYears = (years?: number[]) => {
+  if (!years || years.length === 0) return true;
+  
+  // Validar cada año individual
+  for (const year of years) {
+    const yearValidation = validateYear(year, "año específico");
+    if (yearValidation !== true) return yearValidation;
+  }
+  
+  // Verificar duplicados
+  const uniqueYears = new Set(years);
+  if (uniqueYears.size !== years.length) {
+    return "No puede haber años duplicados en la lista";
+  }
+  
+  return true;
+};
+
+const validateTag = (tag: string) => {
+  if (tag.length > VALIDATION_RULES.TAG.MAX_LENGTH) {
+    return `Cada tag no puede exceder los ${VALIDATION_RULES.TAG.MAX_LENGTH} caracteres`;
+  }
+  if (!VALIDATION_RULES.TAG.PATTERN.test(tag)) {
+    return VALIDATION_RULES.TAG.MESSAGE;
+  }
+  return true;
+};
+
+const validateTags = (tags?: string[]) => {
+  if (!tags || tags.length === 0) return true;
+  
+  for (const tag of tags) {
+    const tagValidation = validateTag(tag);
+    if (tagValidation !== true) return tagValidation;
+  }
+  
+  return true;
+};
+
+const validateVehicleDuplication = (includedVehicles?: string[], excludedVehicles?: string[]) => {
+  if (!includedVehicles || !excludedVehicles) return true;
+  
+  const included = new Set(includedVehicles);
+  const excluded = new Set(excludedVehicles);
+  
+  // Buscar intersección
+  const duplicates = includedVehicles.filter(id => excluded.has(id));
+  
+  if (duplicates.length > 0) {
+    return "Un vehículo no puede estar incluido y excluido al mismo tiempo";
+  }
+  
+  return true;
+};
+
+const validateAtLeastOneCriteria = (data: ApplicabilityGroupFormData) => {
+  const { criteria, includedVehicles } = data;
+  
+  // Verificar si hay criterios definidos
+  const hasCriteria = (
+    (criteria.brands && criteria.brands.length > 0) ||
+    (criteria.families && criteria.families.length > 0) ||
+    (criteria.models && criteria.models.length > 0) ||
+    (criteria.lines && criteria.lines.length > 0) ||
+    (criteria.transmissions && criteria.transmissions.length > 0) ||
+    (criteria.fuels && criteria.fuels.length > 0) ||
+    criteria.minYear ||
+    criteria.maxYear ||
+    (criteria.specificYears && criteria.specificYears.length > 0)
+  );
+  
+  // Verificar si hay vehículos incluidos
+  const hasIncludedVehicles = includedVehicles && includedVehicles.length > 0;
+  
+  if (!hasCriteria && !hasIncludedVehicles) {
+    return "Debe definir al menos un criterio de aplicabilidad o incluir vehículos específicos";
+  }
+  
+  return true;
+};
+
+// Función para generar advertencias de años
+const generateYearWarnings = (minYear?: number, maxYear?: number) => {
+  const warnings: string[] = [];
+  
+  if (minYear && maxYear) {
+    const yearRange = maxYear - minYear;
+    if (yearRange > VALIDATION_RULES.YEAR.MAX_RANGE) {
+      warnings.push(`Rango de años muy amplio (${yearRange} años). Considera dividir en grupos más específicos.`);
+    }
+  }
+  
+  return warnings;
+};
+
 interface ApplicabilityGroupFormData {
   name: string;
   description?: string;
@@ -93,6 +274,8 @@ export default function ApplicabilityGroupForm({
   } | null>(null);
   const [activeTab, setActiveTab] = useState("1");
   const [showVehiclesViewer, setShowVehiclesViewer] = useState(false);
+  const [yearWarnings, setYearWarnings] = useState<string[]>([]);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   
   // Estados para los selectores
   const [selectedBrands, setSelectedBrands] = useState<BrandOption[]>([]);
@@ -118,6 +301,8 @@ export default function ApplicabilityGroupForm({
     control,
     formState: { errors },
     watch,
+    trigger,
+    getValues,
   } = useForm<ApplicabilityGroupFormData>({
     defaultValues: {
       name: "",
@@ -138,6 +323,7 @@ export default function ApplicabilityGroupForm({
       includedVehicles: [],
       excludedVehicles: [],
     },
+    mode: "onChange" // Validar en tiempo real
   });
 
   const queryClient = useQueryClient();
@@ -170,6 +356,128 @@ export default function ApplicabilityGroupForm({
     }
   }, [initialData, mode, setValue]);
 
+  // Watch para validaciones en tiempo real de años
+  const watchedMinYear = watch("criteria.minYear");
+  const watchedMaxYear = watch("criteria.maxYear");
+  
+  useEffect(() => {
+    const warnings = generateYearWarnings(watchedMinYear, watchedMaxYear);
+    setYearWarnings(warnings);
+  }, [watchedMinYear, watchedMaxYear]);
+
+  // Watch para validar al menos un criterio en tiempo real
+  const watchedData = watch();
+  const [hasCriteriaWarning, setHasCriteriaWarning] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  
+  useEffect(() => {
+    // Solo mostrar la advertencia si el usuario ha interactuado con el formulario
+    // o si hay datos iniciales (modo edición)
+    if (hasUserInteracted || mode === "edit") {
+      const hasCriteria = validateAtLeastOneCriteria(watchedData as ApplicabilityGroupFormData);
+      setHasCriteriaWarning(hasCriteria !== true);
+    }
+  }, [watchedData, hasUserInteracted, mode]);
+
+  // Marcar que el usuario ha interactuado cuando cambie de pestaña
+  useEffect(() => {
+    if (activeTab !== "1") {
+      setHasUserInteracted(true);
+    }
+  }, [activeTab]);
+
+  // Función para obtener errores por pestaña
+  const getTabErrors = () => {
+    const tabErrors = {
+      tab1: [] as string[], // Información Básica
+      tab2: [] as string[], // Criterios de Compatibilidad  
+      tab3: [] as string[]  // Excepciones
+    };
+
+    // Errores de la pestaña 1 (Información Básica)
+    if (errors.name) tabErrors.tab1.push('Nombre');
+    if (errors.description) tabErrors.tab1.push('Descripción');
+    if (errors.applicabilityIdentifier) tabErrors.tab1.push('Identificador');
+    if (errors.tags) tabErrors.tab1.push('Tags');
+
+    // Errores de la pestaña 2 (Criterios)
+    if (errors.criteria?.minYear) tabErrors.tab2.push('Año Mínimo');
+    if (errors.criteria?.maxYear) tabErrors.tab2.push('Año Máximo');
+    if (errors.criteria?.specificYears) tabErrors.tab2.push('Años Específicos');
+    
+    // Agregar advertencia de criterios faltantes a la pestaña 2
+    if (hasCriteriaWarning) tabErrors.tab2.push('Criterios faltantes');
+
+    // Errores de validación personalizados - distribuir según corresponda
+    validationErrors.forEach(error => {
+      if (error.includes('vehículo') && (error.includes('incluido') || error.includes('excluido'))) {
+        tabErrors.tab3.push('Conflicto de vehículos');
+      } else if (error.includes('criterio') || error.includes('años') || error.includes('año')) {
+        tabErrors.tab2.push('Validación de criterios');
+      } else if (error.includes('tag')) {
+        tabErrors.tab1.push('Validación de tags');
+      } else {
+        tabErrors.tab1.push('Error de validación');
+      }
+    });
+
+    // Remover duplicados
+    tabErrors.tab1 = [...new Set(tabErrors.tab1)];
+    tabErrors.tab2 = [...new Set(tabErrors.tab2)];
+    tabErrors.tab3 = [...new Set(tabErrors.tab3)];
+
+    return tabErrors;
+  };
+
+    const tabErrors = getTabErrors();
+
+  // Componente para mostrar indicadores de error en las pestañas
+  const TabErrorIndicator = ({ errors, tabKey }: { errors: string[], tabKey: string }) => {
+    if (errors.length === 0) return null;
+    
+    return (
+      <Tooltip 
+        title={
+          <div>
+            <div className="font-semibold text-xs mb-1">
+              {errors.length === 1 ? "Error encontrado:" : `${errors.length} errores encontrados:`}
+            </div>
+            <ul className="text-xs">
+              {errors.map((error, index) => (
+                <li key={index}>• {error}</li>
+              ))}
+            </ul>
+          </div>
+        }
+        color="red"
+      >
+        <div className="flex items-center gap-1 ml-2">
+          <div className="relative">
+            <AlertTriangle className="w-3 h-3 text-red-500" />
+            <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+              {errors.length}
+            </div>
+          </div>
+        </div>
+      </Tooltip>
+    );
+  };
+
+  // Función para obtener el estilo de la pestaña según errores
+  const getTabStyle = (tabKey: keyof typeof tabErrors, isActive: boolean) => {
+    const hasErrors = tabErrors[tabKey].length > 0;
+    
+    if (hasErrors) {
+      return isActive 
+        ? "bg-red-500 text-white border-red-500" 
+        : "bg-red-50 text-red-600 border-red-200 hover:bg-red-100";
+    }
+    
+    return isActive 
+      ? "bg-blue-500 text-white" 
+      : "bg-gray-200 text-gray-700";
+  };
+  
   // Mutación para crear/actualizar
   const { mutate, isPending: isSubmitting } = useMutation({
     mutationFn: (values: ApplicabilityGroupFormData) => {
@@ -249,11 +557,62 @@ export default function ApplicabilityGroupForm({
 
   const onSubmit = (data: ApplicabilityGroupFormData) => {
     setFormError(null);
+    setValidationErrors([]);
+    
+    // Ejecutar validaciones personalizadas
+    const errors: string[] = [];
+    
+    // Validar duplicación de vehículos
+    const vehicleDuplicationError = validateVehicleDuplication(
+      data.includedVehicles,
+      data.excludedVehicles
+    );
+    if (vehicleDuplicationError !== true) {
+      errors.push(vehicleDuplicationError as string);
+    }
+    
+    // Validar al menos un criterio
+    const criteriaError = validateAtLeastOneCriteria(data);
+    if (criteriaError !== true) {
+      errors.push(criteriaError as string);
+    }
+    
+    // Validar rango de años
+    const yearRangeError = validateYearRange(
+      data.criteria.minYear,
+      data.criteria.maxYear
+    );
+    if (yearRangeError !== true) {
+      errors.push(yearRangeError as string);
+    }
+    
+    // Validar años específicos
+    const specificYearsError = validateSpecificYears(data.criteria.specificYears);
+    if (specificYearsError !== true) {
+      errors.push(specificYearsError as string);
+    }
+    
+    // Validar tags
+    const tagsError = validateTags(data.tags);
+    if (tagsError !== true) {
+      errors.push(tagsError as string);
+    }
+    
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      setFormError({
+        message: "Por favor, corrija los siguientes errores:",
+        errors: errors
+      });
+      return;
+    }
+    
     mutate(data);
   };
 
   // Handlers para selectores múltiples
   const handleBrandAdd = (brand: BrandOption | null) => {
+    setHasUserInteracted(true); // Marcar interacción
     if (brand && !selectedBrands.find((b) => b.value === brand.value)) {
       setSelectedBrands([...selectedBrands, brand]);
     }
@@ -340,6 +699,25 @@ export default function ApplicabilityGroupForm({
             />
           )}
 
+          {/* Mostrar errores de validación personalizados */}
+          {validationErrors.length > 0 && (
+            <Alert
+              message="Errores de Validación"
+              description={
+                <ul className="list-disc pl-4 mt-2">
+                  {validationErrors.map((error, index) => (
+                    <li key={index} className="text-sm">{error}</li>
+                  ))}
+                </ul>
+              }
+              type="error"
+              showIcon
+              className="mb-4"
+            />
+          )}
+
+        
+
           {/* Encabezado del formulario */}
           <div className="border-b border-gray-200 pb-4">
             <p className="mt-1 text-sm text-gray-500">
@@ -398,15 +776,16 @@ export default function ApplicabilityGroupForm({
               tab={
                 <span className="flex items-center gap-2">
                   <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                      activeTab === "1"
-                        ? "bg-blue-500 text-white"
-                        : "bg-gray-200 text-gray-700"
-                    }`}
+                    className={`w-5 h-5 rounded-full flex items-center justify-center ${getTabStyle('tab1', activeTab === "1")}`}
                   >
-                    1
+                    {tabErrors.tab1.length > 0 ? (
+                      <X className="w-3 h-3" />
+                    ) : (
+                      "1"
+                    )}
                   </div>
                   <span>Información Básica</span>
+                  <TabErrorIndicator errors={tabErrors.tab1} tabKey="tab1" />
                 </span>
               }
               key="1"
@@ -418,29 +797,34 @@ export default function ApplicabilityGroupForm({
                     <label className="block text-sm font-medium mb-1">
                       Nombre del Grupo <span className="text-red-500">*</span>
                     </label>
-                    <Tooltip title="Nombre identificador del grupo de aplicabilidad. Debe ser único.">
+                    <Tooltip title="Nombre identificador del grupo de aplicabilidad. Debe ser único. Solo se permiten letras, números, espacios, guiones y guiones bajos.">
                       <InfoCircleOutlined className="text-blue-500 cursor-help" />
                     </Tooltip>
                   </div>
                   <Input
                     placeholder="Ej: Vehículos Eléctricos 2020+"
-                      className="rounded-md"
-                      {...register("name", {
-                        required: "El nombre es requerido",
-                      })}
+                    className="rounded-md"
+                    maxLength={VALIDATION_RULES.NAME.MAX_LENGTH}
+                    {...register("name", {
+                      required: "El nombre es requerido",
+                      validate: validateName
+                    })}
                   />
+                  <div className="text-xs text-gray-500 mt-1">
+                    Máximo {VALIDATION_RULES.NAME.MAX_LENGTH} caracteres
+                  </div>
                   {errors.name && (
-                      <p className="text-sm text-red-500 mt-1">
-                        {errors.name.message}
-                      </p>
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.name.message}
+                    </p>
                   )}
                 </div>
 
                 <div>
                   <div className="flex items-center gap-2">
-                      <label className="block text-sm font-medium mb-1">
-                        Descripción
-                      </label>
+                    <label className="block text-sm font-medium mb-1">
+                      Descripción
+                    </label>
                     <Tooltip title="Descripción opcional del propósito de este grupo">
                       <InfoCircleOutlined className="text-blue-500 cursor-help" />
                     </Tooltip>
@@ -448,42 +832,48 @@ export default function ApplicabilityGroupForm({
                   <TextArea
                     rows={3}
                     placeholder="Descripción del propósito de este grupo"
-                      className="rounded-md"
-                    {...register("description")}
+                    className="rounded-md"
+                    maxLength={VALIDATION_RULES.DESCRIPTION.MAX_LENGTH}
+                    showCount
+                    {...register("description", {
+                      validate: validateDescription
+                    })}
                   />
+                  <div className="text-xs text-gray-500 mt-1">
+                    Máximo {VALIDATION_RULES.DESCRIPTION.MAX_LENGTH} caracteres
                   </div>
+                  {errors.description && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.description.message}
+                    </p>
+                  )}
+                </div>
 
                 <div>
                   <div className="flex items-center gap-2">
                     <label className="block text-sm font-medium mb-1">
                       Identificador de Aplicabilidad
                     </label>
-                    <Tooltip title="Identificador único para importación Excel. Si se deja vacío, se generará automáticamente. Solo se permiten letras, números, guiones y guiones bajos.">
+                    <Tooltip title="Identificador único para importación Excel. Si se deja vacío, se generará automáticamente. Solo se permiten letras, números, guiones y guiones bajos (sin espacios).">
                       <InfoCircleOutlined className="text-blue-500 cursor-help" />
                     </Tooltip>
                   </div>
                   <Input
                     placeholder="Ej: VEH-ELEC-2020 (opcional - se autogenera si vacío)"
                     className="rounded-md font-mono text-sm"
+                    maxLength={VALIDATION_RULES.APPLICABILITY_IDENTIFIER.MAX_LENGTH}
                     {...register("applicabilityIdentifier", {
-                      pattern: {
-                        value: /^[a-zA-Z0-9_-]*$/,
-                        message: "Solo se permiten letras, números, guiones y guiones bajos"
-                      },
-                      maxLength: {
-                        value: 50,
-                        message: "Máximo 50 caracteres"
-                      }
+                      validate: validateApplicabilityIdentifier
                     })}
                   />
+                  <div className="text-xs text-gray-500 mt-1">
+                    Máximo {VALIDATION_RULES.APPLICABILITY_IDENTIFIER.MAX_LENGTH} caracteres. Si no se especifica, se generará automáticamente.
+                  </div>
                   {errors.applicabilityIdentifier && (
                     <p className="text-sm text-red-500 mt-1">
                       {errors.applicabilityIdentifier.message}
                     </p>
                   )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    Si no se especifica, se generará automáticamente basado en el nombre y categoría
-                  </p>
                 </div>
                 </div>
 
@@ -543,6 +933,54 @@ export default function ApplicabilityGroupForm({
                 <div>
                   <div className="flex items-center gap-2">
                     <label className="block text-sm font-medium mb-1">
+                      Tags (Etiquetas)
+                    </label>
+                    <Tooltip title="Etiquetas para organizar y categorizar el grupo. Solo se permiten letras, números, espacios, guiones y guiones bajos.">
+                      <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                    </Tooltip>
+                  </div>
+                  <Controller
+                    name="tags"
+                    control={control}
+                    rules={{
+                      validate: (value) => validateTags(value)
+                    }}
+                    render={({ field }) => (
+                      <AntSelect
+                        mode="tags"
+                        placeholder="Escribe etiquetas y presiona Enter"
+                        value={field.value || []}
+                        onChange={(value) => {
+                          // Validar cada tag individual antes de añadirlo
+                          const validTags = value.filter(tag => {
+                            if (typeof tag === 'string') {
+                              const validation = validateTag(tag.trim());
+                              return validation === true;
+                            }
+                            return false;
+                          });
+                          field.onChange(validTags);
+                        }}
+                        className="w-full rounded-md"
+                        tokenSeparators={[',']}
+                        maxTagCount="responsive"
+                        maxTagTextLength={VALIDATION_RULES.TAG.MAX_LENGTH}
+                      />
+                    )}
+                  />
+                  <div className="text-xs text-gray-500 mt-1">
+                    Máximo {VALIDATION_RULES.TAG.MAX_LENGTH} caracteres por etiqueta. Separar con Enter o coma.
+                  </div>
+                  {errors.tags && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.tags.message}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-2">
+                    <label className="block text-sm font-medium mb-1">
                       Estado
                     </label>
                     <Tooltip title="Estado del grupo (activo/inactivo)">
@@ -589,15 +1027,16 @@ export default function ApplicabilityGroupForm({
               tab={
                 <span className="flex items-center gap-2">
                   <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                      activeTab === "2"
-                        ? "bg-blue-500 text-white"
-                        : "bg-gray-200 text-gray-700"
-                    }`}
+                    className={`w-5 h-5 rounded-full flex items-center justify-center ${getTabStyle('tab2', activeTab === "2")}`}
                   >
-                    2
+                    {tabErrors.tab2.length > 0 ? (
+                      <X className="w-3 h-3" />
+                    ) : (
+                      "2"
+                    )}
                   </div>
                   <span>Criterios de Compatibilidad</span>
+                  <TabErrorIndicator errors={tabErrors.tab2} tabKey="tab2" />
                 </span>
               }
               key="2"
@@ -625,6 +1064,17 @@ export default function ApplicabilityGroupForm({
                     </div>
                   </div>
                 </div>
+
+                {/* Advertencia de criterios faltantes */}
+                {hasCriteriaWarning && (
+                  <Alert
+                    message="¡Atención!"
+                    description="Debes definir al menos un criterio de aplicabilidad o incluir vehículos específicos en la pestaña de Excepciones."
+                    type="warning"
+                    showIcon
+                    className="mb-4"
+                  />
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-6">
@@ -1017,32 +1467,25 @@ export default function ApplicabilityGroupForm({
                     <Input
                       type="number"
                       placeholder="Ej: 2010"
-                            className="rounded-md"
-                            min={1990}
-                            max={new Date().getFullYear()}
-                            disabled={
-                              watch("criteria.specificYears")?.length > 0
-                            }
-                            {...register("criteria.minYear", {
-                              valueAsNumber: true,
-                              min: {
-                                value: 1990,
-                                message: "El año mínimo debe ser mayor a 1990"
-                              },
-                              max: {
-                                value: new Date().getFullYear(),
-                                message: `El año mínimo no puede ser mayor al año actual (${new Date().getFullYear()})`
-                              },
-                              onChange: (e) => {
-                                // Si se establece un año mínimo, limpiar años específicos
-                                if (
-                                  e.target.value &&
-                                  watch("criteria.specificYears")?.length > 0
-                                ) {
-                                  setValue("criteria.specificYears", []);
-                                }
-                              },
-                            })}
+                      className="rounded-md"
+                      min={VALIDATION_RULES.YEAR.MIN}
+                      max={VALIDATION_RULES.YEAR.MAX}
+                      disabled={
+                        watch("criteria.specificYears")?.length > 0
+                      }
+                      {...register("criteria.minYear", {
+                        valueAsNumber: true,
+                        validate: (value) => validateYear(value, "año mínimo"),
+                        onChange: (e) => {
+                          // Si se establece un año mínimo, limpiar años específicos
+                          if (
+                            e.target.value &&
+                            watch("criteria.specificYears")?.length > 0
+                          ) {
+                            setValue("criteria.specificYears", []);
+                          }
+                        },
+                      })}
                           />
                           {errors.criteria?.minYear && (
                             <p className="text-sm text-red-500 mt-1">
@@ -1067,39 +1510,36 @@ export default function ApplicabilityGroupForm({
                     <Input
                       type="number"
                       placeholder={`Ej: ${new Date().getFullYear()}`}
-                            className="rounded-md"
-                            min={1990}
-                            max={new Date().getFullYear() + 2}
-                            disabled={
-                              watch("criteria.specificYears")?.length > 0
-                            }
-                            {...register("criteria.maxYear", {
-                              valueAsNumber: true,
-                              min: {
-                                value: 1990,
-                                message: "El año máximo debe ser mayor a 1990"
-                              },
-                              max: {
-                                value: new Date().getFullYear() + 2,
-                                message: `El año máximo no puede ser mayor a ${new Date().getFullYear() + 2} (año actual + 2)`
-                              },
-                              validate: (value) => {
-                                const minYear = watch("criteria.minYear");
-                                if (minYear && value && value < minYear) {
-                                  return "El año máximo debe ser mayor al año mínimo";
-                                }
-                                return true;
-                              },
-                              onChange: (e) => {
-                                // Si se establece un año máximo, limpiar años específicos
-                                if (
-                                  e.target.value &&
-                                  watch("criteria.specificYears")?.length > 0
-                                ) {
-                                  setValue("criteria.specificYears", []);
-                                }
-                              },
-                            })}
+                      className="rounded-md"
+                      min={VALIDATION_RULES.YEAR.MIN}
+                      max={VALIDATION_RULES.YEAR.MAX}
+                      disabled={
+                        watch("criteria.specificYears")?.length > 0
+                      }
+                      {...register("criteria.maxYear", {
+                        valueAsNumber: true,
+                        validate: (value) => {
+                          // Validación básica de año
+                          const yearValidation = validateYear(value, "año máximo");
+                          if (yearValidation !== true) return yearValidation;
+                          
+                          // Validación de rango con año mínimo
+                          const minYear = watch("criteria.minYear");
+                          if (minYear && value && value < minYear) {
+                            return "El año máximo debe ser mayor al año mínimo";
+                          }
+                          return true;
+                        },
+                        onChange: (e) => {
+                          // Si se establece un año máximo, limpiar años específicos
+                          if (
+                            e.target.value &&
+                            watch("criteria.specificYears")?.length > 0
+                          ) {
+                            setValue("criteria.specificYears", []);
+                          }
+                        },
+                      })}
                           />
                           {errors.criteria?.maxYear && (
                             <p className="text-sm text-red-500 mt-1">
@@ -1109,11 +1549,25 @@ export default function ApplicabilityGroupForm({
                           {watch("criteria.specificYears")?.length > 0 && (
                             <div className="text-xs text-orange-600 mt-1">
                               Deshabilitado: se están usando años específicos
-                  </div>
+                            </div>
                           )}
                           <div className="text-xs text-blue-600 mt-1">
-                            Rango permitido: 1990 - {new Date().getFullYear() + 2}
+                            Rango permitido: {VALIDATION_RULES.YEAR.MIN} - {VALIDATION_RULES.YEAR.MAX}
                           </div>
+                          {/* Mostrar advertencias de años */}
+                          {yearWarnings.length > 0 && (
+                            <div className="mt-2">
+                              {yearWarnings.map((warning, index) => (
+                                <Alert
+                                  key={index}
+                                  message={warning}
+                                  type="warning"
+                                  showIcon
+                                  className="mb-1 text-sm"
+                                />
+                              ))}
+                            </div>
+                          )}
                 </div>
               </div>
 
@@ -1140,10 +1594,12 @@ export default function ApplicabilityGroupForm({
                           <Controller
                             name="criteria.specificYears"
                             control={control}
+                            rules={{
+                              validate: (value) => validateSpecificYears(value)
+                            }}
                             render={({ field }) => {
-                              const currentYear = new Date().getFullYear();
-                              const minYear = 1990;
-                              const maxYear = currentYear + 2;
+                              const minYear = VALIDATION_RULES.YEAR.MIN;
+                              const maxYear = VALIDATION_RULES.YEAR.MAX;
                               const hasYearRange =
                                 Boolean(watch("criteria.minYear")) ||
                                 Boolean(watch("criteria.maxYear"));
@@ -1385,15 +1841,16 @@ export default function ApplicabilityGroupForm({
               tab={
                 <span className="flex items-center gap-2">
                   <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                      activeTab === "3"
-                        ? "bg-blue-500 text-white"
-                        : "bg-gray-200 text-gray-700"
-                    }`}
+                    className={`w-5 h-5 rounded-full flex items-center justify-center ${getTabStyle('tab3', activeTab === "3")}`}
                   >
-                    3
+                    {tabErrors.tab3.length > 0 ? (
+                      <X className="w-3 h-3" />
+                    ) : (
+                      "3"
+                    )}
                   </div>
                   <span>Excepciones</span>
+                  <TabErrorIndicator errors={tabErrors.tab3} tabKey="tab3" />
                 </span>
               }
               key="3"

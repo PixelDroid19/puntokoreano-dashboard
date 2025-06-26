@@ -145,14 +145,16 @@ const CompatibleVehiclesViewer: React.FC<CompatibleVehiclesViewerProps> = ({
       title: "Modelo",
       key: "model",
       render: (_: any, record: any) => {
-        const modelName = record.model_id?.name || "N/A";
+        const familyName = record.model_id?.family_id?.name || "N/A";
         const years = record.model_id?.year;
         const yearText = Array.isArray(years) && years.length > 0 
           ? ` (${years.join(", ")})` 
           : "";
+
+ 
         return (
           <span>
-            {modelName}
+          {/*   {familyName} */}
             {yearText && <span className="text-gray-500 text-sm">{yearText}</span>}
           </span>
         );

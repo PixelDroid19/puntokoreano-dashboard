@@ -11,9 +11,10 @@ interface ApiModel {
   _id: string;
   name?: string;
   brand_id?: string;
-  family_id?: string;
+  family_id?: string | { name?: string; _id?: string };
   engineType?: string;
-  year?: number;
+  engine_type?: string;
+  year?: number | number[];
   active?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -90,9 +91,16 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
 
       console.log("Respuesta RECIBIDA del servicio (Models):", serviceResponse);
 
-      const responseData: ModelApiData | null | undefined =
-        (serviceResponse as ModelApiResponse)?.data ??
-        (serviceResponse as ModelApiData);
+      let responseData: ModelApiData | null | undefined;
+      let apiMessage: string | undefined;
+
+      // Verificar si la respuesta tiene la estructura de ModelApiResponse
+      if ('success' in serviceResponse && 'data' in serviceResponse) {
+        responseData = (serviceResponse as ModelApiResponse).data;
+        apiMessage = (serviceResponse as ModelApiResponse).message;
+      } else {
+        responseData = serviceResponse as ModelApiData;
+      }
 
       if (
         !responseData ||
@@ -103,7 +111,6 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
           "Formato de datos de API inválido (Models):",
           responseData
         );
-        const apiMessage = (serviceResponse as ModelApiResponse)?.message;
         throw new Error(
           apiMessage || "Formato de datos inválido de la API de modelos"
         );
@@ -113,16 +120,24 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
 
       const newOptions: ModelsOption[] = models.map((model: ApiModel) => {
         console.log("Modelo recibido:", model);
-        const modelName =
-          (model.name && model.name.trim()) ||
-          ((model.engineType || model.engine_type) && model.year
-            ? ` ${model.name || ""} ${
-                model.engineType || model.engine_type || ""
-              } ${model.year || ""}`
-            : "Modelo sin nombre");
+        
+        // Obtener el nombre de la familia
+        const familyName = typeof model.family_id === 'object' && model.family_id?.name 
+          ? model.family_id.name 
+          : "N/A";
+        
+        // Manejar los años
+        const years = model.year;
+        const yearText = Array.isArray(years) && years.length > 0 
+          ? ` (${years.join(", ")})` 
+          : years ? ` (${years})` : "";
+        
+        // Construir el label en el formato solicitado
+        const modelLabel = `${familyName}${yearText}`;
+        
         return {
           value: model._id,
-          label: modelName,
+          label: modelLabel,
           modelData: model,
         };
       });

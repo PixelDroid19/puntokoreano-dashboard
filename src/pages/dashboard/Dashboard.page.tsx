@@ -13,9 +13,13 @@ import {
   BarChart3,
   FileText,
   Activity,
+  Zap,
+  TrendingUp,
+  Shield,
 } from "lucide-react";
 import { DashboardService } from "../../services/dashboard.service";
 import { DashboardAnalytics } from "../../api/types";
+import PaymentSettingsService from "../../services/payment-settings.service";
 import {
   BarChart,
   Bar,
@@ -37,6 +41,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "../vehicle-manager/ui/tabs";
+import { useState, useEffect } from "react";
 
 const formatCurrency = (value: number | null | undefined): string => {
   if (value == null) return "-";
@@ -95,14 +100,62 @@ const getActivityTagColor = (type: string): string => {
 };
 
 export default function Dashboard() {
-  const { data, isLoading, error } = useQuery<DashboardAnalytics>({
-    queryKey: ["dashboardAnalytics"],
-    queryFn: () => DashboardService.getAnalytics(),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
+  const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [paymentVerificationMetrics, setPaymentVerificationMetrics] = useState<any>(null);
 
-  if (isLoading) {
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [analyticsData, paymentData] = await Promise.all([
+        DashboardService.getAnalytics(),
+        DashboardService.getPaymentVerificationMetrics()
+      ]);
+      setAnalytics(analyticsData);
+      setPaymentVerificationMetrics(paymentData);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
+      setError(err instanceof Error ? err.message : "Error desconocido");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    
+    // Actualizar métricas de verificación de pagos cada 30 segundos
+    const paymentInterval = setInterval(async () => {
+      try {
+        const paymentData = await DashboardService.getPaymentVerificationMetrics();
+        setPaymentVerificationMetrics(paymentData);
+        
+        // Si hubo una verificación reciente, refrescar analytics
+        const lastRun = paymentData.lastVerification?.lastRun;
+        if (lastRun) {
+          const lastRunTime = new Date(lastRun).getTime();
+          const now = new Date().getTime();
+          const timeDiff = now - lastRunTime;
+          
+          // Si la verificación fue hace menos de 1 minuto, refrescar datos
+          if (timeDiff < 1 * 60 * 1000) {
+            const analyticsData = await DashboardService.getAnalytics();
+            setAnalytics(analyticsData);
+          }
+        }
+      } catch (err) {
+        console.error("Error updating payment metrics:", err);
+      }
+    }, 30000); // 30 segundos
+
+    return () => {
+      clearInterval(paymentInterval);
+    };
+  }, []);
+
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
@@ -110,14 +163,14 @@ export default function Dashboard() {
     );
   }
 
-  if (error || !data) {
+  if (error || !analytics) {
     return (
       <div className="bg-destructive/15 border border-destructive text-destructive px-4 py-3 rounded-md flex items-start m-6">
         <AlertTriangle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
         <div>
           <h3 className="font-medium">Error</h3>
           <p className="text-sm">
-            {error?.message || "No se pudieron cargar los datos del dashboard"}
+            {error || "No se pudieron cargar los datos del dashboard"}
           </p>
         </div>
       </div>
@@ -125,36 +178,36 @@ export default function Dashboard() {
   }
 
   // Prepare data safely, defaulting to empty arrays or objects if needed
-  const products = data.products ?? {
+  const products = analytics.products ?? {
     total: 0,
     active: 0,
     recentlyAdded: 0,
     categoryDistribution: [],
   };
-  const inventory = data.inventory ?? { lowStockAlerts: 0, totalValue: 0 };
-  const vehicles = data.vehicles ?? {
+  const inventory = analytics.inventory ?? { lowStockAlerts: 0, totalValue: 0 };
+  const vehicles = analytics.vehicles ?? {
     total: 0,
     active: 0,
     recentlyAdded: 0,
     monthlyGrowth: 0,
     growthPercentage: 0,
   };
-  const brands = data.brands ?? { total: 0, active: 0, recentlyAdded: 0 };
-  const families = data.families ?? { total: 0, active: 0, recentlyAdded: 0 };
-  const customers = data.customers ?? {
+  const brands = analytics.brands ?? { total: 0, active: 0, recentlyAdded: 0 };
+  const families = analytics.families ?? { total: 0, active: 0, recentlyAdded: 0 };
+  const customers = analytics.customers ?? {
     total: 0,
     recentlyAdded: 0,
     monthlyGrowth: 0,
     growthPercentage: 0,
   };
-  const lines = data.lines ?? {
+  const lines = analytics.lines ?? {
     total: 0,
     active: 0,
     recentlyAdded: 0,
     brandDistribution: [],
   };
-  const recentActivityData = Array.isArray(data.recentActivity)
-    ? data.recentActivity
+  const recentActivityData = Array.isArray(analytics.recentActivityLogs)
+    ? analytics.recentActivityLogs
     : [];
   const categoryChartData = Array.isArray(products.categoryDistribution)
     ? products.categoryDistribution
@@ -162,12 +215,15 @@ export default function Dashboard() {
   const brandDistributionChartData = Array.isArray(lines.brandDistribution)
     ? lines.brandDistribution
     : [];
-  const recentActivityLogsData = Array.isArray(data.recentActivityLogs)
-    ? data.recentActivityLogs
+  const recentActivityLogsData = Array.isArray(analytics.recentActivityLogs)
+    ? analytics.recentActivityLogs
     : [];
-  const vehicleActivityData = Array.isArray(data.vehicleActivity)
-    ? data.vehicleActivity
+  const vehicleActivityData = Array.isArray(analytics.vehicleActivity)
+    ? analytics.vehicleActivity
     : [];
+
+  // Datos del sistema de pagos
+  const paymentMetricsData = paymentVerificationMetrics;
 
   return (
     <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 space-y-6">
@@ -267,6 +323,43 @@ export default function Dashboard() {
               : undefined
           }
           trendUp={lines.recentlyAdded > 0}
+        />
+      </div>
+
+      {/* Payment System Stats Section - Verificaciones cada 3 minutos */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Sistema de Verificaciones"
+          value={paymentMetricsData?.systemStatus?.isActive ? "Activo" : "Inactivo"}
+          icon={<TrendingUp className="h-5 w-5 text-green-500" />}
+          description={paymentMetricsData?.systemStatus?.frequency || "cada 3 minutos"}
+          alert={!paymentMetricsData?.systemStatus?.isActive}
+        />
+        <StatCard
+          title="Pagos Pendientes"
+          value={paymentMetricsData?.systemStatus?.pendingPayments || 0}
+          icon={<Zap className="h-5 w-5 text-blue-500" />}
+          description="pendientes de verificar"
+          trend={paymentMetricsData?.cronService?.isInitialized ? "Cron Activo" : "Cron Inactivo"}
+          trendUp={paymentMetricsData?.cronService?.isInitialized}
+          alert={(paymentMetricsData?.systemStatus?.pendingPayments || 0) > 10}
+        />
+        <StatCard
+          title="Tasa de Éxito"
+          value={`${((paymentMetricsData?.lastVerification?.successRate || 0) * 100).toFixed(1)}%`}
+          icon={<Shield className="h-5 w-5 text-indigo-500" />}
+          description="verificaciones exitosas"
+          alert={(paymentMetricsData?.lastVerification?.successRate || 0) < 0.9}
+        />
+        <StatCard
+          title="Última Verificación"
+          value={paymentMetricsData?.lastVerification?.totalProcessed || 0}
+          icon={<AlertTriangle className="h-5 w-5 text-orange-500" />}
+          description="órdenes procesadas"
+          trend={paymentMetricsData?.lastVerification?.lastRun ? 
+            formatTimestamp(paymentMetricsData.lastVerification.lastRun) : "Nunca"}
+          trendUp={paymentMetricsData?.lastVerification?.failed === 0}
+          alert={(paymentMetricsData?.lastVerification?.failed || 0) > 0}
         />
       </div>
 
@@ -373,7 +466,7 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="products" className="w-full">
-            <TabsList className="w-full max-w-md mb-6">
+            <TabsList className="w-full max-w-2xl mb-6">
               <TabsTrigger value="products" className="flex-1">
                 <ShoppingCart className="h-4 w-4 mr-2" />
                 Productos
@@ -381,6 +474,10 @@ export default function Dashboard() {
               <TabsTrigger value="vehicles" className="flex-1">
                 <Car className="h-4 w-4 mr-2" />
                 Vehículos
+              </TabsTrigger>
+              <TabsTrigger value="payments" className="flex-1">
+                <Zap className="h-4 w-4 mr-2" />
+                Pagos
               </TabsTrigger>
               <TabsTrigger value="system" className="flex-1">
                 <FileText className="h-4 w-4 mr-2" />
@@ -417,15 +514,15 @@ export default function Dashboard() {
                               index % 2 === 0 ? "bg-white" : "bg-muted/20"
                             }
                           >
-                            <td className="px-4 py-3 border-t">{item.name}</td>
+                            <td className="px-4 py-3 border-t">{item.action}</td>
                             <td className="px-4 py-3 border-t">
-                              {item.category}
+                              {item.type}
                             </td>
                             <td className="px-4 py-3 border-t">
-                              {formatCurrency(item.price)}
+                              {item.userName}
                             </td>
                             <td className="px-4 py-3 border-t">
-                              {formatDate(item.updatedAt)}
+                              {formatTimestamp(item.timestamp)}
                             </td>
                           </tr>
                         ))}
@@ -445,7 +542,7 @@ export default function Dashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {vehicleActivityData.map((item, index) => (
                     <div
-                      key={item.id || index}
+                      key={index}
                       className="flex items-start gap-4 p-4 rounded-lg border hover:shadow-sm transition-shadow"
                     >
                       <div
@@ -471,6 +568,106 @@ export default function Dashboard() {
               ) : (
                 <div className="text-center py-6 text-muted-foreground">
                   No hay actividad reciente de vehículos.
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="payments" className="space-y-4">
+              {paymentMetricsData && paymentMetricsData.orders && paymentMetricsData.system && paymentMetricsData.cronStatus ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Métricas de Verificación */}
+                  <div className="p-6 rounded-lg border bg-gradient-to-br from-blue-50 to-indigo-50">
+                    <h3 className="font-semibold text-lg mb-4 flex items-center">
+                      <TrendingUp className="h-5 w-5 mr-2 text-blue-600" />
+                      Verificaciones
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Total:</span>
+                        <span className="font-medium">{paymentMetricsData.orders?.total || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Exitosas:</span>
+                        <span className="font-medium text-green-600">{paymentMetricsData.orders?.completed || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Tasa de éxito:</span>
+                        <span className="font-medium">{paymentMetricsData.orders?.successRate || "0.0%"}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Métricas de Automatización */}
+                  <div className="p-6 rounded-lg border bg-gradient-to-br from-green-50 to-emerald-50">
+                    <h3 className="font-semibold text-lg mb-4 flex items-center">
+                      <Zap className="h-5 w-5 mr-2 text-green-600" />
+                      Automatización
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Tareas activas:</span>
+                        <span className="font-medium">{paymentMetricsData.cronStatus?.activeTasks?.length || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Pagos procesados:</span>
+                        <span className="font-medium text-green-600">{paymentMetricsData.system?.lastVerification?.totalProcessed || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Pagos actualizados:</span>
+                        <span className="font-medium text-blue-600">{paymentMetricsData.system?.lastVerification?.updated || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Estado del Cron */}
+                  <div className="p-6 rounded-lg border bg-gradient-to-br from-purple-50 to-violet-50">
+                    <h3 className="font-semibold text-lg mb-4 flex items-center">
+                      <Shield className="h-5 w-5 mr-2 text-purple-600" />
+                      Estado del Servicio
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Estado:</span>
+                        <div className="flex items-center space-x-2">
+                          <div className={`w-3 h-3 rounded-full ${paymentMetricsData.cronStatus?.isInitialized ? 'bg-green-500' : 'bg-red-500'}`} />
+                          <span className="font-medium">{paymentMetricsData.cronStatus?.isInitialized ? 'Activo' : 'Inactivo'}</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Sistema saludable:</span>
+                        <span className="font-medium">{paymentMetricsData.cronStatus?.systemHealth ? 'Sí' : 'No'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Tareas activas:</span>
+                        <span className="font-medium">{paymentMetricsData.cronStatus?.activeTasks?.length || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Errores Recientes */}
+                  {paymentMetricsData.system?.lastVerification?.errors && paymentMetricsData.system.lastVerification.errors.length > 0 && (
+                    <div className="p-6 rounded-lg border bg-gradient-to-br from-red-50 to-pink-50">
+                      <h3 className="font-semibold text-lg mb-4 flex items-center">
+                        <AlertTriangle className="h-5 w-5 mr-2 text-red-600" />
+                        Errores Recientes
+                      </h3>
+                      <div className="space-y-2 max-h-32 overflow-y-auto">
+                        {paymentMetricsData.system.lastVerification.errors.slice(0, 3).map((error, index) => (
+                          <div key={index} className="text-sm p-2 bg-white rounded border">
+                            <div className="font-medium text-red-600">{error.type || 'Error de verificación'}</div>
+                            <div className="text-gray-600 truncate">{error.message || 'Sin mensaje'}</div>
+                            {error.orderId && (
+                              <div className="text-xs text-gray-400">Orden: {error.orderId}</div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-muted-foreground">
+                  No hay datos de métricas de pagos disponibles.
                 </div>
               )}
             </TabsContent>
@@ -523,7 +720,7 @@ export default function Dashboard() {
                               {item.userName}
                             </td>
                             <td className="px-4 py-3 border-t max-w-xs truncate">
-                              {item.details}
+                              {typeof item.details === 'string' ? item.details : JSON.stringify(item.details)}
                             </td>
                             <td className="px-4 py-3 border-t whitespace-nowrap">
                               {formatTimestamp(item.timestamp)}

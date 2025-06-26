@@ -6,15 +6,7 @@ import ModelForm from "./model-form";
 import TransmissionForm from "./transmission-form";
 import FuelForm from "./fuel-form";
 import VehicleMainForm from "./VehicleMainForm";
-import {
-  Car,
-  Tag,
-  Folder,
-  Layers,
-  GitBranch,
-  Cog,
-  Droplet,
-} from "lucide-react";
+
 
 export default function VehicleForm({...props}) {
   return (
