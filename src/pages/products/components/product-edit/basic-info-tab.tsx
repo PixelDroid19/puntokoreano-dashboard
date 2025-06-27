@@ -70,7 +70,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ form, groupsData, subgroups
                   <InputNumber
                     className="w-full rounded-md transition-all duration-300 hover:border-blue-400 focus:border-blue-500"
                     formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-                    parser={(value) => (value ? value.replace(/\$\s?|,/g, "") : "")}
+                    parser={(value) => (value ? value.replace(/\$\s?|,/g, "") : "") as any}
                     min={0}
                     step={1}
                     placeholder="Precio de venta"
@@ -110,7 +110,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ form, groupsData, subgroups
                   min={1}
                   max={99}
                   formatter={(value) => `${value}%`}
-                  parser={(value) => value!.replace("%", "")}
+                  parser={(value) => (value ? value.replace("%", "") : "") as any}
                   placeholder="Ej: 15%"
                 />
               </Form.Item>
@@ -231,9 +231,8 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ form, groupsData, subgroups
                 allowClear
                 className="rounded-md"
                 options={[
-                  { label: "Envío Express", value: "express" },
-                  { label: "Envío Estándar", value: "standard" },
-                  { label: "Recoger en Tienda", value: "pickup" },
+                  { label: "Recoger en tienda", value: "pickup" },
+                  { label: "Contra entrega", value: "cod" },
                 ]}
               />
             </Form.Item>

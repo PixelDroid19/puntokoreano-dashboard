@@ -24,8 +24,8 @@ class ShippingSettingsService {
    * Update base shipping costs
    */
   static async updateBaseCosts(data: {
-    standard_cost: number;
-    express_cost: number;
+    pickup_cost: number;
+    cod_cost: number;
   }): Promise<ApiResponse<ShippingSettings["base_costs"]>> {
     try {
       const { url } = ENDPOINTS.DASHBOARD.SHIPPING_SETTINGS.UPDATE_BASE_COSTS;
@@ -182,7 +182,7 @@ class ShippingSettingsService {
   static calculateShippingCost(
     weight: number,
     location: string,
-    method: "standard" | "express",
+    method: "pickup" | "cod",
     orderTotal: number,
     settings: ShippingSettings
   ): number {

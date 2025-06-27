@@ -35,8 +35,8 @@ const { Title } = Typography;
 // Tipos para mejor tipado
 interface ShippingSettings {
   base_costs: {
-    standard: number;
-    express: number;
+    pickup: number;
+    cod: number;
   };
   weight_rules: {
     base_weight: number;
@@ -44,8 +44,8 @@ interface ShippingSettings {
   };
   location_multipliers: Record<string, number>;
   delivery_times: {
-    standard: { min: number; max: number };
-    express: { min: number; max: number };
+    pickup: { min: number; max: number };
+    cod: { min: number; max: number };
   };
   free_shipping_rules: {
     threshold: number;
@@ -87,14 +87,14 @@ const COLOMBIA_LOCATIONS = [
 ];
 
 const SHIPPING_METHODS = [
-  { label: "Estándar", value: "standard" },
-  { label: "Express", value: "express" },
+  { label: "Recoger en tienda", value: "pickup" },
+  { label: "Contra entrega", value: "cod" },
 ];
 
 // Tooltips explicativos
 const TOOLTIPS = {
-  standardCost: "Costo base para envíos estándar. Este valor se aplica como tarifa mínima antes de agregar costos por peso o ubicación.",
-  expressCost: "Costo base para envíos express. Generalmente mayor al estándar debido a la velocidad de entrega.",
+  pickupCost: "Costo base para recoger en tienda. Normalmente es 0 ya que no hay envío físico.",
+  codCost: "Costo base para contra entrega. Incluye el servicio de entrega a domicilio con pago al recibir.",
   baseWeight: "Peso máximo incluido en el costo base (en kg). Pesos superiores generarán costos adicionales.",
   extraCostPerKg: "Costo adicional por cada kilogramo que exceda el peso base. Se calcula automáticamente.",
   locationMultipliers: "Multiplicador de costo según la ubicación de entrega. 1.0 = sin recargo, 1.5 = 50% adicional.",
@@ -192,7 +192,7 @@ const ShippingSettings = () => {
 
   // Mutations
   const updateBaseCosts = useMutation({
-    mutationFn: (data: { standard_cost: number; express_cost: number }) => 
+    mutationFn: (data: { pickup_cost: number; cod_cost: number }) => 
       ShippingSettingsService.updateBaseCosts(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shippingSettings"] });
@@ -230,8 +230,8 @@ const ShippingSettings = () => {
   const updateDeliveryTimes = useMutation({
     mutationFn: (data: { 
       delivery_times: { 
-        standard: { min: number; max: number }; 
-        express: { min: number; max: number } 
+        pickup: { min: number; max: number }; 
+        cod: { min: number; max: number } 
       } 
     }) => ShippingSettingsService.updateDeliveryTimes(data),
     onSuccess: () => {
@@ -287,8 +287,8 @@ const ShippingSettings = () => {
     if (settings) {
       // Inicializar formularios
       baseCostsForm.setFieldsValue({
-        standard_cost: settings.base_costs.standard,
-        express_cost: settings.base_costs.express,
+        pickup_cost: settings.base_costs.pickup,
+        cod_cost: settings.base_costs.cod,
       });
       weightRulesForm.setFieldsValue({
         base_weight: settings.weight_rules.base_weight,
@@ -399,19 +399,19 @@ const ShippingSettings = () => {
               >
                 <Space direction="vertical" className="w-full" size="middle">
                   <Form.Item
-                    name="standard_cost"
-                    label={<LabelWithTooltip label="Costo Estándar" tooltip={TOOLTIPS.standardCost} />}
+                    name="pickup_cost"
+                    label={<LabelWithTooltip label="Costo Recoger en Tienda" tooltip={TOOLTIPS.pickupCost} />}
                     rules={[{ required: true, message: "Campo requerido" }]}
                   >
-                    <MoneyInput placeholder="Ingrese el costo estándar" />
+                    <MoneyInput placeholder="Ingrese el costo de recogida" />
                   </Form.Item>
 
                   <Form.Item
-                    name="express_cost"
-                    label={<LabelWithTooltip label="Costo Express" tooltip={TOOLTIPS.expressCost} />}
+                    name="cod_cost"
+                    label={<LabelWithTooltip label="Costo Contra Entrega" tooltip={TOOLTIPS.codCost} />}
                     rules={[{ required: true, message: "Campo requerido" }]}
                   >
-                    <MoneyInput placeholder="Ingrese el costo express" />
+                    <MoneyInput placeholder="Ingrese el costo contra entrega" />
                   </Form.Item>
 
                   <Form.Item>
@@ -541,23 +541,23 @@ const ShippingSettings = () => {
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div>
-                    <Title level={4}>Envío Estándar</Title>
+                    <Title level={4}>Recoger en Tienda</Title>
                     <Space
                       direction="vertical"
                       className="w-full"
                       size="middle"
                     >
                       <Form.Item
-                        name={["delivery_times", "standard", "min"]}
-                        label={<LabelWithTooltip label="Mínimo" tooltip={TOOLTIPS.deliveryTimes} />}
+                        name={["delivery_times", "pickup", "min"]}
+                        label={<LabelWithTooltip label="Mínimo" tooltip="Tiempo mínimo para recoger en tienda" />}
                         rules={[{ required: true, message: "Campo requerido" }]}
                       >
                         <DaysInput placeholder="Días mínimos" />
                       </Form.Item>
 
                       <Form.Item
-                        name={["delivery_times", "standard", "max"]}
-                        label={<LabelWithTooltip label="Máximo" tooltip={TOOLTIPS.deliveryTimes} />}
+                        name={["delivery_times", "pickup", "max"]}
+                        label={<LabelWithTooltip label="Máximo" tooltip="Tiempo máximo para recoger en tienda" />}
                         rules={[{ required: true, message: "Campo requerido" }]}
                       >
                         <DaysInput placeholder="Días máximos" />
@@ -566,23 +566,23 @@ const ShippingSettings = () => {
                   </div>
 
                   <div>
-                    <Title level={4}>Envío Express</Title>
+                    <Title level={4}>Contra Entrega</Title>
                     <Space
                       direction="vertical"
                       className="w-full"
                       size="middle"
                     >
                       <Form.Item
-                        name={["delivery_times", "express", "min"]}
-                        label={<LabelWithTooltip label="Mínimo" tooltip={TOOLTIPS.deliveryTimes} />}
+                        name={["delivery_times", "cod", "min"]}
+                        label={<LabelWithTooltip label="Mínimo" tooltip="Tiempo mínimo para entrega COD" />}
                         rules={[{ required: true, message: "Campo requerido" }]}
                       >
                         <DaysInput placeholder="Días mínimos" />
                       </Form.Item>
 
                       <Form.Item
-                        name={["delivery_times", "express", "max"]}
-                        label={<LabelWithTooltip label="Máximo" tooltip={TOOLTIPS.deliveryTimes} />}
+                        name={["delivery_times", "cod", "max"]}
+                        label={<LabelWithTooltip label="Máximo" tooltip="Tiempo máximo para entrega COD" />}
                         rules={[{ required: true, message: "Campo requerido" }]}
                       >
                         <DaysInput placeholder="Días máximos" />

@@ -1,4 +1,3 @@
-
 import type React from "react";
 
 import {
@@ -86,7 +85,7 @@ const ExcelGuide = () => (
         </li>
         <li>
           <strong className="text-blue-600">Shipping Methods:</strong> Métodos
-          de envío (express, standard, pickup)
+          de envío (pickup, cod)
         </li>
       </ul>
       <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100 mt-2">

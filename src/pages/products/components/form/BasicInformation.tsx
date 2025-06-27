@@ -969,18 +969,17 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
                     className="rounded-lg"
                     size="large"
                     options={[
-                      { label: "Envío Estándar", value: "standard" },
-                      { label: "Envío Express", value: "express" },
-                      { label: "Recogida en Tienda", value: "pickup" },
+                      { label: "Recoger en tienda", value: "pickup" },
+                      { label: "Contra entrega", value: "cod" },
                     ]}
                     tagRender={(props) => (
                       <Badge
                         count={props.label}
                         style={{
                           backgroundColor:
-                            props.value === "standard"
+                            props.value === "pickup"
                               ? "#52c41a"
-                              : props.value === "express"
+                              : props.value === "cod"
                               ? "#1890ff"
                               : "#722ed1",
                         }}

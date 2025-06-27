@@ -74,8 +74,8 @@ export interface Brand {
 
 export interface ShippingSettings {
   base_costs: {
-    standard: number;
-    express: number;
+    pickup: number;
+    cod: number;
   };
   weight_rules: {
     base_weight: number;
@@ -85,11 +85,11 @@ export interface ShippingSettings {
     [key: string]: number;
   };
   delivery_times: {
-    standard: {
+    pickup: {
       min: number;
       max: number;
     };
-    express: {
+    cod: {
       min: number;
       max: number;
     };
