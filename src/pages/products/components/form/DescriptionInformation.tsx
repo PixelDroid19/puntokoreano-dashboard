@@ -127,48 +127,7 @@ const DescriptionInformation: React.FC<DescriptionInformationProps> = ({
               bodyStyle={{ padding: "24px" }}
               extra={<InfoCircleOutlined className="text-blue-500" />}
             >
-              {/* Descripción Corta */}
-              <div
-                className={`transition-all duration-200 ${
-                  activeField === "short_description"
-                    ? "bg-blue-50 -mx-2 px-2 py-1 rounded-md"
-                    : ""
-                }`}
-              >
-                <Form.Item
-                  name="short_description"
-                  label={
-                    <div className="flex items-center">
-                      <span>Descripción Corta</span>
-                      <Tooltip title="Esta descripción aparecerá en las vistas previas del producto y en los resultados de búsqueda.">
-                        <InfoCircleOutlined className="ml-1 text-blue-500" />
-                      </Tooltip>
-                    </div>
-                  }
-                  rules={[
-                    {
-                      required: true,
-                      message:
-                        "La descripción corta es obligatoria",
-                    },
-                    {
-                      max: 150,
-                      message:
-                        "La descripción corta no debe exceder 150 caracteres",
-                    },
-                  ]}
-                >
-                  <Input.TextArea
-                    maxLength={150}
-                    showCount
-                    rows={3}
-                    placeholder="Describe brevemente el producto en 150 caracteres o menos"
-                    className="rounded-lg"
-                    onFocus={() => setActiveField("short_description")}
-                    onBlur={() => setActiveField(null)}
-                  />
-                </Form.Item>
-              </div>
+
 
               {/* Descripción Detallada con ReactQuill */}
               <div className="mb-4">
@@ -538,7 +497,7 @@ const DescriptionInformation: React.FC<DescriptionInformationProps> = ({
                                       )
                                     }
                                     parser={(value) =>
-                                      value!.replace(/\$\s?|(,*)/g, "")
+                                      parseFloat(value!.replace(/\$\s?|(,*)/g, "")) as any
                                     }
                                     prefix={
                                       <DollarOutlined className="text-gray-400" />

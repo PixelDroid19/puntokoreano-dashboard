@@ -1066,34 +1066,7 @@ const BasicInformation: React.FC<BasicInformationProps> = ({
               {/* Alertas y sugerencias de compatibilidad */}
               {renderCompatibilityAlerts()}
 
-              <div
-                className={`transition-all duration-200 ${
-                  activeField === "short_description"
-                    ? "bg-blue-50 -mx-2 px-2 py-1 rounded-md"
-                    : ""
-                }`}
-              >
-                <Form.Item
-                  name="short_description"
-                  label={
-                    <div className="flex items-center">
-                      <span>Descripción Corta</span>
-                      {renderFieldHelp(
-                        "Descripción Corta",
-                        "Breve descripción del producto que aparecerá en listados y búsquedas."
-                      )}
-                    </div>
-                  }
-                >
-                  <Input.TextArea
-                    className="rounded-lg"
-                    rows={2}
-                    placeholder="Descripción breve del producto..."
-                    onFocus={() => setActiveField("short_description")}
-                    onBlur={() => setActiveField(null)}
-                  />
-                </Form.Item>
-              </div>
+
 
               <motion.div
                 initial={{ opacity: 0 }}

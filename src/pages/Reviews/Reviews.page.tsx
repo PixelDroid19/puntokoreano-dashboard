@@ -100,13 +100,12 @@ const Reviews = () => {
     },
     {
       title: "Review",
-      dataIndex: "title",
+      dataIndex: "content",
       key: "review",
-      render: (title, record) => (
+      render: (content, record) => (
         <Space direction="vertical" size={0}>
-          <Text strong>{title}</Text>
-          <Text type="secondary" className="text-sm line-clamp-2">
-            {record.content}
+          <Text type="secondary" className="text-sm line-clamp-3">
+            {content}
           </Text>
           {record.purchase_verified && (
             <Tag color="green" icon={<ShoppingOutlined />}>
