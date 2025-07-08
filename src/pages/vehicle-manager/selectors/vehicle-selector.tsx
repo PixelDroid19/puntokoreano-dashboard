@@ -120,7 +120,6 @@ const VehicleSelector: React.FC<VehicleSelectorProps> = ({
           const vehicleDisplayName = `${brandName} ${modelName} - ${tagId}${
             color ? ` (${color})` : ""
           } - ${transmission} ${fuel}`.trim();
-
           return {
             value: vehicle._id,
             label: vehicleDisplayName,

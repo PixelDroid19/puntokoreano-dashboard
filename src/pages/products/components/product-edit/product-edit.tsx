@@ -91,6 +91,17 @@ export const ProductEdit: React.FC<ProductEditProps> = ({ open, onClose, product
     staleTime: 5 * 60 * 1000,
   })
 
+  // Cargar datos completos de vehículos compatibles
+  const {
+    data: vehicleCompatibilityData,
+    isLoading: isLoadingVehicles,
+  } = useQuery({
+    queryKey: ["productVehicleCompatibility", productId],
+    queryFn: () => ProductsService.getProductVehicleCompatibility(productId),
+    enabled: !!productId && open && !!productData,
+    staleTime: 5 * 60 * 1000,
+  })
+
   const { data: groupsData } = useQuery<GroupsApiResponse, Error>({
     queryKey: ["groups"],
     queryFn: getGroups,
@@ -105,8 +116,12 @@ export const ProductEdit: React.FC<ProductEditProps> = ({ open, onClose, product
     mutationFn: (payload: Partial<Product>) => ProductsService.updateProduct(productId, payload),
     onSuccess: () => {
       message.success("Producto actualizado correctamente")
-      queryClient.invalidateQueries({ queryKey: ["products"] })
+      // Invalidar todas las queries de productos (incluyendo las con parámetros)
+      queryClient.invalidateQueries({ queryKey: ["products"], exact: false })
+      // Invalidar la query específica del producto
       queryClient.invalidateQueries({ queryKey: ["product", productId] })
+      // Invalidar la compatibilidad de vehículos del producto
+      queryClient.invalidateQueries({ queryKey: ["productVehicleCompatibility", productId] })
       onClose()
     },
     onError: (error: any) => {
@@ -153,24 +168,62 @@ export const ProductEdit: React.FC<ProductEditProps> = ({ open, onClose, product
   )
 
   useEffect(() => {
-    if (productData && groupsData?.data?.groups) {
+    if (productData && groupsData?.data?.groups && vehicleCompatibilityData?.vehicles) {
       const currentGroup = groupsData.data.groups.find((g) => g.name === productData.group)
       setSubgroups(currentGroup?.subgroups || [])
       setUseGroupImages(productData.useGroupImages || false)
 
-      // Transformar compatible_vehicles para el selector de vehículos múltiple
+      // Usar datos completos de vehículos desde el endpoint de compatibilidad
       const vehicleOptions =
-        productData.compatible_vehicles?.map((vehicle) => {
-          // Crear un nombre completo del vehículo usando la información de línea y modelo
-          const modelName = vehicle.line?.model?.name || ""
-          const lineName = vehicle.line?.name || ""
-          const label = modelName && lineName ? `${modelName} ${lineName}` : vehicle.tag_id || "Vehículo"
+        vehicleCompatibilityData.vehicles?.map((vehicle) => {
+          // Extraer información completa del vehículo
+          const brand = vehicle.model?.family?.brand?.name || ""
+          const familyName = vehicle.model?.family?.name || ""
+          const modelName = vehicle.model?.name || ""
+          const engineType = vehicle.model?.engine_type || ""
+          const year = vehicle.model?.year || ""
+          const tagId = vehicle.tag_id || ""
+          const transmission = vehicle.transmission_id?.name || ""
+          const fuel = vehicle.fuel_id?.name || ""
+          
+          // Construir el label completo: "SSANGYONG KORANDO C 2.0 (2011) - 1 - AUTOMATICA 4X4 DIESEL"
+          const parts = []
+          
+          // Agregar componentes disponibles
+          if (brand) parts.push(brand)
+          if (familyName) parts.push(familyName)
+          if (engineType) parts.push(engineType)
+          if (year) parts.push(`(${year})`)
+          if (tagId) parts.push(`- ${tagId}`)
+          if (transmission) parts.push(`- ${transmission}`)
+          if (fuel) parts.push(fuel)
+          
+          const label = parts.length > 0 ? parts.join(' ') : 'Vehículo Compatible'
 
           return {
             label,
-            value: vehicle.id || vehicle._id,
+            value: vehicle._id || vehicle.id,
+            // Incluir información adicional para el componente
+            brand,
+            family: familyName,
+            model: modelName,
+            engine_type: engineType,
+            year,
+            tag_id: tagId,
+            transmission,
+            fuel,
           }
         }) || []
+
+      // Transformar applicabilityGroups para el selector múltiple
+      const applicabilityGroupOptions =
+        productData.applicabilityGroups?.map((group) => ({
+          label: group.name || "Grupo sin nombre",
+          value: group._id || group.id,
+          description: group.description,
+          category: group.category,
+          vehicleCount: group.estimatedVehicleCount || group.vehicleCount,
+        })) || []
 
       const formValues = {
         ...productData,
@@ -181,6 +234,7 @@ export const ProductEdit: React.FC<ProductEditProps> = ({ open, onClose, product
         thumb: productData.thumb || null,
         carousel: productData.carousel || [],
         compatible_vehicles: vehicleOptions,
+        applicabilityGroups: applicabilityGroupOptions,
         active: productData.active !== undefined ? productData.active : true,
         discount: {
           isActive: productData.discount?.isActive || false,
@@ -195,7 +249,7 @@ export const ProductEdit: React.FC<ProductEditProps> = ({ open, onClose, product
       setInitialValues(formValues)
       setChangedFields([])
     }
-  }, [productData, groupsData, form, open])
+  }, [productData, groupsData, vehicleCompatibilityData, form, open])
 
   const handleGroupChange = (value: string) => {
     const selectedGroup = groupsData?.data?.groups?.find((g) => g.name === value)
@@ -236,6 +290,11 @@ export const ProductEdit: React.FC<ProductEditProps> = ({ open, onClose, product
     if ("compatible_vehicles" in changedValues) {
       changedValues.compatible_vehicles =
         values.compatible_vehicles?.map((vehicle: any) => (typeof vehicle === "string" ? vehicle : vehicle.value)) || []
+    }
+
+    if ("applicabilityGroups" in changedValues) {
+      changedValues.applicabilityGroups =
+        values.applicabilityGroups?.map((group: any) => (typeof group === "string" ? group : group.value)) || []
     }
 
     if ("seoTitle" in changedValues || "seoDescription" in changedValues || "seoKeywords" in changedValues) {
@@ -378,7 +437,7 @@ export const ProductEdit: React.FC<ProductEditProps> = ({ open, onClose, product
   // Determinar si hay cambios para habilitar el botón de guardar
   const hasChanges = changedFields.length > 0 || hasImageChanges;
 
-  if (isLoadingProduct) {
+  if (isLoadingProduct || isLoadingVehicles) {
     return (
       <Modal
         title="Editar Producto"
@@ -391,7 +450,9 @@ export const ProductEdit: React.FC<ProductEditProps> = ({ open, onClose, product
       >
         <div className="flex flex-col items-center justify-center py-16">
           <Spin size="large" />
-          <div className="mt-4 text-gray-600">Cargando datos del producto...</div>
+          <div className="mt-4 text-gray-600">
+            {isLoadingProduct ? "Cargando datos del producto..." : "Cargando compatibilidad de vehículos..."}
+          </div>
         </div>
       </Modal>
     )
@@ -540,7 +601,7 @@ export const ProductEdit: React.FC<ProductEditProps> = ({ open, onClose, product
           />
         )}
 
-        {activeTab === "vehicles" && <VehiclesTab productData={productData} />}
+        {activeTab === "vehicles" && <VehiclesTab productData={productData} form={form} />}
 
         {activeTab === "4" && (
           <MultimediaTab

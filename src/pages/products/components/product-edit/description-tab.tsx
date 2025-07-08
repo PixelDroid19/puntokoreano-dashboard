@@ -27,23 +27,6 @@ const DescriptionTab: React.FC = () => {
         bordered={false}
       >
         <Form.Item
-          name="short_description"
-          label="Descripción Corta"
-          rules={[{ required: true, message: "Requerida" }, { max: 200 }]}
-          className="mb-6"
-        >
-          <Input.TextArea
-            rows={3}
-            maxLength={200}
-            showCount
-            placeholder="Breve descripción para mostrar en listados y resultados de búsqueda..."
-            className="rounded-md transition-all duration-300 hover:border-blue-400 focus:border-blue-500"
-          />
-        </Form.Item>
-
-        <Divider className="my-6" />
-
-        <Form.Item
           name="long_description"
           label="Descripción Detallada"
           rules={[

@@ -2,7 +2,14 @@ import React, { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Check, AlertCircle, Plus, Minus, AlertTriangle, X } from "lucide-react";
+import {
+  Check,
+  AlertCircle,
+  Plus,
+  Minus,
+  AlertTriangle,
+  X,
+} from "lucide-react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import {
@@ -34,10 +41,10 @@ import FuelSelector from "../selectors/fuel-selector";
 import VehicleSelector from "../selectors/vehicle-selector";
 
 // Importar tipos de los selectores
-import { 
-  BrandOption, 
-  FamilieOption, 
-  ModelsOption, 
+import {
+  BrandOption,
+  FamilieOption,
+  ModelsOption,
   LinesOption,
   TransmissionsOption,
   FuelsOption,
@@ -57,31 +64,34 @@ const VALIDATION_RULES = {
     REQUIRED: true,
     MAX_LENGTH: 100,
     PATTERN: /^[a-zA-Z0-9\s\-_áéíóúñÁÉÍÓÚÑ]+$/,
-    MESSAGE: "El nombre solo puede contener letras, números, espacios, guiones y guiones bajos"
+    MESSAGE:
+      "El nombre solo puede contener letras, números, espacios, guiones y guiones bajos",
   },
   APPLICABILITY_IDENTIFIER: {
     MAX_LENGTH: 50,
     PATTERN: /^[a-zA-Z0-9\-_áéíóúñÁÉÍÓÚÑ]+$/,
-    MESSAGE: "El identificador solo puede contener letras, números, guiones y guiones bajos (sin espacios)"
+    MESSAGE:
+      "El identificador solo puede contener letras, números, guiones y guiones bajos (sin espacios)",
   },
   DESCRIPTION: {
-    MAX_LENGTH: 500
+    MAX_LENGTH: 500,
   },
   TAG: {
     MAX_LENGTH: 30,
     PATTERN: /^[a-zA-Z0-9\s\-_áéíóúñÁÉÍÓÚÑ]+$/,
-    MESSAGE: "Los tags solo pueden contener letras, números, espacios, guiones y guiones bajos"
+    MESSAGE:
+      "Los tags solo pueden contener letras, números, espacios, guiones y guiones bajos",
   },
   YEAR: {
     MIN: 1900,
     MAX: new Date().getFullYear() + 5,
-    MAX_RANGE: 50 // Advertencia si el rango es mayor a 50 años
+    MAX_RANGE: 50, // Advertencia si el rango es mayor a 50 años
   },
   ENGINE_TYPE: {
     MAX_LENGTH: 50,
     PATTERN: /^[a-zA-Z0-9\s\-_.áéíóúñÁÉÍÓÚÑ]+$/,
-    MESSAGE: "El tipo de motor contiene caracteres inválidos"
-  }
+    MESSAGE: "El tipo de motor contiene caracteres inválidos",
+  },
 };
 
 // Funciones de validación personalizadas
@@ -139,19 +149,19 @@ const validateYearRange = (minYear?: number, maxYear?: number) => {
 
 const validateSpecificYears = (years?: number[]) => {
   if (!years || years.length === 0) return true;
-  
+
   // Validar cada año individual
   for (const year of years) {
     const yearValidation = validateYear(year, "año específico");
     if (yearValidation !== true) return yearValidation;
   }
-  
+
   // Verificar duplicados
   const uniqueYears = new Set(years);
   if (uniqueYears.size !== years.length) {
     return "No puede haber años duplicados en la lista";
   }
-  
+
   return true;
 };
 
@@ -167,36 +177,39 @@ const validateTag = (tag: string) => {
 
 const validateTags = (tags?: string[]) => {
   if (!tags || tags.length === 0) return true;
-  
+
   for (const tag of tags) {
     const tagValidation = validateTag(tag);
     if (tagValidation !== true) return tagValidation;
   }
-  
+
   return true;
 };
 
-const validateVehicleDuplication = (includedVehicles?: string[], excludedVehicles?: string[]) => {
+const validateVehicleDuplication = (
+  includedVehicles?: string[],
+  excludedVehicles?: string[]
+) => {
   if (!includedVehicles || !excludedVehicles) return true;
-  
+
   const included = new Set(includedVehicles);
   const excluded = new Set(excludedVehicles);
-  
+
   // Buscar intersección
-  const duplicates = includedVehicles.filter(id => excluded.has(id));
-  
+  const duplicates = includedVehicles.filter((id) => excluded.has(id));
+
   if (duplicates.length > 0) {
     return "Un vehículo no puede estar incluido y excluido al mismo tiempo";
   }
-  
+
   return true;
 };
 
 const validateAtLeastOneCriteria = (data: ApplicabilityGroupFormData) => {
   const { criteria, includedVehicles } = data;
-  
+
   // Verificar si hay criterios definidos
-  const hasCriteria = (
+  const hasCriteria =
     (criteria.brands && criteria.brands.length > 0) ||
     (criteria.families && criteria.families.length > 0) ||
     (criteria.models && criteria.models.length > 0) ||
@@ -205,30 +218,31 @@ const validateAtLeastOneCriteria = (data: ApplicabilityGroupFormData) => {
     (criteria.fuels && criteria.fuels.length > 0) ||
     criteria.minYear ||
     criteria.maxYear ||
-    (criteria.specificYears && criteria.specificYears.length > 0)
-  );
-  
+    (criteria.specificYears && criteria.specificYears.length > 0);
+
   // Verificar si hay vehículos incluidos
   const hasIncludedVehicles = includedVehicles && includedVehicles.length > 0;
-  
+
   if (!hasCriteria && !hasIncludedVehicles) {
     return "Debe definir al menos un criterio de aplicabilidad o incluir vehículos específicos";
   }
-  
+
   return true;
 };
 
 // Función para generar advertencias de años
 const generateYearWarnings = (minYear?: number, maxYear?: number) => {
   const warnings: string[] = [];
-  
+
   if (minYear && maxYear) {
     const yearRange = maxYear - minYear;
     if (yearRange > VALIDATION_RULES.YEAR.MAX_RANGE) {
-      warnings.push(`Rango de años muy amplio (${yearRange} años). Considera dividir en grupos más específicos.`);
+      warnings.push(
+        `Rango de años muy amplio (${yearRange} años). Considera dividir en grupos más específicos.`
+      );
     }
   }
-  
+
   return warnings;
 };
 
@@ -276,7 +290,7 @@ export default function ApplicabilityGroupForm({
   const [showVehiclesViewer, setShowVehiclesViewer] = useState(false);
   const [yearWarnings, setYearWarnings] = useState<string[]>([]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  
+
   // Estados para los selectores
   const [selectedBrands, setSelectedBrands] = useState<BrandOption[]>([]);
   const [selectedFamilies, setSelectedFamilies] = useState<FamilieOption[]>([]);
@@ -323,7 +337,7 @@ export default function ApplicabilityGroupForm({
       includedVehicles: [],
       excludedVehicles: [],
     },
-    mode: "onChange" // Validar en tiempo real
+    mode: "onChange", // Validar en tiempo real
   });
 
   const queryClient = useQueryClient();
@@ -333,14 +347,17 @@ export default function ApplicabilityGroupForm({
     if (initialData && mode === "edit") {
       setValue("name", initialData.name || "");
       setValue("description", initialData.description || "");
-      setValue("applicabilityIdentifier", initialData.applicabilityIdentifier || "");
+      setValue(
+        "applicabilityIdentifier",
+        initialData.applicabilityIdentifier || ""
+      );
       setValue("category", initialData.category || "general");
       setValue("tags", initialData.tags || []);
       setValue(
         "active",
         initialData.active !== undefined ? initialData.active : true
       );
-      
+
       // Cargar criterios
       if (initialData.criteria) {
         setValue("criteria.minYear", initialData.criteria.minYear);
@@ -350,7 +367,7 @@ export default function ApplicabilityGroupForm({
           initialData.criteria.specificYears || []
         );
       }
-      
+
       setValue("includedVehicles", initialData.includedVehicles || []);
       setValue("excludedVehicles", initialData.excludedVehicles || []);
     }
@@ -359,7 +376,7 @@ export default function ApplicabilityGroupForm({
   // Watch para validaciones en tiempo real de años
   const watchedMinYear = watch("criteria.minYear");
   const watchedMaxYear = watch("criteria.maxYear");
-  
+
   useEffect(() => {
     const warnings = generateYearWarnings(watchedMinYear, watchedMaxYear);
     setYearWarnings(warnings);
@@ -369,12 +386,14 @@ export default function ApplicabilityGroupForm({
   const watchedData = watch();
   const [hasCriteriaWarning, setHasCriteriaWarning] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
-  
+
   useEffect(() => {
     // Solo mostrar la advertencia si el usuario ha interactuado con el formulario
     // o si hay datos iniciales (modo edición)
     if (hasUserInteracted || mode === "edit") {
-      const hasCriteria = validateAtLeastOneCriteria(watchedData as ApplicabilityGroupFormData);
+      const hasCriteria = validateAtLeastOneCriteria(
+        watchedData as ApplicabilityGroupFormData
+      );
       setHasCriteriaWarning(hasCriteria !== true);
     }
   }, [watchedData, hasUserInteracted, mode]);
@@ -390,34 +409,41 @@ export default function ApplicabilityGroupForm({
   const getTabErrors = () => {
     const tabErrors = {
       tab1: [] as string[], // Información Básica
-      tab2: [] as string[], // Criterios de Compatibilidad  
-      tab3: [] as string[]  // Excepciones
+      tab2: [] as string[], // Criterios de Compatibilidad
+      tab3: [] as string[], // Excepciones
     };
 
     // Errores de la pestaña 1 (Información Básica)
-    if (errors.name) tabErrors.tab1.push('Nombre');
-    if (errors.description) tabErrors.tab1.push('Descripción');
-    if (errors.applicabilityIdentifier) tabErrors.tab1.push('Identificador');
-    if (errors.tags) tabErrors.tab1.push('Tags');
+    if (errors.name) tabErrors.tab1.push("Nombre");
+    if (errors.description) tabErrors.tab1.push("Descripción");
+    if (errors.applicabilityIdentifier) tabErrors.tab1.push("Identificador");
+    if (errors.tags) tabErrors.tab1.push("Tags");
 
     // Errores de la pestaña 2 (Criterios)
-    if (errors.criteria?.minYear) tabErrors.tab2.push('Año Mínimo');
-    if (errors.criteria?.maxYear) tabErrors.tab2.push('Año Máximo');
-    if (errors.criteria?.specificYears) tabErrors.tab2.push('Años Específicos');
-    
+    if (errors.criteria?.minYear) tabErrors.tab2.push("Año Mínimo");
+    if (errors.criteria?.maxYear) tabErrors.tab2.push("Año Máximo");
+    if (errors.criteria?.specificYears) tabErrors.tab2.push("Años Específicos");
+
     // Agregar advertencia de criterios faltantes a la pestaña 2
-    if (hasCriteriaWarning) tabErrors.tab2.push('Criterios faltantes');
+    if (hasCriteriaWarning) tabErrors.tab2.push("Criterios faltantes");
 
     // Errores de validación personalizados - distribuir según corresponda
-    validationErrors.forEach(error => {
-      if (error.includes('vehículo') && (error.includes('incluido') || error.includes('excluido'))) {
-        tabErrors.tab3.push('Conflicto de vehículos');
-      } else if (error.includes('criterio') || error.includes('años') || error.includes('año')) {
-        tabErrors.tab2.push('Validación de criterios');
-      } else if (error.includes('tag')) {
-        tabErrors.tab1.push('Validación de tags');
+    validationErrors.forEach((error) => {
+      if (
+        error.includes("vehículo") &&
+        (error.includes("incluido") || error.includes("excluido"))
+      ) {
+        tabErrors.tab3.push("Conflicto de vehículos");
+      } else if (
+        error.includes("criterio") ||
+        error.includes("años") ||
+        error.includes("año")
+      ) {
+        tabErrors.tab2.push("Validación de criterios");
+      } else if (error.includes("tag")) {
+        tabErrors.tab1.push("Validación de tags");
       } else {
-        tabErrors.tab1.push('Error de validación');
+        tabErrors.tab1.push("Error de validación");
       }
     });
 
@@ -429,18 +455,26 @@ export default function ApplicabilityGroupForm({
     return tabErrors;
   };
 
-    const tabErrors = getTabErrors();
+  const tabErrors = getTabErrors();
 
   // Componente para mostrar indicadores de error en las pestañas
-  const TabErrorIndicator = ({ errors, tabKey }: { errors: string[], tabKey: string }) => {
+  const TabErrorIndicator = ({
+    errors,
+    tabKey,
+  }: {
+    errors: string[];
+    tabKey: string;
+  }) => {
     if (errors.length === 0) return null;
-    
+
     return (
-      <Tooltip 
+      <Tooltip
         title={
           <div>
             <div className="font-semibold text-xs mb-1">
-              {errors.length === 1 ? "Error encontrado:" : `${errors.length} errores encontrados:`}
+              {errors.length === 1
+                ? "Error encontrado:"
+                : `${errors.length} errores encontrados:`}
             </div>
             <ul className="text-xs">
               {errors.map((error, index) => (
@@ -466,18 +500,16 @@ export default function ApplicabilityGroupForm({
   // Función para obtener el estilo de la pestaña según errores
   const getTabStyle = (tabKey: keyof typeof tabErrors, isActive: boolean) => {
     const hasErrors = tabErrors[tabKey].length > 0;
-    
+
     if (hasErrors) {
-      return isActive 
-        ? "bg-red-500 text-white border-red-500" 
+      return isActive
+        ? "bg-red-500 text-white border-red-500"
         : "bg-red-50 text-red-600 border-red-200 hover:bg-red-100";
     }
-    
-    return isActive 
-      ? "bg-blue-500 text-white" 
-      : "bg-gray-200 text-gray-700";
+
+    return isActive ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700";
   };
-  
+
   // Mutación para crear/actualizar
   const { mutate, isPending: isSubmitting } = useMutation({
     mutationFn: (values: ApplicabilityGroupFormData) => {
@@ -558,10 +590,10 @@ export default function ApplicabilityGroupForm({
   const onSubmit = (data: ApplicabilityGroupFormData) => {
     setFormError(null);
     setValidationErrors([]);
-    
+
     // Ejecutar validaciones personalizadas
     const errors: string[] = [];
-    
+
     // Validar duplicación de vehículos
     const vehicleDuplicationError = validateVehicleDuplication(
       data.includedVehicles,
@@ -570,13 +602,13 @@ export default function ApplicabilityGroupForm({
     if (vehicleDuplicationError !== true) {
       errors.push(vehicleDuplicationError as string);
     }
-    
+
     // Validar al menos un criterio
     const criteriaError = validateAtLeastOneCriteria(data);
     if (criteriaError !== true) {
       errors.push(criteriaError as string);
     }
-    
+
     // Validar rango de años
     const yearRangeError = validateYearRange(
       data.criteria.minYear,
@@ -585,28 +617,30 @@ export default function ApplicabilityGroupForm({
     if (yearRangeError !== true) {
       errors.push(yearRangeError as string);
     }
-    
+
     // Validar años específicos
-    const specificYearsError = validateSpecificYears(data.criteria.specificYears);
+    const specificYearsError = validateSpecificYears(
+      data.criteria.specificYears
+    );
     if (specificYearsError !== true) {
       errors.push(specificYearsError as string);
     }
-    
+
     // Validar tags
     const tagsError = validateTags(data.tags);
     if (tagsError !== true) {
       errors.push(tagsError as string);
     }
-    
+
     if (errors.length > 0) {
       setValidationErrors(errors);
       setFormError({
         message: "Por favor, corrija los siguientes errores:",
-        errors: errors
+        errors: errors,
       });
       return;
     }
-    
+
     mutate(data);
   };
 
@@ -706,7 +740,9 @@ export default function ApplicabilityGroupForm({
               description={
                 <ul className="list-disc pl-4 mt-2">
                   {validationErrors.map((error, index) => (
-                    <li key={index} className="text-sm">{error}</li>
+                    <li key={index} className="text-sm">
+                      {error}
+                    </li>
                   ))}
                 </ul>
               }
@@ -715,8 +751,6 @@ export default function ApplicabilityGroupForm({
               className="mb-4"
             />
           )}
-
-        
 
           {/* Encabezado del formulario */}
           <div className="border-b border-gray-200 pb-4">
@@ -776,7 +810,10 @@ export default function ApplicabilityGroupForm({
               tab={
                 <span className="flex items-center gap-2">
                   <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center ${getTabStyle('tab1', activeTab === "1")}`}
+                    className={`w-5 h-5 rounded-full flex items-center justify-center ${getTabStyle(
+                      "tab1",
+                      activeTab === "1"
+                    )}`}
                   >
                     {tabErrors.tab1.length > 0 ? (
                       <X className="w-3 h-3" />
@@ -792,89 +829,95 @@ export default function ApplicabilityGroupForm({
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
                 <div className="space-y-4 md:col-span-2">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <label className="block text-sm font-medium mb-1">
-                      Nombre del Grupo <span className="text-red-500">*</span>
-                    </label>
-                    <Tooltip title="Nombre identificador del grupo de aplicabilidad. Debe ser único. Solo se permiten letras, números, espacios, guiones y guiones bajos.">
-                      <InfoCircleOutlined className="text-blue-500 cursor-help" />
-                    </Tooltip>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <label className="block text-sm font-medium mb-1">
+                        Nombre del Grupo <span className="text-red-500">*</span>
+                      </label>
+                      <Tooltip title="Nombre identificador del grupo de aplicabilidad. Debe ser único. Solo se permiten letras, números, espacios, guiones y guiones bajos.">
+                        <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                      </Tooltip>
+                    </div>
+                    <Input
+                      placeholder="Ej: Vehículos Eléctricos 2020+"
+                      className="rounded-md"
+                      maxLength={VALIDATION_RULES.NAME.MAX_LENGTH}
+                      {...register("name", {
+                        required: "El nombre es requerido",
+                        validate: validateName,
+                      })}
+                    />
+                    <div className="text-xs text-gray-500 mt-1">
+                      Máximo {VALIDATION_RULES.NAME.MAX_LENGTH} caracteres
+                    </div>
+                    {errors.name && (
+                      <p className="text-sm text-red-500 mt-1">
+                        {errors.name.message}
+                      </p>
+                    )}
                   </div>
-                  <Input
-                    placeholder="Ej: Vehículos Eléctricos 2020+"
-                    className="rounded-md"
-                    maxLength={VALIDATION_RULES.NAME.MAX_LENGTH}
-                    {...register("name", {
-                      required: "El nombre es requerido",
-                      validate: validateName
-                    })}
-                  />
-                  <div className="text-xs text-gray-500 mt-1">
-                    Máximo {VALIDATION_RULES.NAME.MAX_LENGTH} caracteres
-                  </div>
-                  {errors.name && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {errors.name.message}
-                    </p>
-                  )}
-                </div>
 
-                <div>
-                  <div className="flex items-center gap-2">
-                    <label className="block text-sm font-medium mb-1">
-                      Descripción
-                    </label>
-                    <Tooltip title="Descripción opcional del propósito de este grupo">
-                      <InfoCircleOutlined className="text-blue-500 cursor-help" />
-                    </Tooltip>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <label className="block text-sm font-medium mb-1">
+                        Descripción
+                      </label>
+                      <Tooltip title="Descripción opcional del propósito de este grupo">
+                        <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                      </Tooltip>
+                    </div>
+                    <TextArea
+                      rows={3}
+                      placeholder="Descripción del propósito de este grupo"
+                      className="rounded-md"
+                      maxLength={VALIDATION_RULES.DESCRIPTION.MAX_LENGTH}
+                      showCount
+                      {...register("description", {
+                        validate: validateDescription,
+                      })}
+                    />
+                    <div className="text-xs text-gray-500 mt-1">
+                      Máximo {VALIDATION_RULES.DESCRIPTION.MAX_LENGTH}{" "}
+                      caracteres
+                    </div>
+                    {errors.description && (
+                      <p className="text-sm text-red-500 mt-1">
+                        {errors.description.message}
+                      </p>
+                    )}
                   </div>
-                  <TextArea
-                    rows={3}
-                    placeholder="Descripción del propósito de este grupo"
-                    className="rounded-md"
-                    maxLength={VALIDATION_RULES.DESCRIPTION.MAX_LENGTH}
-                    showCount
-                    {...register("description", {
-                      validate: validateDescription
-                    })}
-                  />
-                  <div className="text-xs text-gray-500 mt-1">
-                    Máximo {VALIDATION_RULES.DESCRIPTION.MAX_LENGTH} caracteres
-                  </div>
-                  {errors.description && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {errors.description.message}
-                    </p>
-                  )}
-                </div>
 
-                <div>
-                  <div className="flex items-center gap-2">
-                    <label className="block text-sm font-medium mb-1">
-                      Identificador de Aplicabilidad
-                    </label>
-                    <Tooltip title="Identificador único para importación Excel. Si se deja vacío, se generará automáticamente. Solo se permiten letras, números, guiones y guiones bajos (sin espacios).">
-                      <InfoCircleOutlined className="text-blue-500 cursor-help" />
-                    </Tooltip>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <label className="block text-sm font-medium mb-1">
+                        Identificador de Aplicabilidad
+                      </label>
+                      <Tooltip title="Identificador único para importación Excel. Si se deja vacío, se generará automáticamente. Solo se permiten letras, números, guiones y guiones bajos (sin espacios).">
+                        <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                      </Tooltip>
+                    </div>
+                    <Input
+                      placeholder="Ej: VEH-ELEC-2020 (opcional - se autogenera si vacío)"
+                      className="rounded-md font-mono text-sm"
+                      maxLength={
+                        VALIDATION_RULES.APPLICABILITY_IDENTIFIER.MAX_LENGTH
+                      }
+                      {...register("applicabilityIdentifier", {
+                        validate: validateApplicabilityIdentifier,
+                      })}
+                    />
+                    <div className="text-xs text-gray-500 mt-1">
+                      Máximo{" "}
+                      {VALIDATION_RULES.APPLICABILITY_IDENTIFIER.MAX_LENGTH}{" "}
+                      caracteres. Si no se especifica, se generará
+                      automáticamente.
+                    </div>
+                    {errors.applicabilityIdentifier && (
+                      <p className="text-sm text-red-500 mt-1">
+                        {errors.applicabilityIdentifier.message}
+                      </p>
+                    )}
                   </div>
-                  <Input
-                    placeholder="Ej: VEH-ELEC-2020 (opcional - se autogenera si vacío)"
-                    className="rounded-md font-mono text-sm"
-                    maxLength={VALIDATION_RULES.APPLICABILITY_IDENTIFIER.MAX_LENGTH}
-                    {...register("applicabilityIdentifier", {
-                      validate: validateApplicabilityIdentifier
-                    })}
-                  />
-                  <div className="text-xs text-gray-500 mt-1">
-                    Máximo {VALIDATION_RULES.APPLICABILITY_IDENTIFIER.MAX_LENGTH} caracteres. Si no se especifica, se generará automáticamente.
-                  </div>
-                  {errors.applicabilityIdentifier && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {errors.applicabilityIdentifier.message}
-                    </p>
-                  )}
-                </div>
                 </div>
 
                 <div>
@@ -943,7 +986,7 @@ export default function ApplicabilityGroupForm({
                     name="tags"
                     control={control}
                     rules={{
-                      validate: (value) => validateTags(value)
+                      validate: (value) => validateTags(value),
                     }}
                     render={({ field }) => (
                       <AntSelect
@@ -952,8 +995,8 @@ export default function ApplicabilityGroupForm({
                         value={field.value || []}
                         onChange={(value) => {
                           // Validar cada tag individual antes de añadirlo
-                          const validTags = value.filter(tag => {
-                            if (typeof tag === 'string') {
+                          const validTags = value.filter((tag) => {
+                            if (typeof tag === "string") {
                               const validation = validateTag(tag.trim());
                               return validation === true;
                             }
@@ -962,14 +1005,15 @@ export default function ApplicabilityGroupForm({
                           field.onChange(validTags);
                         }}
                         className="w-full rounded-md"
-                        tokenSeparators={[',']}
+                        tokenSeparators={[","]}
                         maxTagCount="responsive"
                         maxTagTextLength={VALIDATION_RULES.TAG.MAX_LENGTH}
                       />
                     )}
                   />
                   <div className="text-xs text-gray-500 mt-1">
-                    Máximo {VALIDATION_RULES.TAG.MAX_LENGTH} caracteres por etiqueta. Separar con Enter o coma.
+                    Máximo {VALIDATION_RULES.TAG.MAX_LENGTH} caracteres por
+                    etiqueta. Separar con Enter o coma.
                   </div>
                   {errors.tags && (
                     <p className="text-sm text-red-500 mt-1">
@@ -992,12 +1036,12 @@ export default function ApplicabilityGroupForm({
                     control={control}
                     render={({ field }) => (
                       <div className="flex items-center gap-3">
-                      <Switch
-                        checked={field.value}
-                        onChange={field.onChange}
-                        checkedChildren="Activo"
-                        unCheckedChildren="Inactivo"
-                      />
+                        <Switch
+                          checked={field.value}
+                          onChange={field.onChange}
+                          checkedChildren="Activo"
+                          unCheckedChildren="Inactivo"
+                        />
                         <span
                           className={`text-sm ${
                             field.value ? "text-green-600" : "text-red-600"
@@ -1027,7 +1071,10 @@ export default function ApplicabilityGroupForm({
               tab={
                 <span className="flex items-center gap-2">
                   <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center ${getTabStyle('tab2', activeTab === "2")}`}
+                    className={`w-5 h-5 rounded-full flex items-center justify-center ${getTabStyle(
+                      "tab2",
+                      activeTab === "2"
+                    )}`}
                   >
                     {tabErrors.tab2.length > 0 ? (
                       <X className="w-3 h-3" />
@@ -1077,30 +1124,30 @@ export default function ApplicabilityGroupForm({
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-6">
+                  <div className="space-y-6">
                     <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">
                       Criterios Jerárquicos
                     </h3>
 
-                {/* Marcas */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
+                    {/* Marcas */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
                         <label className="block text-sm font-medium">
                           Marcas
                         </label>
-                    <Tooltip title="Selecciona las marcas compatibles con este grupo">
-                      <InfoCircleOutlined className="text-blue-500 cursor-help" />
-                    </Tooltip>
-                  </div>
-                  <div className="flex gap-2 mb-2">
-                    <div className="flex-1">
+                        <Tooltip title="Selecciona las marcas compatibles con este grupo">
+                          <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                        </Tooltip>
+                      </div>
+                      <div className="flex gap-2 mb-2">
+                        <div className="flex-1">
                           <BrandSelector
                             onChange={handleBrandAdd}
                             value={null}
                             placeholder="Añadir marca"
                             className="rounded-md custom-selector"
                           />
-                    </div>
+                        </div>
                         <Button
                           type="button"
                           onClick={() =>
@@ -1111,7 +1158,7 @@ export default function ApplicabilityGroupForm({
                         >
                           Limpiar
                         </Button>
-                  </div>
+                      </div>
                       <div className="tag-container">
                         {selectedBrands.length === 0 ? (
                           <span className="text-xs text-gray-400 italic">
@@ -1119,9 +1166,9 @@ export default function ApplicabilityGroupForm({
                           </span>
                         ) : (
                           selectedBrands.map((brand) => (
-                      <Tag
-                        key={brand.value}
-                        closable
+                            <Tag
+                              key={brand.value}
+                              closable
                               onClose={() =>
                                 setSelectedBrands(
                                   selectedBrands.filter(
@@ -1130,33 +1177,33 @@ export default function ApplicabilityGroupForm({
                                 )
                               }
                               className="custom-tag"
-                      >
-                        {brand.label}
-                      </Tag>
+                            >
+                              {brand.label}
+                            </Tag>
                           ))
                         )}
-                  </div>
-                </div>
+                      </div>
+                    </div>
 
-                {/* Familias */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
+                    {/* Familias */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
                         <label className="block text-sm font-medium">
                           Familias
                         </label>
-                    <Tooltip title="Selecciona las familias compatibles con este grupo">
-                      <InfoCircleOutlined className="text-blue-500 cursor-help" />
-                    </Tooltip>
-                  </div>
-                  <div className="flex gap-2 mb-2">
-                    <div className="flex-1">
+                        <Tooltip title="Selecciona las familias compatibles con este grupo">
+                          <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                        </Tooltip>
+                      </div>
+                      <div className="flex gap-2 mb-2">
+                        <div className="flex-1">
                           <FamilySelector
                             onChange={handleFamilyAdd}
                             value={null}
                             placeholder="Añadir familia"
                             className="rounded-md custom-selector"
                           />
-                    </div>
+                        </div>
                         <Button
                           type="button"
                           onClick={() =>
@@ -1168,7 +1215,7 @@ export default function ApplicabilityGroupForm({
                         >
                           Limpiar
                         </Button>
-                  </div>
+                      </div>
                       <div className="tag-container">
                         {selectedFamilies.length === 0 ? (
                           <span className="text-xs text-gray-400 italic">
@@ -1176,9 +1223,9 @@ export default function ApplicabilityGroupForm({
                           </span>
                         ) : (
                           selectedFamilies.map((family) => (
-                      <Tag
-                        key={family.value}
-                        closable
+                            <Tag
+                              key={family.value}
+                              closable
                               onClose={() =>
                                 setSelectedFamilies(
                                   selectedFamilies.filter(
@@ -1187,33 +1234,33 @@ export default function ApplicabilityGroupForm({
                                 )
                               }
                               className="custom-tag"
-                      >
-                        {family.label}
-                      </Tag>
+                            >
+                              {family.label}
+                            </Tag>
                           ))
                         )}
-                  </div>
-                </div>
+                      </div>
+                    </div>
 
-                {/* Modelos */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
+                    {/* Modelos */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
                         <label className="block text-sm font-medium">
                           Modelos
                         </label>
-                    <Tooltip title="Selecciona los modelos compatibles con este grupo">
-                      <InfoCircleOutlined className="text-blue-500 cursor-help" />
-                    </Tooltip>
-                  </div>
-                  <div className="flex gap-2 mb-2">
-                    <div className="flex-1">
+                        <Tooltip title="Selecciona los modelos compatibles con este grupo">
+                          <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                        </Tooltip>
+                      </div>
+                      <div className="flex gap-2 mb-2">
+                        <div className="flex-1">
                           <ModelSelector
                             onChange={handleModelAdd}
                             value={null}
                             placeholder="Añadir modelo"
                             className="rounded-md custom-selector"
                           />
-                    </div>
+                        </div>
                         <Button
                           type="button"
                           onClick={() =>
@@ -1224,7 +1271,7 @@ export default function ApplicabilityGroupForm({
                         >
                           Limpiar
                         </Button>
-                  </div>
+                      </div>
                       <div className="tag-container">
                         {selectedModels.length === 0 ? (
                           <span className="text-xs text-gray-400 italic">
@@ -1232,9 +1279,9 @@ export default function ApplicabilityGroupForm({
                           </span>
                         ) : (
                           selectedModels.map((model) => (
-                      <Tag
-                        key={model.value}
-                        closable
+                            <Tag
+                              key={model.value}
+                              closable
                               onClose={() =>
                                 setSelectedModels(
                                   selectedModels.filter(
@@ -1243,33 +1290,33 @@ export default function ApplicabilityGroupForm({
                                 )
                               }
                               className="custom-tag"
-                      >
-                        {model.label}
-                      </Tag>
+                            >
+                              {model.label}
+                            </Tag>
                           ))
                         )}
-                  </div>
-                </div>
+                      </div>
+                    </div>
 
-                {/* Líneas */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
+                    {/* Líneas */}
+                 {/*    <div>
+                      <div className="flex items-center gap-2 mb-2">
                         <label className="block text-sm font-medium">
                           Líneas
                         </label>
-                    <Tooltip title="Selecciona las líneas compatibles con este grupo">
-                      <InfoCircleOutlined className="text-blue-500 cursor-help" />
-                    </Tooltip>
-                  </div>
-                  <div className="flex gap-2 mb-2">
-                    <div className="flex-1">
+                        <Tooltip title="Selecciona las líneas compatibles con este grupo">
+                          <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                        </Tooltip>
+                      </div>
+                      <div className="flex gap-2 mb-2">
+                        <div className="flex-1">
                           <LineSelector
                             onChange={handleLineAdd}
                             value={null}
                             placeholder="Añadir línea"
                             className="rounded-md custom-selector"
                           />
-                    </div>
+                        </div>
                         <Button
                           type="button"
                           onClick={() =>
@@ -1280,7 +1327,7 @@ export default function ApplicabilityGroupForm({
                         >
                           Limpiar
                         </Button>
-                  </div>
+                      </div>
                       <div className="tag-container">
                         {selectedLines.length === 0 ? (
                           <span className="text-xs text-gray-400 italic">
@@ -1288,9 +1335,9 @@ export default function ApplicabilityGroupForm({
                           </span>
                         ) : (
                           selectedLines.map((line) => (
-                      <Tag
-                        key={line.value}
-                        closable
+                            <Tag
+                              key={line.value}
+                              closable
                               onClose={() =>
                                 setSelectedLines(
                                   selectedLines.filter(
@@ -1299,39 +1346,39 @@ export default function ApplicabilityGroupForm({
                                 )
                               }
                               className="custom-tag"
-                      >
-                        {line.label}
-                      </Tag>
+                            >
+                              {line.label}
+                            </Tag>
                           ))
                         )}
                       </div>
+                    </div> */}
                   </div>
-                </div>
 
                   <div className="space-y-6">
                     <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">
                       Criterios Técnicos
                     </h3>
 
-                {/* Transmisiones */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
+                    {/* Transmisiones */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
                         <label className="block text-sm font-medium">
                           Transmisiones
                         </label>
-                    <Tooltip title="Selecciona las transmisiones compatibles con este grupo">
-                      <InfoCircleOutlined className="text-blue-500 cursor-help" />
-                    </Tooltip>
-                  </div>
-                  <div className="flex gap-2 mb-2">
-                    <div className="flex-1">
+                        <Tooltip title="Selecciona las transmisiones compatibles con este grupo">
+                          <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                        </Tooltip>
+                      </div>
+                      <div className="flex gap-2 mb-2">
+                        <div className="flex-1">
                           <TransmissionSelector
                             onChange={handleTransmissionAdd}
                             value={null}
                             placeholder="Añadir transmisión"
                             className="rounded-md custom-selector"
                           />
-                    </div>
+                        </div>
                         <Button
                           type="button"
                           onClick={() =>
@@ -1343,7 +1390,7 @@ export default function ApplicabilityGroupForm({
                         >
                           Limpiar
                         </Button>
-                  </div>
+                      </div>
                       <div className="tag-container">
                         {selectedTransmissions.length === 0 ? (
                           <span className="text-xs text-gray-400 italic">
@@ -1351,9 +1398,9 @@ export default function ApplicabilityGroupForm({
                           </span>
                         ) : (
                           selectedTransmissions.map((transmission) => (
-                      <Tag
-                        key={transmission.value}
-                        closable
+                            <Tag
+                              key={transmission.value}
+                              closable
                               onClose={() =>
                                 setSelectedTransmissions(
                                   selectedTransmissions.filter(
@@ -1362,33 +1409,33 @@ export default function ApplicabilityGroupForm({
                                 )
                               }
                               className="custom-tag"
-                      >
-                        {transmission.label}
-                      </Tag>
+                            >
+                              {transmission.label}
+                            </Tag>
                           ))
                         )}
-                  </div>
-                </div>
+                      </div>
+                    </div>
 
-                {/* Combustibles */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
+                    {/* Combustibles */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
                         <label className="block text-sm font-medium">
                           Combustibles
                         </label>
-                    <Tooltip title="Selecciona los combustibles compatibles con este grupo">
-                      <InfoCircleOutlined className="text-blue-500 cursor-help" />
-                    </Tooltip>
-                  </div>
-                  <div className="flex gap-2 mb-2">
-                    <div className="flex-1">
+                        <Tooltip title="Selecciona los combustibles compatibles con este grupo">
+                          <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                        </Tooltip>
+                      </div>
+                      <div className="flex gap-2 mb-2">
+                        <div className="flex-1">
                           <FuelSelector
                             onChange={handleFuelAdd}
                             value={null}
                             placeholder="Añadir combustible"
                             className="rounded-md custom-selector"
                           />
-                    </div>
+                        </div>
                         <Button
                           type="button"
                           onClick={() =>
@@ -1399,7 +1446,7 @@ export default function ApplicabilityGroupForm({
                         >
                           Limpiar
                         </Button>
-                  </div>
+                      </div>
                       <div className="tag-container">
                         {selectedFuels.length === 0 ? (
                           <span className="text-xs text-gray-400 italic">
@@ -1407,9 +1454,9 @@ export default function ApplicabilityGroupForm({
                           </span>
                         ) : (
                           selectedFuels.map((fuel) => (
-                      <Tag
-                        key={fuel.value}
-                        closable
+                            <Tag
+                              key={fuel.value}
+                              closable
                               onClose={() =>
                                 setSelectedFuels(
                                   selectedFuels.filter(
@@ -1418,13 +1465,13 @@ export default function ApplicabilityGroupForm({
                                 )
                               }
                               className="custom-tag"
-                      >
-                        {fuel.label}
-                      </Tag>
+                            >
+                              {fuel.label}
+                            </Tag>
                           ))
                         )}
-                  </div>
-                </div>
+                      </div>
+                    </div>
 
                     <h3 className="text-sm font-semibold text-gray-700 border-b pb-2 mt-8">
                       Criterios de Año
@@ -1441,12 +1488,23 @@ export default function ApplicabilityGroupForm({
                             Límites de Años Permitidos
                           </h4>
                           <ul className="text-xs text-blue-700 space-y-1">
-                            <li><strong>Año Mínimo:</strong> 1990 - {new Date().getFullYear()} (no años futuros)</li>
-                            <li><strong>Año Máximo:</strong> 1990 - {new Date().getFullYear() + 2} (hasta 2 años futuros)</li>
-                            <li><strong>Años Específicos:</strong> 1990 - {new Date().getFullYear() + 2}</li>
+                            <li>
+                              <strong>Año Mínimo:</strong> 1990 -{" "}
+                              {new Date().getFullYear()} (no años futuros)
+                            </li>
+                            <li>
+                              <strong>Año Máximo:</strong> 1990 -{" "}
+                              {new Date().getFullYear() + 2} (hasta 2 años
+                              futuros)
+                            </li>
+                            <li>
+                              <strong>Años Específicos:</strong> 1990 -{" "}
+                              {new Date().getFullYear() + 2}
+                            </li>
                           </ul>
                           <p className="text-xs text-blue-600 mt-2 italic">
-                            💡 Los límites evitan datos irreales y mantienen coherencia con el catálogo de vehículos.
+                            💡 Los límites evitan datos irreales y mantienen
+                            coherencia con el catálogo de vehículos.
                           </p>
                         </div>
                       </div>
@@ -1454,38 +1512,39 @@ export default function ApplicabilityGroupForm({
 
                     {/* Opción de Criterios de Año */}
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="flex items-center gap-2">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <div className="flex items-center gap-2">
                             <label className="block text-sm font-medium mb-1">
                               Año Mínimo
                             </label>
                             <Tooltip title="Año mínimo de fabricación. Debe ser entre 1990 y año actual. No se puede usar junto con años específicos.">
-                        <InfoCircleOutlined className="text-blue-500 cursor-help" />
-                      </Tooltip>
-                    </div>
-                    <Input
-                      type="number"
-                      placeholder="Ej: 2010"
-                      className="rounded-md"
-                      min={VALIDATION_RULES.YEAR.MIN}
-                      max={VALIDATION_RULES.YEAR.MAX}
-                      disabled={
-                        watch("criteria.specificYears")?.length > 0
-                      }
-                      {...register("criteria.minYear", {
-                        valueAsNumber: true,
-                        validate: (value) => validateYear(value, "año mínimo"),
-                        onChange: (e) => {
-                          // Si se establece un año mínimo, limpiar años específicos
-                          if (
-                            e.target.value &&
-                            watch("criteria.specificYears")?.length > 0
-                          ) {
-                            setValue("criteria.specificYears", []);
-                          }
-                        },
-                      })}
+                              <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                            </Tooltip>
+                          </div>
+                          <Input
+                            type="number"
+                            placeholder="Ej: 2010"
+                            className="rounded-md"
+                            min={VALIDATION_RULES.YEAR.MIN}
+                            max={VALIDATION_RULES.YEAR.MAX}
+                            disabled={
+                              watch("criteria.specificYears")?.length > 0
+                            }
+                            {...register("criteria.minYear", {
+                              valueAsNumber: true,
+                              validate: (value) =>
+                                validateYear(value, "año mínimo"),
+                              onChange: (e) => {
+                                // Si se establece un año mínimo, limpiar años específicos
+                                if (
+                                  e.target.value &&
+                                  watch("criteria.specificYears")?.length > 0
+                                ) {
+                                  setValue("criteria.specificYears", []);
+                                }
+                              },
+                            })}
                           />
                           {errors.criteria?.minYear && (
                             <p className="text-sm text-red-500 mt-1">
@@ -1497,49 +1556,57 @@ export default function ApplicabilityGroupForm({
                               Deshabilitado: se están usando años específicos
                             </div>
                           )}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
                             <label className="block text-sm font-medium mb-1">
                               Año Máximo
                             </label>
-                            <Tooltip title={`Año máximo de fabricación. Debe ser entre 1990 y ${new Date().getFullYear() + 2}. No se puede usar junto con años específicos.`}>
-                        <InfoCircleOutlined className="text-blue-500 cursor-help" />
-                      </Tooltip>
-                    </div>
-                    <Input
-                      type="number"
-                      placeholder={`Ej: ${new Date().getFullYear()}`}
-                      className="rounded-md"
-                      min={VALIDATION_RULES.YEAR.MIN}
-                      max={VALIDATION_RULES.YEAR.MAX}
-                      disabled={
-                        watch("criteria.specificYears")?.length > 0
-                      }
-                      {...register("criteria.maxYear", {
-                        valueAsNumber: true,
-                        validate: (value) => {
-                          // Validación básica de año
-                          const yearValidation = validateYear(value, "año máximo");
-                          if (yearValidation !== true) return yearValidation;
-                          
-                          // Validación de rango con año mínimo
-                          const minYear = watch("criteria.minYear");
-                          if (minYear && value && value < minYear) {
-                            return "El año máximo debe ser mayor al año mínimo";
-                          }
-                          return true;
-                        },
-                        onChange: (e) => {
-                          // Si se establece un año máximo, limpiar años específicos
-                          if (
-                            e.target.value &&
-                            watch("criteria.specificYears")?.length > 0
-                          ) {
-                            setValue("criteria.specificYears", []);
-                          }
-                        },
-                      })}
+                            <Tooltip
+                              title={`Año máximo de fabricación. Debe ser entre 1990 y ${
+                                new Date().getFullYear() + 2
+                              }. No se puede usar junto con años específicos.`}
+                            >
+                              <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                            </Tooltip>
+                          </div>
+                          <Input
+                            type="number"
+                            placeholder={`Ej: ${new Date().getFullYear()}`}
+                            className="rounded-md"
+                            min={VALIDATION_RULES.YEAR.MIN}
+                            max={VALIDATION_RULES.YEAR.MAX}
+                            disabled={
+                              watch("criteria.specificYears")?.length > 0
+                            }
+                            {...register("criteria.maxYear", {
+                              valueAsNumber: true,
+                              validate: (value) => {
+                                // Validación básica de año
+                                const yearValidation = validateYear(
+                                  value,
+                                  "año máximo"
+                                );
+                                if (yearValidation !== true)
+                                  return yearValidation;
+
+                                // Validación de rango con año mínimo
+                                const minYear = watch("criteria.minYear");
+                                if (minYear && value && value < minYear) {
+                                  return "El año máximo debe ser mayor al año mínimo";
+                                }
+                                return true;
+                              },
+                              onChange: (e) => {
+                                // Si se establece un año máximo, limpiar años específicos
+                                if (
+                                  e.target.value &&
+                                  watch("criteria.specificYears")?.length > 0
+                                ) {
+                                  setValue("criteria.specificYears", []);
+                                }
+                              },
+                            })}
                           />
                           {errors.criteria?.maxYear && (
                             <p className="text-sm text-red-500 mt-1">
@@ -1552,7 +1619,8 @@ export default function ApplicabilityGroupForm({
                             </div>
                           )}
                           <div className="text-xs text-blue-600 mt-1">
-                            Rango permitido: {VALIDATION_RULES.YEAR.MIN} - {VALIDATION_RULES.YEAR.MAX}
+                            Rango permitido: {VALIDATION_RULES.YEAR.MIN} -{" "}
+                            {VALIDATION_RULES.YEAR.MAX}
                           </div>
                           {/* Mostrar advertencias de años */}
                           {yearWarnings.length > 0 && (
@@ -1568,8 +1636,8 @@ export default function ApplicabilityGroupForm({
                               ))}
                             </div>
                           )}
-                </div>
-              </div>
+                        </div>
+                      </div>
 
                       {/* Separador visual */}
                       <div className="flex items-center gap-4 my-4">
@@ -1581,21 +1649,21 @@ export default function ApplicabilityGroupForm({
                       </div>
 
                       {/* Años específicos */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
                           <label className="block text-sm font-medium">
                             Años Específicos
                           </label>
                           <Tooltip title="Selecciona años específicos en lugar de un rango. No se puede usar junto con año mínimo/máximo.">
-                      <InfoCircleOutlined className="text-blue-500 cursor-help" />
-                    </Tooltip>
-                  </div>
+                            <InfoCircleOutlined className="text-blue-500 cursor-help" />
+                          </Tooltip>
+                        </div>
                         <div className="space-y-3">
                           <Controller
                             name="criteria.specificYears"
                             control={control}
                             rules={{
-                              validate: (value) => validateSpecificYears(value)
+                              validate: (value) => validateSpecificYears(value),
                             }}
                             render={({ field }) => {
                               const minYear = VALIDATION_RULES.YEAR.MIN;
@@ -1841,7 +1909,10 @@ export default function ApplicabilityGroupForm({
               tab={
                 <span className="flex items-center gap-2">
                   <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center ${getTabStyle('tab3', activeTab === "3")}`}
+                    className={`w-5 h-5 rounded-full flex items-center justify-center ${getTabStyle(
+                      "tab3",
+                      activeTab === "3"
+                    )}`}
                   >
                     {tabErrors.tab3.length > 0 ? (
                       <X className="w-3 h-3" />
@@ -1899,14 +1970,14 @@ export default function ApplicabilityGroupForm({
                       </Tooltip>
                     </div>
                     <div className="flex gap-2 mb-3">
-                    <div className="flex-1">
+                      <div className="flex-1">
                         <VehicleSelector
                           onChange={handleIncludedVehicleAdd}
                           value={null}
                           placeholder="Añadir vehículo específico"
                           className="rounded-md custom-selector border-green-200"
                         />
-                    </div>
+                      </div>
                       <Button
                         type="button"
                         onClick={() =>
@@ -1918,7 +1989,7 @@ export default function ApplicabilityGroupForm({
                       >
                         Limpiar
                       </Button>
-                  </div>
+                    </div>
                     <div className="min-h-32 p-3 bg-white rounded-md border border-green-200 overflow-auto">
                       {selectedIncludedVehicles.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-center p-4">
@@ -1930,11 +2001,11 @@ export default function ApplicabilityGroupForm({
                           </span>
                         </div>
                       ) : (
-                  <div className="flex flex-wrap gap-1">
-                    {selectedIncludedVehicles.map((vehicle) => (
-                      <Tag
-                        key={vehicle.value}
-                        closable
+                        <div className="flex flex-wrap gap-1">
+                          {selectedIncludedVehicles.map((vehicle) => (
+                            <Tag
+                              key={vehicle.value}
+                              closable
                               onClose={() =>
                                 setSelectedIncludedVehicles(
                                   selectedIncludedVehicles.filter(
@@ -1942,12 +2013,12 @@ export default function ApplicabilityGroupForm({
                                   )
                                 )
                               }
-                        color="green"
+                              color="green"
                               className="mb-2 custom-tag"
-                      >
-                        {vehicle.label}
-                      </Tag>
-                    ))}
+                            >
+                              {vehicle.label}
+                            </Tag>
+                          ))}
                         </div>
                       )}
                     </div>
@@ -1955,10 +2026,10 @@ export default function ApplicabilityGroupForm({
                       <Check className="w-3 h-3 inline-block mr-1" />
                       Estos vehículos <strong>SIEMPRE</strong> estarán incluidos
                       en el grupo
+                    </div>
                   </div>
-                </div>
 
-                {/* Vehículos excluidos */}
+                  {/* Vehículos excluidos */}
                   <div className="bg-red-50 p-4 rounded-lg border border-red-200">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="p-1 bg-red-100 rounded-full">
@@ -1967,19 +2038,19 @@ export default function ApplicabilityGroupForm({
                       <label className="block text-sm font-medium text-red-800">
                         Vehículos para excluir específicamente
                       </label>
-                    <Tooltip title="Vehículos que deseas excluir aunque cumplan los criterios">
+                      <Tooltip title="Vehículos que deseas excluir aunque cumplan los criterios">
                         <InfoCircleOutlined className="text-red-500 cursor-help" />
-                    </Tooltip>
-                  </div>
+                      </Tooltip>
+                    </div>
                     <div className="flex gap-2 mb-3">
-                    <div className="flex-1">
+                      <div className="flex-1">
                         <VehicleSelector
                           onChange={handleExcludedVehicleAdd}
                           value={null}
                           placeholder="Añadir vehículo para excluir"
                           className="rounded-md custom-selector border-red-200"
                         />
-                    </div>
+                      </div>
                       <Button
                         type="button"
                         onClick={() =>
@@ -1991,7 +2062,7 @@ export default function ApplicabilityGroupForm({
                       >
                         Limpiar
                       </Button>
-                  </div>
+                    </div>
                     <div className="min-h-32 p-3 bg-white rounded-md border border-red-200 overflow-auto">
                       {selectedExcludedVehicles.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-center p-4">
@@ -2003,11 +2074,11 @@ export default function ApplicabilityGroupForm({
                           </span>
                         </div>
                       ) : (
-                  <div className="flex flex-wrap gap-1">
-                    {selectedExcludedVehicles.map((vehicle) => (
-                      <Tag
-                        key={vehicle.value}
-                        closable
+                        <div className="flex flex-wrap gap-1">
+                          {selectedExcludedVehicles.map((vehicle) => (
+                            <Tag
+                              key={vehicle.value}
+                              closable
                               onClose={() =>
                                 setSelectedExcludedVehicles(
                                   selectedExcludedVehicles.filter(
@@ -2015,15 +2086,15 @@ export default function ApplicabilityGroupForm({
                                   )
                                 )
                               }
-                        color="red"
+                              color="red"
                               className="mb-2 custom-tag"
-                      >
-                        {vehicle.label}
-                      </Tag>
-                    ))}
-                  </div>
+                            >
+                              {vehicle.label}
+                            </Tag>
+                          ))}
+                        </div>
                       )}
-                </div>
+                    </div>
                     <div className="mt-2 text-xs text-red-700">
                       <AlertCircle className="w-3 h-3 inline-block mr-1" />
                       Estos vehículos <strong>NUNCA</strong> estarán incluidos
@@ -2032,7 +2103,7 @@ export default function ApplicabilityGroupForm({
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex justify-between mt-8 p-4 border-t">
                 <Button
                   type="button"
@@ -2190,4 +2261,4 @@ export default function ApplicabilityGroupForm({
       )}
     </motion.div>
   );
-} 
+}

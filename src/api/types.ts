@@ -27,6 +27,7 @@ export interface Product {
     percentage: number;
   };
   compatible_vehicles: any[];
+  applicabilityGroups?: any[];
   specifications: { key: string; value: string }[];
   variants: { name: string; value: string; price: number }[];
   shipping: string[];

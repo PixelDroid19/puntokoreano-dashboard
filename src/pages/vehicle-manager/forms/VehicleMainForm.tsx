@@ -98,25 +98,7 @@ export default function VehicleMainForm() {
     if (!selectedModelValue || !selectedTransmissionValue || !selectedFuelValue) {
       return;
     }
-    try {
-      if (data.tag_id && data.tag_id.trim() !== "") {
-        const params = {
-          page: 1,
-          limit: 1,
-          sortBy: "createdAt",
-          sortOrder: "desc" as "desc" | "asc",
-          tag_id: data.tag_id.trim(),
-        };
-        const response = await VehicleFamiliesService.getVehicles(params);
-        const vehicles = response.vehicles || [];
-        if (vehicles.length > 0) {
-          setFormError({ message: "Ya existe un vehículo con ese identificador único." });
-          return;
-        }
-      }
-    } catch (err) {
-      // Permitir submit si la validación falla
-    }
+    
     const getId = (val: any) => (typeof val === 'string' ? val : val?.value);
     mutate({
       ...data,
@@ -238,18 +220,17 @@ export default function VehicleMainForm() {
             <div>
               <div className="flex items-center gap-2">
                 <label htmlFor="tag_id" className="block text-sm font-medium mb-1 text-gray-700">
-                  Identificador del Vehículo <span className="text-red-500">*</span>
+                  Identificador del Vehículo <span className="text-gray-400">(Opcional)</span>
                 </label>
-                <Tooltip title="Este es el identificador único asignado al vehículo al momento de crearlo. Se utiliza para asociar el vehículo con productos cuando se cargan mediante Excel.">
+                <Tooltip title="Este es el identificador único asignado al vehículo. Si no se proporciona, se generará automáticamente basado en la marca, familia, año, transmisión y combustible del vehículo.">
                   <InfoCircleOutlined className="text-blue-500 cursor-help" />
                 </Tooltip>
               </div>
               <div className="relative">
                 <Input
                   id="tag_id"
-                  placeholder="Ingrese el identificador del vehículo"
+                  placeholder="Se generará automáticamente si se deja vacío"
                   {...register("tag_id", {
-                    required: "El identificador del vehículo es requerido",
                     pattern: {
                       value: /^[\p{L}0-9_-]+$/u,
                       message: "Solo se permiten letras, números, guiones y guiones bajos",
@@ -270,6 +251,9 @@ export default function VehicleMainForm() {
                   {errors.tag_id.message}
                 </motion.p>
               )}
+              <p className="text-xs text-gray-500 mt-1">
+                💡 Si no se especifica, se generará automáticamente como: MARCA-FAMILIA-AÑO-TRANSMISIÓN-COMBUSTIBLE
+              </p>
             </div>
           </div>
           <div>

@@ -70,6 +70,28 @@ class ProductsService {
     }
   }
 
+  static async getProductVehicleCompatibility(id: string): Promise<any> {
+    try {
+      const response = await axiosInstance({
+        url: `/products/${id}/vehicle-compatibility`,
+        method: "GET",
+        params: { 
+          limit: 25, // Cargar hasta 100 vehículos
+          type: "direct" // Solo vehículos individuales, no los de grupos de aplicabilidad
+        },
+      });
+
+      return response.data.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.message || "Error al obtener compatibilidad de vehículos"
+        );
+      }
+      throw error;
+    }
+  }
+
   static async deleteProduct(id: string): Promise<void> {
     try {
       const { url, method } = ENDPOINTS.DASHBOARD.PRODUCTS.DELETE;
